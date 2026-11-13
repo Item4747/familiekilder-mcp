@@ -27,8 +27,9 @@ kontrolleres kilden før en ny fil hentes; en endret kilde avvises som tilbakebl
 Svar oppgir `cache.hit`, `age_seconds`, `fetched_at` og `expires_at`.
 Hentetid er opprinnelig kildehenting. En cachelesing gir aldri en ny
 ferskhetskvittering, og en observasjon er gyldig i 15 minutter også ved gjenbruk.
-Skrivehandlinger leser alltid direkte fra tjenesten før og etter sending, med
-egne rettighets- og etterkontroller. Cacheinnhold gir ingen skriverettigheter.
+Intern bibliotekskode for skrivehandlinger leser direkte fra tjenesten før og
+etter sending, med egne rettighets- og etterkontroller. Den selvstendige
+serveren tilbyr bare lesing. Cacheinnhold gir ingen skriverettigheter.
 
 Vedlegg knyttes til konto, referanse, kildeinnholdets fingeravtrykk og vedleggs-ID.
 Ved ny nedlasting sammenlignes den ferskt oppløste meldingen med denne

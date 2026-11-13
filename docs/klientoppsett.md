@@ -53,8 +53,8 @@ familiekilder-mcp auth spond browser-bootstrap
 Klientfilen må eies av din OS-bruker, være en vanlig fil og ha filmodus `0600`.
 Bruk en privat mappe med modus `0700`. Ikke legg filen i Git eller send den til
 andre. Spond og Hoopit bruker `browser-bootstrap`; de andre nettleserkoblingene
-bruker `browser-login`. Signerte providerpakker er en alternativ importvei,
-men prosjektet deler ikke ut slike pakker.
+bruker `browser-login`. Den utgitte pakken inneholder ingen betrodde nøkler for
+signerte providerpakker; bruk derfor separate klientfiler i standardoppsettet.
 
 ## Felter i klientoppsettet
 

@@ -1,23 +1,24 @@
-# Installer familiekilder-mcp med en kodeagent
+# La kodeagenten gjøre installasjonen
 
-## Hvor kan du bruke det?
+Dette passer for en lokalt kjørende kodeagent, for eksempel Codex eller
+Claude Code, som har tilgang til filer og terminalen på Macen din. En vanlig
+nettchat kan ikke gjøre installasjonen alene.
 
-familiekilder-mcp installeres på Macen din. Du bruker koblingen i en skrivebordsapp på samme Mac. Vanlig chat i nettleseren eller på mobilen har ingen direkte tilgang til koblingen.
+Last ned kildekoden, åpne prosjektmappen med kodeagenten, og gi den denne
+beskjeden:
 
-- [ChatGPT-skrivebordsappen](https://chatgpt.com/download/). Velg **Codex** og deretter **This computer** når du starter en samtale.
-- [Claude Desktop](https://claude.com/download). Bruk **Code**-fanen til å installere og **Chat**-fanen til å lese beskjeder etterpå.
+> Installer familiekilder-mcp fra denne prosjektmappen og start det lokale
+> oppsettet. Les README og docs/kom-i-gang.md først. Kontroller at Python 3.11
+> eller nyere og Brave finnes. Be meg om å installere det som eventuelt
+> mangler, eller hjelp meg med det når jeg har godkjent det. Kjør scripts/setup.
+> La meg velge tjenester, oppsettsfiler og AI-klient i veiviseren. Jeg gjør
+> innlogging og BankID selv. Ikke kopier eller vis passord, tokens eller
+> oppsettsfiler i samtalen. Ikke gi tilgang til skriving eller bruk beskjeder
+> fra ekte kontoer som tester.
 
-## Slik installerer du
+Veiviseren legger til MCP-koblingen etter ditt valg. Kodeagenten trenger ikke
+redigere klientfilene manuelt. Når den lokale MCP-testen er grønn, starter du
+AI-klienten på nytt og velger familiekilder-mcp i en lokal samtale.
 
-1. Gå til [prosjektsiden](https://github.com/Item4747/familiekilder-mcp), velg **Code → Download ZIP** og pakk ut filen.
-2. Åpne den utpakkede mappen i Codex eller Claude Code, og lim inn denne beskjeden.
-
-   > Installer familiekilder-mcp fra denne mappen. Les README.md og docs/kom-i-gang.md først. Sjekk at jeg har Python 3.11 eller nyere og Brave. Spør meg før du installerer noe som mangler. Kjør `scripts/setup`.
-   >
-   > La meg velge tjenester, eventuelle oppsettsfiler og AI-app i veiviseren. Jeg logger inn og bruker BankID selv. Hold passord, tokens og oppsettsfiler utenfor chatten. Sett opp lesetilgang og bruk veiviserens test, som sjekker koblingen uten å hente ekte beskjeder.
-
-3. Fullfør veiviseren i nettleseren. Når testen er godkjent, start skrivebordsappen på nytt og prøv å be den hente de nyeste beskjedene fra en tjeneste du har koblet til.
-
-Selve oppsettet krever ingen API-nøkkel. AI-appen kan kreve abonnement.
-
-Vil du gjøre oppsettet selv? Se [Kom i gang](kom-i-gang.md).
+Du trenger ingen API-nøkkel til en AI-leverandør for selve oppsettet. Den
+AI-klienten du bruker, har sine egne vilkår og eventuelle abonnementskostnader.

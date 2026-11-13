@@ -31,7 +31,7 @@ avvises. En kjørende MCP-server beholder valgt leser til den startes på nytt.
   `coverage.complete` viser levert innhold, ikke at modellen forsto det.
 - Uleselige eller ressursbegrensede sider står i `limitations` og
   `coverage.unreadable_pages`. Senere sider kan leses. Serveren blokkerer da full
-  vedleggskvittering og lagring som komplett kildegrunnlag.
+  vedleggskvittering.
 
 En side kan leses på nytt med ønsket fysisk side og `after_chunk=0`. Etter
 komplett lesing brukes en ny forberedelse; originalen gjenåpnes fra
@@ -53,8 +53,7 @@ sider. Leseren bruker render-versjon 7 (`RENDER_VERSION` i `live_attachments.py`
 den eldre leseren bruker 5), så gamle ferdigrendrede oppføringer brukes ikke.
 Versjon 7 gjør et JPEG-bilde med flere innebygde bilder (MPO) til én side: bare
 hovedbildet. Mobilkameraer legger HDR-kart, dybdekart eller forhåndsvisning inn
-som ekstra bilder, og før versjon 7 ble de egne «sider»; det ble sett på et
-IST-bilde 11. november 2026.
+som ekstra bilder, og før versjon 7 ble de egne «sider».
 Tekst- og arkivvedlegg følger sin egen kontrakt; se [mellomlagring](read-cache.md).
 
 Forberedelsen bindes til kilde, referanse, vedleggs-ID, meldingens innholdshash,
@@ -97,9 +96,5 @@ INFO.
 ## Verifikasjon
 
 `tests/test_archive_attachments.py` dekker tekst- og arkivvedleggene. Prosjektet
-har ennå ingen egne tester for de trinnvise PDF-vinduene: de syntetiske testene
-som finnes, går gjennom en MCP-server som bygger på denne. De dekker blant annet
-mer enn 2 MiB tekst med viktige fakta på side 50, siste tekstbit på en tett side,
-UTF-8-grenser, skanning, korrupt side med lesbare sider etter, hoppede biter,
-kilde- og kontoendring, nye PDF-bytes under samme melding, endret tekst eller
-bilde, resultatfeil, ressursavbrudd og opprydding.
+har ennå ingen egne tester for de trinnvise PDF-vinduene. For disse mangler
+dermed selvstendig verifikasjon i dette prosjektet.

@@ -4,7 +4,8 @@ Gmail er en egen lesekilde i MCP-serveren. `gmail_search`, `gmail_get_item`
 og `gmail_read_attachment` bruker Googles offisielle API med bare
 `gmail.readonly`. Sending, arkivering, etiketter, lest-status og sletting er ikke
 implementert eller eksponert. Det finnes ingen `gmail_list_items`: Gmail har
-ingen feed, og innboksen leses aldri i sin helhet.
+ingen feed. Lesing skjer bare som svar på et søk; et bredt søk kan likevel
+treffe mange eller alle meldingene.
 
 ## Målrettet søk
 

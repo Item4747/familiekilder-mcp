@@ -26,7 +26,7 @@ syntetiske svar med samme form. Øvrige regler står i [AGENTS.md](../AGENTS.md)
 | `src/familiekilder/mykid.py` | API-klient og normalisering. En klient som henter token, fornyer én gang ved 401 og sender kall gjennom `ApiTransport`. Funksjoner som henter lister og detaljer og gjør råsvar om til normaliserte elementer. Faste grenser for sider, antall og bytes. |
 | `src/familiekilder/mykid_auth.py` | Innlogging og økt (se «Auth-kontrakten»). Lagrer økten i `.private/credentials/mykid-session.json`. |
 | `src/familiekilder/live_mykid_reader.py` | Leserkontrakten (se under). Tynn: kaller funksjonene i `mykid.py`. |
-| `src/familiekilder/live_mykid*.py` | Valgfritt. Egne MCP-verktøy ut over de tre generiske, og skrivehandlinger. Hver modul har `register(server, runtime)`. Mønster: `live_spond_messages.py`, `live_spond_participation.py`, `live_ist.py`. |
+| `src/familiekilder/live_mykid*.py` | Valgfritt. Egne MCP-leseverktøy ut over de tre generiske. Intern bibliotekskode for skrivehandlinger kan ligge her, men tilbys ikke av den selvstendige serveren. Hver modul har `register(server, runtime)`. Mønster: `live_spond_messages.py`, `live_spond_participation.py`, `live_ist.py`. |
 | `tests/test_mykid.py`, `tests/test_mykid_auth.py` | Syntetiske tester (se del 4). |
 
 ### Leserkontrakten
@@ -162,9 +162,11 @@ Lag egne underklasser, som `spond_auth.SpondReauthenticationRequired`.
 uten token, URL eller råsvar. `source_server.safe_tool` gjør andre unntak om til
 en generell feil.
 
-### Skrivehandlinger (valgfritt, ikke i første bidrag)
+### Intern bibliotekskode for skrivehandlinger
 
-En handling registreres bare når kontrakten er verifisert. Den bruker
+Den selvstendige CLI-en og MCP-serveren tilbyr bare lesing. Pakken inneholder
+også intern bibliotekskode for skrivehandlinger, som ikke er et støttet
+grensesnitt. En slik handling registreres bare når kontrakten er verifisert. Den bruker
 `runtime.config.require(source, category)` (kategorier i
 `live_config.CATEGORIES`) og `ledger.reserve_operation`/`operation_result`, så
 den ikke sendes to ganger, og leser resultatet tilbake. Mønster:

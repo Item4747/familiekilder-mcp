@@ -9,7 +9,7 @@ refresh-tokenet varer.
 | Kilde | Tilgjengelig bevis | Konsekvens |
 | --- | --- | --- |
 | Vigilo | Lokal økt har access `expires_at`; refresh-tokenet er opakt. Den gamle øktfilen bevarer ikke separat refresh-utløp. | Maksimal/absolutt levetid og inaktivitetsfrist er ukjent. Nye svar registrerer eksplisitte tidsfelter. |
-| Skolemelding | Lokal portaløkt har `access_expires_at`; den egne portaltokenfornyelsen er forskjellig fra ID-porten-innloggingen. | Ikke bruk ID-portens levetid som portalens levetid. `invalid_grant` beviser avvisning, ikke årsaken. |
+| Skolemelding | Lokal portaløkt har `access_expires_at`; portalens tokenfornyelse er forskjellig fra ID-porten-innloggingen. | Ikke bruk ID-portens levetid som portalens levetid. `invalid_grant` beviser avvisning, ikke årsaken. |
 | IST Home | Lokal økt har `issued_at` og access `expires_in`; ingen bevart separat refresh-utløp. | Ingen dokumentert maksimum eller sikkert replayvindu for denne klienten. |
 | Spond | Faktiske API-svar og lokal økt har separate access-/refresh-utløp. | Bruk konkret `refresh_expires_at`. Ett slikt tidspunkt beviser ikke en absolutt grense for hele økten eller en rullerende garanti. |
 | Hoopit | Firebase ID-token + separat refresh-token. Firebase dokumenterer langvarige økter uten en generell fast månedsfrist; kontosletting, deaktivering, vesentlige kontoendringer og tilbakekalling kan avslutte dem. | Ingen oppdiktet refresh-utløpsdato eller keepalive-trafikk. |
@@ -62,9 +62,8 @@ Levetidsmåling:
   med `invalid_grant` etter 18,8 døgn uten bruk; innloggingen var 37,9 døgn
   gammel. Årsaken er ukjent: en inaktivitetsgrense på 4,1–18,8 døgn, en absolutt
   grense på 19,1–37,9 døgn, eller tilbakekalling.
-- Målingen fortsetter med én nettlesergrant og pauser på 5, 7, 10 og 14 døgn fra
-  7. november. Legg en slik måleøkt i en egen datarot (`--root`), ikke i en
-  midlertidig utsjekking: øktfiler kan ikke gjenskapes når mappen er slettet.
+- Målinger av varighet trenger en egen stabil datarot (`--root`); øktfiler kan
+  ikke gjenskapes når en midlertidig mappe er slettet.
 
 Lærdommer fra to lokale feil som så ut som utlogging:
 
@@ -111,7 +110,7 @@ Lærdommer fra to lokale feil som så ut som utlogging:
 MCP-oppslag fornyer access-token ved behov, under kildens prosesslås. Før et
 nytt forsøk gjenopprettes et eventuelt lagret tokensvar. Gamle uavklarte sperrer
 uten lagret svar gir ingen ny tokenforespørsel. Det finnes ingen tidsstyrt
-innhenting, femminuttersrunde eller keepalive i den nye løsningen.
+innhenting eller keepalive.
 
 `auth KILDE refresh --if-needed` er et brukerstartet engangsoppslag som også
 kontrollerer access-utløp med fem minutters margin. `auth KILDE maintain` er en

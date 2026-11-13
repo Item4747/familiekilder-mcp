@@ -36,5 +36,7 @@
 ## Dokumentasjon
 
 Dokumentasjonen står i `docs/` og i `README.md`, på norsk bokmål i klarspråk, og
-skrives så en ny utvikler ikke må kjenne historikken. Kode og kommentarer skrives
-på engelsk.
+skrives så en ny utvikler ikke må kjenne historikken. Beskriv bare funksjoner,
+kommandoer og tester i dette prosjektet; merk interne API-er som interne. Den
+selvstendige CLI-en og MCP-serveren tilbyr bare lesing. Kode og kommentarer
+skrives på engelsk.

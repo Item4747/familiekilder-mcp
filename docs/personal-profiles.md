@@ -11,14 +11,14 @@ en fullstendig datarot og kan ikke kombineres med `--profile`. Når en datarot
 sendes videre internt, legges profilnavnet ikke til en gang til.
 
 ```sh
-familiekilder-mcp --profile nabo onboard --bundle /privat/mappe/pakke.json
+familiekilder-mcp --profile nabo auth spond configure --client-file /privat/mappe/klient.json
 familiekilder-mcp --profile nabo configure spond
 familiekilder-mcp --profile nabo password set spond
 familiekilder-mcp --profile nabo auth spond browser-bootstrap
 familiekilder-mcp --profile nabo mcp serve
 ```
 
-Naboen trenger samme kode og sitt eget oppsett. Del en ren utsjekking eller
+Den andre profilen trenger sitt eget klientoppsett og sin egen innlogging. Del en ren utsjekking eller
 bygget pakke; ikke kopier `.private`, Application Support-katalogen, nettleser-
 eller emulatorprofiler. Profiler i samme OS-konto beskytter mot sammenblanding;
 for adskilte personer er egne OS-kontoer eller maskiner også nødvendig for å

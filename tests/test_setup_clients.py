@@ -8,7 +8,13 @@ import unittest
 
 import tomlkit
 
-from familiekilder.setup_clients import ClientSetupError, client_state, config_path, install_client
+from familiekilder.setup_clients import (
+    ClientSetupError,
+    client_state,
+    config_path,
+    install_client,
+    server_entry,
+)
 
 
 class ClientRegistrationTests(unittest.TestCase):
@@ -17,6 +23,21 @@ class ClientRegistrationTests(unittest.TestCase):
         self.addCleanup(self.temporary.cleanup)
         self.home = Path(self.temporary.name)
         self.root = self.home / "profile"
+
+    def test_server_ignores_a_familiekilder_module_in_the_working_directory(self):
+        entry = server_entry(self.root)
+        self.assertEqual(entry["args"][:3], ["-I", "-m", "familiekilder"])
+        project = self.home / "project"
+        project.mkdir()
+        (project / "familiekilder.py").write_text("raise SystemExit('shadow module ran')\n")
+        import subprocess
+
+        result = subprocess.run(
+            [entry["command"], "-I", "-m", "familiekilder", "--version"],
+            cwd=project, capture_output=True, text=True, timeout=60,
+        )
+        self.assertNotIn("shadow module ran", result.stdout + result.stderr)
+        self.assertEqual(result.returncode, 0, result.stderr)
 
     def test_claude_preserves_other_servers_and_settings(self):
         path = config_path("claude", self.home)

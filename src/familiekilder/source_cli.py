@@ -285,7 +285,7 @@ def _add_ist_auth_arguments(ist_auth: argparse.ArgumentParser) -> None:
     ist_auth_commands.add_parser("logout", help="Tilbakekall og slett den lokale IST-økten")
     import_session_parser = ist_auth_commands.add_parser(
         "import-session",
-        help="Importer og valider en Mac-generert IST-økt fra stdin",
+        help="Importer og valider en privat IST Home-økt fra stdin",
     )
     import_session_parser.add_argument(
         "--replace-existing",

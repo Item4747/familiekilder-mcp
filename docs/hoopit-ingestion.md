@@ -1,6 +1,7 @@
 # Hoopit: direkte oppslag og sideinndeling
 
-Lesing skjer ved MCP-kall, uten egen innhenting, råfiler eller arkiv.
+Lesing skjer ved MCP-kall. Innhold kan mellomlagres som beskrevet i
+[mellomlagring](read-cache.md); serveren har ingen bakgrunnsinnhenting.
 
 Postfeeden bruker API-versjon 5 og `pagination_count=false`. Feltet er et boolsk
 flagg, ikke en sidestørrelse. Kilde: [Hoopits nettklient](https://app.hoopit.io/main.dart.js)
@@ -15,9 +16,9 @@ ved 429, nettverksfeil og serverfeil. Nye MCP-prosesser respekterer samme tilsta
 Gamle sider beviser ikke at senere sider mangler redigerte innlegg. Derfor leses
 alle relevante sider til `has_next=false` eller en synlig grense. Gjentatte sider,
 tomme sider med `has_next=true` og ufullstendige kommentartråder godtas ikke som
-komplett dekning. Begrensninger returneres til agenten; gammelt arkivinnhold brukes
-aldri som erstatning. Hvert nytt oppslag henter fra kilden. Kortlivede MCP-markører
-fortsetter bare det pågående oppslagets resultat, uten varig meldingslagring.
+komplett dekning. Begrensninger returneres til agenten; gamle cacheoppføringer
+erstatter ikke skjult et mislykket kildeoppslag. Kortlivede MCP-markører
+fortsetter bare det pågående oppslagets resultat.
 
-Person- og deltakelsesoppslag, på- og avmelding og kildebevis står i
-[funksjonsmatrisen](service-capabilities.md#hoopit). Skrivetestene er syntetiske.
+Person- og deltakelsesoppslag står i
+[funksjonsmatrisen](service-capabilities.md#hoopit).

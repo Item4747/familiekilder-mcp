@@ -1,15 +1,12 @@
 from __future__ import annotations
 
-import argparse
 import base64
-import hashlib
 import http.client
 import ipaddress
 import json
 import re
 import socket
 import ssl
-import sys
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -125,67 +122,9 @@ def _credentials(root: Path) -> dict[str, Any]:
         raise IstHomeFatalConfigurationError(REGISTRATION_REJECTED)
     if invalid or value is None:
         raise IstHomeAuthError(
-            "IST Home-økten mangler eller er ugyldig; logg inn eller importer en ny appøkt"
+            "IST Home-økten mangler eller er ugyldig; logg inn på nytt via IST Home-koblingen"
         )
     return value
-
-
-def import_app_session(
-    root: Path,
-    *,
-    replace_existing: bool = False,
-    transport: Any = None,
-    access_token_validator: Any = None,
-    at: float | None = None,
-) -> dict[str, Any]:
-    """Read the official Mac app session and route it through live validation."""
-
-    async_storage = (
-        Path.home()
-        / "Library/Containers/com.ist.home.miniforum/Data/Library/Application Support"
-        / "com.ist.home.miniforum/RCTAsyncLocalStorage_V1"
-    )
-    credentials: dict[str, Any] | None = None
-    failed = False
-    try:
-        manifest = json.loads((async_storage / "manifest.json").read_text(encoding="utf-8"))
-        inline = manifest["_skolid_sdk_sessions"]
-        if isinstance(inline, str):
-            sessions = json.loads(inline)
-        elif inline is None:
-            filename = hashlib.md5(b"_skolid_sdk_sessions").hexdigest()
-            sessions = json.loads((async_storage / filename).read_text(encoding="utf-8"))
-        else:
-            raise ValueError("unknown AsyncStorage representation")
-        candidates = [session for session in sessions.values() if session.get("state", {}).get("access_token")]
-        selected = max(candidates, key=lambda session: float(session["state"]["issued_at"]))
-        state = selected["state"]
-        config = selected["config"]
-        credentials = {
-            "access_token": state["access_token"],
-            "refresh_token": state["refresh_token"],
-            "client_secret": config["clientSecret"],
-            "client_id": config["clientId"],
-            "scope": config["scope"],
-            "authority": config["authority"],
-            "redirect_uri": config["redirectUri"],
-            "issued_at": state["issued_at"],
-            "expires_in": state["expires_in"],
-        }
-    except (OSError, KeyError, TypeError, ValueError, json.JSONDecodeError):
-        failed = True
-    if failed or credentials is None:
-        raise FamiliekilderError("Fant ingen brukbar IST Home-appøkt")
-    from .ist_oauth import import_session
-
-    return import_session(
-        root,
-        credentials,
-        transport=transport,
-        access_token_validator=access_token_validator,
-        at=at,
-        replace_existing=replace_existing,
-    )
 
 
 def _jwt_exp(token: str) -> float:
@@ -199,7 +138,7 @@ def _jwt_exp(token: str) -> float:
     except (IndexError, KeyError, ValueError, TypeError, json.JSONDecodeError):
         failed = True
     if failed or expiry is None:
-        raise IstHomeAuthError("IST Home access-tokenet har ukjent format; logg inn på nytt")
+        raise IstHomeAuthError("IST Home access-tokenet har ukjent format; logg inn på nytt via IST Home-koblingen")
     return expiry
 
 
@@ -230,15 +169,15 @@ def refresh_token(root: Path, *, at: float | None = None) -> str:
         raise IstHomeFatalConfigurationError(REGISTRATION_REJECTED)
     if reauthentication_required:
         raise IstHomeAuthError(
-            "IST Home-refresh er avvist eller har ukjent resultat; logg inn på nytt"
+            "IST Home-refresh er avvist eller har ukjent resultat; logg inn på nytt via IST Home-koblingen"
         )
     if invalid:
         raise IstHomeAuthError(
-            "IST Home-økten kan ikke fornyes; logg inn eller importer økten på nytt"
+            "IST Home-økten kan ikke fornyes; logg inn på nytt via IST Home-koblingen"
         )
     refreshed = _credentials(root).get("access_token")
     if not isinstance(refreshed, str) or not refreshed:
-        raise IstHomeAuthError("IST Home-økten er ufullstendig; logg inn på nytt")
+        raise IstHomeAuthError("IST Home-økten er ufullstendig; logg inn på nytt via IST Home-koblingen")
     return refreshed
 
 
@@ -552,52 +491,3 @@ def posts_in_window(posts: list[dict[str, Any]], cutoff_at: str) -> list[dict[st
         if timestamps and max(timestamps) >= cutoff:
             selected.append(post)
     return selected
-
-
-def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Importer en verifisert IST Home-økt")
-    parser.add_argument("--root")
-    parser.add_argument("--import-session", action="store_true")
-    # How the consent text names the program that uses the session
-    # (source_cli.Program.name for the command line).
-    parser.add_argument("--program-name", default="familiekilder-mcp", help=argparse.SUPPRESS)
-    args = parser.parse_args(argv)
-    try:
-        root = Path(args.root).resolve()
-        if args.import_session:
-            from .ist_oauth import consent_status, record_consent, session_path
-
-            replace_existing = False
-            if session_path(root).exists():
-                print(
-                    "En lokal IST Home-økt finnes allerede og beholdes ved valideringsfeil."
-                )
-                if input("Skriv ERSTATT for å importere en nyere Mac-økt: ") != "ERSTATT":
-                    raise FamiliekilderError(
-                        "Importen ble avbrutt; eksisterende økt er beholdt"
-                    )
-                replace_existing = True
-            if not consent_status(root)["current"]:
-                print(
-                    "IST OAuth-piloten er uoffisiell. Tokenet kan ha bredere IST-rettigheter "
-                    f"enn {args.program_name} bruker."
-                )
-                if input("Skriv JEG FORSTÅR for å fortsette: ") != "JEG FORSTÅR":
-                    raise FamiliekilderError("Importen ble avbrutt uten samtykke")
-                record_consent(root)
-            print(
-                json.dumps(
-                    import_app_session(root, replace_existing=replace_existing),
-                    ensure_ascii=False,
-                )
-            )
-            return 0
-        parser.error("--import-session er påkrevd")
-    except (FamiliekilderError, OSError) as exc:
-        print(f"import-ist-session: {exc}", file=sys.stderr)
-        return 2
-    return 0
-
-
-if __name__ == "__main__":
-    raise SystemExit(main())

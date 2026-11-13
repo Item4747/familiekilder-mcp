@@ -21,7 +21,10 @@ class ClientSetupError(ValueError):
 
 def server_entry(root: Path) -> dict:
     # Keep the venv path: resolving its Python symlink would leave the venv.
-    return {"command": sys.executable, "args": ["-m", "familiekilder", "--root", str(root), "mcp", "serve"]}
+    # -I keeps the client's working directory off sys.path, so a project folder
+    # with its own familiekilder.py cannot replace the installed package.
+    return {"command": sys.executable,
+            "args": ["-I", "-m", "familiekilder", "--root", str(root), "mcp", "serve"]}
 
 
 def config_path(client: str, home: Path) -> Path:

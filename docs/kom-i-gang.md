@@ -128,22 +128,24 @@ om hjelp.
 
 Spond klargjøres lokalt i veiviseren uten en egen oppsettsfil. For andre
 tjenester trenger du klientoppsett i tillegg til brukerkontoen din. Prosjektet
-deler ikke ut klienthemmeligheter eller signerte providerpakker. Du kan legge
-inn oppsettet på én av to måter:
+deler ikke ut klienthemmeligheter eller signerte providerpakker. Legg inn
+klientoppsettet for én tjeneste om gangen:
 
-- **Én tjeneste om gangen:** `familiekilder-mcp auth <tjeneste> configure --client-file FIL`.
-  Filen er privat JSON (filmodus 0600, i en privat mappe) og skal aldri ligge i
-  Git. Feltene kontrolleres av `configure_client` i tjenestens auth-modul
-  (`vigilo_auth.py`, `skolemelding_auth.py`, `spond_auth.py`, `hoopit_auth.py`
-  og `ist_oauth.py`).
-  For IST Home kan `familiekilder-mcp ist-auth export-mac-client --output FIL` hente
-  klientkonfigurasjonen fra IST Home-appen på Macen din. Gmail bruker din egen
-  Google OAuth-klient av typen Desktop app; se [Gmail](gmail.md).
-- **Signert providerpakke:** `familiekilder-mcp onboard --bundle FIL` installerer
-  konfigurasjonen for flere tjenester samtidig og skriver ut innloggingskommandoene
-  du skal kjøre etterpå. Pakken må være signert med en nøkkel som står i
-  `PINNED_PROVIDER_KEYS` i `src/familiekilder/provider_contract.py`. Tilliten kommer
-  bare fra den listen, aldri fra en nedlastet nøkkel.
+```sh
+familiekilder-mcp auth <tjeneste> configure --client-file FIL
+```
+
+Filen er privat JSON (filmodus 0600, i en privat mappe) og skal aldri ligge i
+Git. Feltene kontrolleres av `configure_client` i tjenestens auth-modul
+(`vigilo_auth.py`, `skolemelding_auth.py`, `spond_auth.py`, `hoopit_auth.py`
+og `ist_oauth.py`).
+For IST Home kan `familiekilder-mcp ist-auth export-mac-client --output FIL` hente
+klientkonfigurasjonen fra IST Home-appen på Macen din. Gmail bruker din egen
+Google OAuth-klient av typen Desktop app; se [Gmail](gmail.md).
+
+Den utgitte pakken har ingen betrodde leverandørnøkler og kan derfor ikke
+installere en signert providerpakke uten at prosjektets nøkkelliste først
+endres. Bruk separat klientkonfigurasjon i standardoppsettet.
 
 ## Profiler, passord og Android
 
@@ -187,7 +189,7 @@ gjøre at en kobling slutter å virke.
 
 | Dokument | Innhold |
 |---|---|
-| [Funksjonsmatrise](service-capabilities.md) | Hva hver tjeneste støtter, og hvordan skrivehandlinger er vernet |
+| [Funksjonsmatrise](service-capabilities.md) | Lesing per tjeneste og grenser; intern kode for skriving er merket separat |
 | [Fornyelse og levetid](auth-lifecycle.md) | Tokenfornyelse, lagring og hva som er målt |
 | [Profiler og passord](personal-profiles.md) | Datarot, profiler, nøkkelring og Android |
 | [Gmail](gmail.md) | Søk, tempo og oppsett av egen OAuth-klient |
