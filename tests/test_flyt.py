@@ -639,7 +639,8 @@ class FlytReadTests(unittest.TestCase):
 
     def test_every_listed_item_equals_its_get_item(self) -> None:
         # The list's detail hash is the hash get_item gives later, so both
-        # paths must build the same item (docs/change-detection.md).
+        # paths must build the same item (docs/adding-a-service.md, «Listen og
+        # `get_item` gir samme element»).
         without_photos = {
             "id": "dagbok-2",
             "title": "Tur",

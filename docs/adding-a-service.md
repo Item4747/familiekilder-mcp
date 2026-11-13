@@ -16,6 +16,25 @@ syntetiske svar med samme form. Øvrige regler står i [AGENTS.md](../AGENTS.md)
   `spond_discovery` eller varslene.
 - **IST Home** (`ist_home.py`, `ist_oauth.py`, `live_ist_reader.py`): den
   korteste lesingen, med ett snapshot og én elementtype.
+- **Flyt** (`flyt.py`, `flyt_auth.py`, `live_flyt_reader.py`): malen når
+  lesekall er `POST`, når brukeren velger kommune, og når listen må bygges fra
+  detaljoppslag.
+
+## Kartlegge tjenesten
+
+Finn ut hvordan den offisielle appen bruker tjenesten før du skriver kode.
+
+- Les appens offentlige pakke, for eksempel APK-en. Nedlastede filer er
+  ubetrodde: legg hver i en ny, tom mappe, kjør dem aldri, og les dem med
+  `python3 -I` og et skript fra en annen mappe.
+- Før innlogging kaller du bare åpne endepunkter, som Flyts kommuneliste
+  (`flyt_auth.MUNICIPALITIES_ENDPOINT`).
+- Stol mer på ekte svar enn på dekompilert kode, og bruk verdiene slik tjenesten
+  gir dem. Flyts innlogging trenger feltet `vismaConnectClientContext` fra
+  kommunelisten, ikke et nummer laget av organisasjonsnummeret
+  (`flyt_auth.parse_municipality`).
+- Skill kall som bare leser, fra kall som endrer noe, også «merk som lest» (se
+  «Tillatte kall» i del 2).
 
 ## 1. Filene i en integrasjon
 
@@ -57,6 +76,12 @@ nettverk og uten å opprette filer, og gir minst `configured`, `authenticated`,
 `spond_auth.auth_status`). Pakk import, fornyelse og utlogging inn i
 `@auth_lifecycle.operation`, slik `spond_auth` gjør, så `auth mykid health` og
 `maintain` ser hendelsene.
+
+Med OAuth kontrollerer du ID-tokenet før noe lagres, også med PKCE: `nonce` må
+være den innloggingen sendte, `aud` må inneholde klient-ID-en, og `iss` må være
+riktig utsteder. PKCE alene stopper ikke et token laget for en annen klient eller
+innlogging. Mønster: `flyt_auth._check_login_id_token` og
+`ist_oauth_protocol._validate_id_claims`.
 
 ## 2. Kontrakten for innhold
 
@@ -106,7 +131,45 @@ lagres ikke i cachen (`Runtime._load_list`: `'cacheable': complete`).
 
 MCP-sidene (`limit`, `next_cursor`) lages av `Runtime.list_items`. Tjenestens
 egne sider blar integrasjonen gjennom selv, med en fast øvre grense (se
-`ist_home.MAX_PAGES` og `MAX_POSTS`).
+`ist_home.MAX_PAGES` og `MAX_POSTS`, eller `flyt._search`, som gir
+`complete=False` når `MAX_PAGES` eller `MAX_ITEMS_PER_STREAM` nås).
+
+Kontroller tid og sider mot ekte svar:
+
+- Er slutten av tidsrommet med? Flyts kalender tar ikke med dagen i `to`, så
+  `flyt.calendar_days` sender midnatt etter siste dag.
+- En heldagshendelse i norsk tid starter kl. 22 eller 23 UTC dagen før. Slå opp
+  på lokal dato først og så på UTC-datoen (`flyt.occurrence_days`).
+- Totaler som `totalCount` kan være feil. Flyt kan svare `0` sammen med ekte
+  rader, så `flyt._search` stopper på totalen bare når den er minst like stor
+  som det som er lest.
+
+### Listen og `get_item` gir samme element
+
+Rader fra søk kan være sammendrag. Flyts dagboksøk har bare første bilde;
+detaljoppslaget har alle. Bygg da elementet i listen fra detaljen alene, slik
+`get_item` gjør (`flyt.diary_posts` og `flyt.find`). Ellers får samme element
+ulik innholdshash etter hvilken vei det ble lest.
+
+Test hver elementtype som `test_every_listed_item_equals_its_get_item` i
+`tests/test_flyt.py`: list med `include_detail_hash=True`, hent hvert element med
+`get_item`, og sjekk at elementet og `_fresh_detail_hash`
+(`live_readers.checked_detail`) stemmer med `live_readers.content_hash` av det
+hentede.
+
+### Tillatte kall
+
+Mange lesinger er `POST` (Flyt: `.../announcements/search`), og noen kall merker
+noe som lest (`PUT .../announcements/{id}/seen`). HTTP-metoden sier derfor ikke
+om et kall er trygt:
+
+- Før opp metode og eksakt sti for hver lesing (`flyt.READ_ROUTES`), og stopp alt
+  annet før nettverket (`flyt.guard_route`).
+- Avvis i tillegg stisegmenter som skriver eller merker som lest
+  (`flyt._FORBIDDEN_SEGMENTS`).
+- Test begge deler, som `test_only_listed_reads_pass_the_route_guard` og
+  `test_refused_route_never_reaches_the_transport` i `tests/test_flyt.py`.
+- Sjekk med egen konto at ulest-status i appen ikke endres (del 6).
 
 ### Vedlegg
 
@@ -122,6 +185,13 @@ egne sider blar integrasjonen gjennom selv, med en fast øvre grense (se
    `hoopit.MAX_ATTACHMENT_BYTES`) og gir `(path, mime)`.
 3. Visning, PDF-vinduer og cache er felles (`live_attachments.render`,
    `pdf_windows.py`).
+
+Ligger vedlegg på signerte CDN-lenker på en annen vert, hentes de uten token;
+signaturen i lenken gir tilgang. Godta bare eksakte verter
+(`flyt.guard_attachment` og `allowed_hosts` i `flyt.default_transport`), og send
+bearer-tokenet bare til API-verten (`flyt.Client.download`). En utløpt lenke
+krever et nytt oppslag av elementet. Test:
+`test_diary_photos_come_from_the_photo_host_without_token` i `tests/test_flyt.py`.
 
 ### Konto, cache og snapshot
 
@@ -204,9 +274,13 @@ tjenestene; `tests/test_web_script.py` krever at alle er satt. Verktøyene
 
 ### B. Andre steder, når tjenesten trenger dem
 
-- [ ] Brukeren velger leietaker, som en kommune: la `configure_client` godta en
-      fil med valget (`{"municipality": "..."}` i Flyt) og tilby en ren funksjon
-      som lister valgene for en vert (`flyt_auth.list_municipalities`).
+- [ ] Brukeren velger leietaker, som en kommune: hent valgene fra en åpen liste
+      og tilby en ren funksjon som lister dem (`flyt_auth.list_municipalities`).
+      La `configure_client` godta en fil med valget (`{"municipality": "..."}`)
+      og lagre verdiene slik listen gir dem, i
+      `.private/credentials/<source>-client.json`. Da blir valget del av
+      kontoidentiteten (`read_cache.account_scope`). Valget kan ikke byttes mens
+      det finnes en økt (`flyt_auth._store_client_config`).
 - [ ] `browser_bootstrap.bootstrap_source`: bare med `browser-bootstrap`.
       Passordutfylling krever i tillegg `password_origins` i `Source`.
 - [ ] `chat_discovery.py`: bare hvis `streams` har `"chat"` og leseren vil
@@ -229,8 +303,7 @@ testfil.
 
 Legg `mykid` til i den eksakte kildetuppelen i `tests/test_source_adapter.py`.
 
-Den som har en ekte MyKid-konto, kan lese med egne credentials lokalt for å lære
-formen på svarene. Rådata, navn og ID-er fra kontoen skal ikke inn i repoet.
+Formen på svarene lærer du ved å lese med egen konto lokalt (del 6).
 
 ## 5. Kjøre testene
 
@@ -252,6 +325,25 @@ familiekilder-mcp mcp serve
 
 Øktfilen må ligge i en privat mappe (0700) med filmodus 0600. Uten konto kan du
 bare teste med falske transporter.
+
+Med OAuth logger du inn med `familiekilder-mcp auth mykid browser-login` i
+stedet for `import-session`. Kommandoen åpner en midlertidig, isolert
+nettleserprofil og fanger callbacken til appens egen adresse
+(`browser_bootstrap.capture_oauth_callback`). Adressen må ha et eget skjema, som
+`com.eksempel.app://redirect`, ikke `http` eller `https`.
+
+Sammenlign med den offisielle appen:
+
+- Hver del (beskjeder, kalender, meldinger …) har like mange elementer som i
+  appen for samme tidsrom.
+- Ulest-tallene i appen er de samme før og etter lister, detaljoppslag og
+  nedlastinger.
+- Noter token-levetider bare som tall og ja/nei i
+  [auth-lifecycle.md](auth-lifecycle.md): `expires_in`, om refresh-tokenet har
+  utløpsfelt, og om fornyelse gir nytt refresh-token. Ikke prøv om det gamle
+  refresh-tokenet avvises; det kan avslutte økten.
+- Ekte svar, navn og ID-er skal ikke inn i Git. Skriv syntetiske tester med
+  samme form etterpå (del 4).
 
 ## Kjente skjevheter
 

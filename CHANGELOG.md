@@ -1,16 +1,18 @@
 # Endringer
 
-## Ikke utgitt
+## 1.0.0rc2
 
 - Ny kilde: Flyt (Flyt Foresatt fra Visma) for barnehage. Leser beskjeder,
-  dagbok, meldingstråden, kalender, registrert fravær og inn-/utsjekk, med
-  vedlegg og bilder. Bare lesing; ingenting merkes som lest. Du velger kommune
-  med en oppsettsfil som `{"municipality": "Kommunenavn"}`, og logger inn med
-  `auth flyt browser-login`. Prøvd mot en ekte barnehagekonto i Oslo. Skole og
-  SFO kommer senere.
+  dagbok, meldinger, kalender, fravær og inn- og utsjekk, med vedlegg og bilder.
+  Bare lesing; ingenting merkes som lest. Velg kommune med en oppsettsfil som
+  `{"municipality": "Kommunenavn"}`, og logg inn med `auth flyt browser-login`.
+  Prøvd mot en ekte barnehagekonto. Skole og SFO kommer senere.
 - Innlogging gjennom Android over ADB (`android-login` og `android-device`) er
-  fjernet. Innlogging skjer i Brave med `browser-login` eller `browser-bootstrap`.
-  Pakken er ikke lenger avhengig av `websocket-client`.
+  fjernet. Logg inn i Brave med `browser-login` eller `browser-bootstrap`.
+  Pakken trenger ikke lenger `websocket-client`.
+- Veiledningen for nye tjenester forklarer hvordan du kartlegger tjenesten,
+  begrenser kallene til lesing, holder listen og `get_item` like og tester mot
+  egen konto.
 
 ## 1.0.0rc1
 

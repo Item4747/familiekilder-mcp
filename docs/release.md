@@ -1,6 +1,6 @@
 # Veien til 1.0
 
-`1.0.0rc1` er en lanseringskandidat. Den er ikke en ferdig stabil utgivelse.
+`1.0.0rc2` er en lanseringskandidat. Den er ikke en ferdig stabil utgivelse.
 
 ## Hva 1.0 skal love
 
