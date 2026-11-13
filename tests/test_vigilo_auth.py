@@ -173,7 +173,7 @@ class VigiloAuthTests(VigiloAuthFixture, unittest.TestCase):
         self.assertFalse(transaction.consumed)
         self.assertEqual(transport.posts, [])
 
-    def test_android_root_slash_callback_matches_authority_only_redirect(self) -> None:
+    def test_root_slash_callback_matches_authority_only_redirect(self) -> None:
         self.configure()
         _url, transaction = begin_login(
             self.root, now=10, random_bytes=lambda size: b"r" * size
@@ -199,7 +199,7 @@ class VigiloAuthTests(VigiloAuthFixture, unittest.TestCase):
 
         self.assertTrue(result["authenticated"])
 
-    def test_manual_android_callback_window_matches_receiver_window(self) -> None:
+    def test_manual_callback_is_accepted_after_slow_bankid_approval(self) -> None:
         self.configure()
         _url, transaction = begin_login(
             self.root, now=10, random_bytes=lambda size: b"w" * size

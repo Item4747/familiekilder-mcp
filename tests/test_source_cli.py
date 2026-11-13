@@ -13,7 +13,6 @@ from familiekilder import __version__
 from familiekilder import source_cli
 
 SOURCE_COMMANDS = [
-    "android-device",
     "password",
     "mcp",
     "connections",
@@ -119,7 +118,7 @@ class SourceCliExtensionTests(unittest.TestCase):
         parser = source_cli.build_parser([extension])
         self.assertEqual(
             list(subcommands(parser)),
-            [*SOURCE_COMMANDS[:3], "extra", *SOURCE_COMMANDS[3:], "last"],
+            [*SOURCE_COMMANDS[:2], "extra", *SOURCE_COMMANDS[2:], "last"],
         )
         self.assertIn(("extend", "onboard", ["source"]), extension.calls)
         self.assertIn(("extend", "mcp serve", []), extension.calls)

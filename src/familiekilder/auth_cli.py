@@ -206,23 +206,10 @@ def _run_generic_auth(args: argparse.Namespace, root: Path | None) -> int:
             raise FamiliekilderError("Innloggingen ble avbrutt uten samtykke")
         auth_module.record_consent(root)
 
-    if args.auth_command not in {"android-login", "browser-login"}:
+    if args.auth_command != "browser-login":
         _require_hidden_tty()
     authorization_url, transaction = auth_module.begin_login(root)
-    if args.auth_command == "android-login":
-        from .android_oauth import capture_callback_android
-
-        print(
-            f"Start {label}/ID-porten i Android-vinduet og godkjenn på telefonen. "
-            f"Callbacken går direkte til {args.program.name} uten å bli vist."
-        )
-        callback_url = capture_callback_android(
-            root,
-            source=args.source,
-            authorization_url=authorization_url,
-            adb_serial=args.adb_serial,
-        )
-    elif args.auth_command == "browser-login":
+    if args.auth_command == "browser-login":
         from .browser_bootstrap import capture_oauth_callback
 
         config = auth_module.load_client_config(root)

@@ -1,5 +1,11 @@
 # Endringer
 
+## Ikke utgitt
+
+- Innlogging gjennom Android over ADB (`android-login` og `android-device`) er
+  fjernet. Innlogging skjer i Brave med `browser-login` eller `browser-bootstrap`.
+  Pakken er ikke lenger avhengig av `websocket-client`.
+
 ## 1.0.0rc1
 
 Første lanseringskandidat for familiekilder-mcp.

@@ -22,7 +22,6 @@ dependencies = [
   "PyJWT[crypto]==2.15.1",
   "cryptography==50.0.1",
   "keyring==25.7.0",
-  "websocket-client==1.9.2",
   "httpx==0.28.1",
   "tomlkit==0.13.3",
 ]
@@ -39,7 +38,7 @@ where = ["src"]
 namespaces = false
 
 [tool.setuptools.package-data]
-familiekilder = ["data/setup/*.html", "data/setup/*.css", "data/setup/*.js", "data/setup/*.txt", "data/android-oauth-receiver/AndroidManifest.xml", "data/android-oauth-receiver/src/no/familiekilder/oauthreceiver/MainActivity.java"]
+familiekilder = ["data/setup/*.html", "data/setup/*.css", "data/setup/*.js", "data/setup/*.txt"]
 
 [tool.ruff]
 line-length = 100

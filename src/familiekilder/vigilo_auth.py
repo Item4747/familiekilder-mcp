@@ -66,9 +66,9 @@ SESSION_FILE = "vigilo-session.json"
 CONSENT_FILE = "vigilo-oauth-consent.json"
 REFRESH_BLOCK_FILE = "vigilo-refresh-blocked.json"
 CONSENT_VERSION = "unofficial-vigilo-oauth-v1"
-# The Android helper is a manual ID-porten flow. Keep the in-memory state alive
-# for the same bounded window as the receiver so a callback the receiver still
-# accepts cannot subsequently be rejected only because BankID took longer.
+# A login waits for the user to finish ID-porten and approve BankID on the
+# phone. Keep the in-memory state alive for a bounded window long enough that
+# a slow approval does not discard an otherwise valid callback.
 CALLBACK_LIFETIME_SECONDS = 30 * 60
 MAX_JSON_BYTES = 1024 * 1024
 REFRESH_SKEW_SECONDS = 60
@@ -477,9 +477,9 @@ def _consume_callback(
         expected = urllib.parse.urlsplit(transaction.config.redirect_uri)
     except ValueError:
         raise VigiloOAuthError("Vigilo OAuth-callbacken har ugyldig format") from None
-    # Android's Uri/WebView handoff may serialize an authority-only custom URI
-    # with a root slash even though the registered redirect omits it.  Both
-    # forms identify the same app-scheme origin; no other path is accepted.
+    # The provider may return an authority-only custom URI with a root slash
+    # even though the registered redirect omits it.  Both forms identify the
+    # same app-scheme origin; no other path is accepted.
     callback_path = "" if parsed.path == "/" else parsed.path
     expected_path = "" if expected.path == "/" else expected.path
     if (

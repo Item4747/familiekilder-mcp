@@ -1,7 +1,7 @@
 """Command line for the open source-connector side.
 
 Covers the global options, ``configure``, ``auth``, ``ist-auth``, ``onboard
---bundle``, ``connections``, ``password``, ``android-device`` and ``mcp serve``.
+--bundle``, ``connections``, ``password`` and ``mcp serve``.
 A downstream CLI adds its own commands and flags through ``CliExtension``
 without this module knowing about them; nothing here imports such a CLI.
 """
@@ -127,13 +127,6 @@ def build_parser(
     parser.add_argument("--profile", help="Separat personlig profil, uten arv fra standardprofilen")
     sub = parser.add_subparsers(dest="command", required=True)
 
-    before("android-device")
-    device = sub.add_parser("android-device", help="Bind din egen Android-enhet til valgt profil")
-    device.set_defaults(handler=_run_android_device)
-    extend("android-device", device)
-    device.add_argument("device_command", choices=("bind",))
-    device.add_argument("--adb-serial", required=True)
-
     before("password")
     passwords = sub.add_parser("password", help="Profilens passord i macOS-nøkkelringen")
     passwords.set_defaults(handler=_run_password)
@@ -212,14 +205,6 @@ def _add_auth_arguments(auth: argparse.ArgumentParser) -> None:
         "browser-login",
         help="Fang custom-scheme callback lokalt i en isolert Brave-profil",
     )
-    auth_android = auth_commands.add_parser(
-        "android-login",
-        help="Fang providerens custom-scheme-callback privat fra Android via ADB",
-    )
-    auth_android.add_argument(
-        "--adb-serial",
-        help="Eksakt ADB-enhet; påkrevd bare når flere enheter er tilkoblet",
-    )
     refresh_parser = auth_commands.add_parser("refresh", help="Forny og valider API-økten nå")
     refresh_parser.add_argument("--if-needed", action="store_true", help="Forny bare ved behov")
     auth_commands.add_parser("health", help="Vis hemmelighetsfri levetidshistorikk uten nettverk")
@@ -297,16 +282,6 @@ def _add_ist_auth_arguments(ist_auth: argparse.ArgumentParser) -> None:
         action="store_true",
         help="Registrer eksplisitt førstegangssamtykke for uoffisiell IST OAuth",
     )
-
-
-def _run_android_device(args: argparse.Namespace, config: Config) -> int:
-    from .android_oauth import _android_tools, _select_device
-    from .android_passwords import claim_device
-
-    serial = _select_device(_android_tools()["adb"], args.adb_serial)
-    claim_device(config.root, serial, bind=True)
-    _json({"bound": True})
-    return 0
 
 
 def _run_password(args: argparse.Namespace, config: Config) -> int:

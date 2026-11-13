@@ -84,9 +84,11 @@ class PasswordAutofillTests(unittest.TestCase):
         self.assertFalse(helper.step(cdp))
         self.get.assert_called_once()
 
-    def test_android_cannot_fill_an_existing_tab(self):
-        helper = PasswordAutofill("/owner", "bankid", page_ids={"new-private-tab"})
-        self.assertFalse(helper.step(Cdp()))
+    def test_never_fills_a_tab_opened_after_the_first_step(self):
+        helper, cdp = PasswordAutofill("/owner", "bankid"), Cdp(field=False)
+        self.assertFalse(helper.step(cdp))
+        cdp.target, cdp.field = "later-tab", True
+        self.assertFalse(helper.step(cdp))
         self.get.assert_not_called()
 
     def test_service_password_is_never_bankid_password(self):

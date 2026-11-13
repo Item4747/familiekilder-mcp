@@ -52,10 +52,10 @@ side.
 
 Levetidsmåling:
 
-- Appklienten i desktop-nettleser og i Android-hjelperen gir like svar: samme
-  klient og scopes, `expires_in: 600`, opakt refresh-token på 32 tegn og ingen
-  refresh-frist. Android er ikke et krav i protokollen.
-- Begge flytene holdt i minst 18,7 døgn med fornyelser uten feil. Overlevering
+- Appklienten gir de samme svarene i desktop-nettleseren som fra en
+  Android-enhet: samme klient og scopes, `expires_in: 600`, opakt refresh-token
+  på 32 tegn og ingen refresh-frist. Android er ikke et krav i protokollen.
+- Begge innloggingene holdt i minst 18,7 døgn med fornyelser uten feil. Overlevering
   fra den offisielle appen ble bare prøvd i noen minutter, så levetiden er ikke
   målt. Den ordinære webportalen (`.WEB`-klienten) gir ikke refresh-token.
 - Innloggingen varer ikke evig. 7. november 2026 avviste Vigilo et refresh-token

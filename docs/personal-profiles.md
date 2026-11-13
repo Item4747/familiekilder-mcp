@@ -19,8 +19,8 @@ familiekilder-mcp --profile nabo mcp serve
 ```
 
 Den andre profilen trenger sitt eget klientoppsett og sin egen innlogging. Del en ren utsjekking eller
-bygget pakke; ikke kopier `.private`, Application Support-katalogen, nettleser-
-eller emulatorprofiler. Profiler i samme OS-konto beskytter mot sammenblanding;
+bygget pakke; ikke kopier `.private`, Application Support-katalogen eller
+nettleserprofiler. Profiler i samme OS-konto beskytter mot sammenblanding;
 for adskilte personer er egne OS-kontoer eller maskiner også nødvendig for å
 ha separate filrettigheter og nøkkelringer.
 
@@ -46,8 +46,8 @@ passordargument eller en kommando som skriver passordet til stdout.
 
 | Tjeneste | Administrert innlogging | Passordoppføring |
 | --- | --- | --- |
-| Vigilo | `auth vigilo browser-login` eller `android-login` | `bankid` |
-| Skolemelding | `auth skolemelding browser-login` eller `android-login` | `bankid` |
+| Vigilo | `auth vigilo browser-login` | `bankid` |
+| Skolemelding | `auth skolemelding browser-login` | `bankid` |
 | IST Home | `auth ist-home browser-login` | `bankid` |
 | Spond | `auth spond browser-bootstrap` | `spond` |
 | Hoopit | `auth hoopit browser-bootstrap` | `hoopit` |
@@ -68,35 +68,12 @@ ikke av denne hjelperen. De eldre `login`-/`ist-auth login`-kommandoene med manu
 kopiert callback og `import-session` har ingen styrt nettleser og bruker ikke
 automatisk passordutfylling.
 
-## Android
-
-Android Chrome må kjøre med ADB-tilgjengelig DevTools. Hjelperen åpner en ny
-innloggingsfane, sender passordet over en midlertidig lokal ADB/CDP-forbindelse og
-lukker fanen og forbindelsen etterpå. Passordet sendes aldri som et ADB-argument.
-Chrome på den testede emulatoren støtter ikke `Target.createBrowserContext`.
-Derfor må enheten bindes eksplisitt til én personlig profil før noen Android-innlogging starter.
-Bruk `--profile NAVN android-device bind --adb-serial ENHET` på din egen enhet;
-ikke bind en annen persons eksisterende nettleser. En ubundet enhet avvises også.
-En annen profil avvises og må bruke en annen enhet/emulator. Koblingen ligger
-privat per OS-bruker i `.private/android-device-profiles.json` under standardroten,
-uavhengig av overstyrt datarot. Ingen automatisk overtakelse av en brukt enhet.
-
 ## Verifisert og gjenstående
 
 Enhetstester dekker profilskille, manglende passord, kopierte referanser,
-Android-eierskap, domeneavgrensning og at usikre forsøk ikke gjentas. Nativ
-nøkkelringlagring er prøvd med et midlertidig testpassord. DOM-hjelperen er prøvd
-mot kontrollerte, nettverksfrie testsider i ekte Android Chrome:
+domeneavgrensning og at usikre forsøk ikke gjentas. Nativ nøkkelringlagring er
+prøvd med et midlertidig testpassord.
 
-```sh
-FAMILIEKILDER_ANDROID_TEST_SERIAL=emulator-5554 scripts/test tests/test_password_dom.py
-```
-
-Dette er ikke en full produksjonsinnlogging. Passordutfylling og videreføring
+Testene er ikke en full produksjonsinnlogging. Passordutfylling og videreføring
 må fortsatt bekreftes mot hver leverandørs faktiske skjermbilde og den manuelle
 telefonbekreftelsen. Tester henter aldri det personlige BankID-passordet.
-
-Android-returhjelperens Java-kilde og manifest følger med både kildepakken og
-Python-wheel. Bygging av den lokale APK-en krever fortsatt Android SDK og Java;
-ingen ferdig signert APK eller nøkkel deles. Signeringsnøkkel og APK bygges i
-den valgte profilens private katalog.

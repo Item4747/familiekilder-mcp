@@ -147,14 +147,12 @@ Den utgitte pakken har ingen betrodde leverandørnøkler og kan derfor ikke
 installere en signert providerpakke uten at prosjektets nøkkelliste først
 endres. Bruk separat klientkonfigurasjon i standardoppsettet.
 
-## Profiler, passord og Android
+## Profiler og passord
 
 - `--profile NAVN` gir en egen profil med egne tjenester, økter og passord, uten
   arv fra standardprofilen. `--root MAPPE` velger en annen datarot.
 - `familiekilder-mcp password set bankid` lagrer et passord i macOS-nøkkelringen, så
   innloggingen i nettleseren kan fylle det ut. Det finnes ingen filbasert reserve.
-- `familiekilder-mcp android-device bind --adb-serial ENHET` binder din egen
-  Android-enhet til en profil for `auth <tjeneste> android-login`.
 
 Se [profiler og passord](personal-profiles.md).
 
@@ -191,7 +189,7 @@ gjøre at en kobling slutter å virke.
 |---|---|
 | [Funksjonsmatrise](service-capabilities.md) | Lesing per tjeneste og grenser; intern kode for skriving er merket separat |
 | [Fornyelse og levetid](auth-lifecycle.md) | Tokenfornyelse, lagring og hva som er målt |
-| [Profiler og passord](personal-profiles.md) | Datarot, profiler, nøkkelring og Android |
+| [Profiler og passord](personal-profiles.md) | Datarot, profiler og nøkkelring |
 | [Gmail](gmail.md) | Søk, tempo og oppsett av egen OAuth-klient |
 | [Mellomlagring](read-cache.md) | Cache, ferskhet og trafikkbudsjett |
 | [Hoopit](hoopit-ingestion.md) | Oppslag og sideinndeling |

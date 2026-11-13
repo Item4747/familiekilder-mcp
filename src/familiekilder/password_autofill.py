@@ -53,13 +53,14 @@ _FILL = r"""function(password, allowed) {
 
 
 class PasswordAutofill:
-    def __init__(self, root, kind, *, page_ids=None):
+    def __init__(self, root, kind):
         self.root = root
         self.kind = kind
         self.enabled = configured(root, kind)
         self.attempted = False
         self._sessions = {}
-        self.page_ids = page_ids
+        # Set on the first step and kept, so a later tab is never filled.
+        self._page_ids = None
 
     def step(self, cdp):
         if not self.enabled or self.attempted:
@@ -77,18 +78,18 @@ class PasswordAutofill:
 
     def _step(self, cdp):
         targets = cdp.call("Target.getTargets").get("targetInfos", [])
-        if self.page_ids is None:
+        if self._page_ids is None:
             pages = [t["targetId"] for t in targets if t.get("type") == "page"]
             if len(pages) != 1:
                 return False
-            self.page_ids = set(pages)
+            self._page_ids = set(pages)
         frames = set()
         # Page trees establish ownership before inspecting out-of-process
         # iframes. An unrelated BankID tab/frame must never be selected.
         ordered = sorted(targets, key=lambda t: t.get("type") != "page")
         for target in ordered:
             if not (
-                target.get("type") == "page" and target.get("targetId") in self.page_ids
+                target.get("type") == "page" and target.get("targetId") in self._page_ids
             ) and not (
                 target.get("type") == "iframe" and target.get("targetId") in frames
             ):

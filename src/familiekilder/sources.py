@@ -69,7 +69,7 @@ class Source:
 
 
 _OAUTH_COMMANDS = frozenset(
-    {"android-login", "browser-login", "configure", "login", "refresh", "status", "logout"}
+    {"browser-login", "configure", "login", "refresh", "status", "logout"}
 )
 _BOOTSTRAP_COMMANDS = frozenset(
     {"browser-bootstrap", "configure", "import-session", "refresh", "status", "logout"}

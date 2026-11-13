@@ -47,7 +47,7 @@ også én måte å lage den første økten på:
 
 | Vei | Funksjoner i auth-modulen | `auth_commands` | Brukes av |
 |---|---|---|---|
-| OAuth med callback | `consent_status`, `record_consent`, `begin_login`, `login_with_callback` | `login`, `browser-login`, `android-login` | Vigilo, Skolemelding, IST Home |
+| OAuth med callback | `consent_status`, `record_consent`, `begin_login`, `login_with_callback` | `login`, `browser-login` | Vigilo, Skolemelding, IST Home |
 | Økt hentet fra nettleser | egen gren i `browser_bootstrap.bootstrap_source`, og `import_session` | `browser-bootstrap`, `import-session` | Spond, Hoopit |
 | Import av øktfil | `import_session(root, path, *, replace_existing)` | `import-session` | Spond, Hoopit |
 

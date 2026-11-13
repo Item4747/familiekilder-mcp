@@ -18,7 +18,7 @@ _LOCAL = threading.local()
 
 # Shared locks besides the one per source. A lock lives in `<name>.lock`, so
 # a name must never change once it has been used.
-_NAMES = {'changes', 'read-cache', 'android-devices'}
+_NAMES = {'changes', 'read-cache'}
 
 
 def register_lock_names(*names: str) -> None:
