@@ -1,0 +1,144 @@
+#!/usr/bin/env python3
+"""Build and test the distributable package without contacting source services."""
+
+from __future__ import annotations
+
+import argparse
+import ast
+import gzip
+import io
+import json
+import os
+from pathlib import Path
+import shutil
+import subprocess
+import sys
+import tarfile
+import tempfile
+import tomllib
+from email.parser import BytesParser
+from email.policy import default
+import zipfile
+
+ROOT = Path(__file__).resolve().parents[1]
+EXCLUDED = {".git", ".private", ".venv", "__pycache__", "build", "dist"}
+SOURCE_ENTRIES = (
+    "AGENTS.md", "CHANGELOG.md", "LICENSE", "MANIFEST.in", "README.md",
+    "pyproject.toml", "src", "tests", "scripts", "docs", ".github",
+)
+
+
+def run(*command: str, cwd: Path, environment: dict[str, str] | None = None) -> None:
+    subprocess.run(command, cwd=cwd, env=environment, check=True)
+
+
+def copy_source(destination: Path) -> None:
+    for entry in SOURCE_ENTRIES:
+        original = ROOT / entry
+        if not original.exists():
+            raise ValueError(f"Mangler kildefil: {entry}")
+        paths = original.rglob("*") if original.is_dir() else [original]
+        for path in paths:
+            relative = path.relative_to(ROOT)
+            if any(part in EXCLUDED or part.endswith(".egg-info") for part in relative.parts):
+                continue
+            if path.is_symlink():
+                raise ValueError(f"Symbolsk lenke er ikke tillatt i kildepakken: {relative}")
+            if path.is_file() and path.suffix not in {".pyc", ".pyo"}:
+                target = destination / relative
+                target.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copyfile(path, target)
+                target.chmod(0o755 if os.access(path, os.X_OK) else 0o644)
+
+
+def normalize_sdist(path: Path) -> None:
+    """Remove local owner names and timestamps from tar and gzip headers."""
+    original = io.BytesIO(path.read_bytes())
+    with tarfile.open(fileobj=original, mode="r:gz") as source:
+        with path.open("wb") as output:
+            with gzip.GzipFile(filename="", fileobj=output, mode="wb", mtime=0) as compressed:
+                with tarfile.open(fileobj=compressed, mode="w", format=tarfile.PAX_FORMAT) as target:
+                    for member in source.getmembers():
+                        member.uid = member.gid = member.mtime = 0
+                        member.uname = member.gname = ""
+                        member.pax_headers = {}
+                        content = source.extractfile(member) if member.isfile() else None
+                        target.addfile(member, content)
+
+
+def check_artifacts(wheel: Path, sdist: Path, version: str) -> None:
+    with zipfile.ZipFile(wheel) as archive:
+        metadata_name = next(name for name in archive.namelist() if name.endswith("/METADATA"))
+        metadata = BytesParser(policy=default).parsebytes(archive.read(metadata_name))
+        if metadata["Name"] != "familiekilder-mcp" or metadata["Version"] != version:
+            raise ValueError("Wheel har feil navn eller versjon")
+        for field in ("Author", "Author-email", "Maintainer", "Maintainer-email"):
+            if metadata[field]:
+                raise ValueError(f"Wheel har identifiserende felt: {field}")
+    with tarfile.open(sdist) as archive:
+        members = archive.getmembers()
+        for member in members:
+            if member.uname or member.gname or member.uid or member.gid:
+                raise ValueError("Kildepakken inneholder lokale fileiermetadata")
+        for suffix in ("README.md", "docs/kom-i-gang.md", "scripts/check-release", "scripts/test"):
+            if not any(member.name.endswith("/" + suffix) for member in members):
+                raise ValueError(f"Kildepakken mangler {suffix}")
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Bygg og prøv pakken i et rent Python-miljø.")
+    parser.add_argument("--python", default=sys.executable, help="Python 3.11 eller nyere")
+    parser.add_argument("--out-dir", type=Path, default=ROOT / "dist")
+    args = parser.parse_args()
+    if shutil.which("uv") is None:
+        parser.error("Installer uv før du kjører lanseringssjekken")
+    project = tomllib.loads((ROOT / "pyproject.toml").read_text())["project"]
+    version = project["version"]
+    tree = ast.parse((ROOT / "src/familiekilder/__init__.py").read_text())
+    versions = [
+        ast.literal_eval(node.value)
+        for node in tree.body
+        if isinstance(node, ast.Assign)
+        and any(isinstance(target, ast.Name) and target.id == "__version__" for target in node.targets)
+    ]
+    if versions != [version]:
+        raise ValueError("Versjonen i pyproject.toml og Python-pakken er ulik")
+    output = args.out_dir.resolve()
+    output.mkdir(parents=True, exist_ok=True)
+    environment = {**os.environ, "SOURCE_DATE_EPOCH": "315532800"}
+    run("uvx", "ruff@0.17.4", "check", ".", cwd=ROOT)
+    with tempfile.TemporaryDirectory(prefix="familiekilder-release-") as temporary:
+        work = Path(temporary)
+        source = work / "source"
+        source.mkdir()
+        copy_source(source)
+        run(
+            "uv", "build", "--quiet", "--wheel", "--sdist", "--out-dir", str(output), str(source),
+            cwd=work, environment=environment,
+        )
+        wheel = output / f"familiekilder_mcp-{version}-py3-none-any.whl"
+        sdist = output / f"familiekilder_mcp-{version}.tar.gz"
+        normalize_sdist(sdist)
+        check_artifacts(wheel, sdist, version)
+        installed = work / "installed"
+        run("uv", "venv", "--quiet", "--python", args.python, str(installed), cwd=work)
+        python = installed / "bin/python"
+        run("uv", "pip", "install", "--quiet", "--python", str(python), str(wheel), cwd=work)
+        run("uv", "pip", "check", "--python", str(python), cwd=work)
+        run(str(installed / "bin/familiekilder-mcp"), "--version", cwd=work)
+        tests = sorted(str(path) for path in (source / "tests").glob("test_*.py"))
+        test_environment = {**os.environ, "PYTHONPATH": str(source / "tests/support")}
+        run(
+            str(python), str(source / "scripts/parallel_tests.py"), *tests,
+            cwd=source, environment=test_environment,
+        )
+    result = {"version": version, "technical_checks": "passed", "live_source_checks": "not_run"}
+    (output / f"check-{version}.json").write_text(json.dumps(result, indent=2) + "\n")
+    print(f"Teknisk kontroll bestått for {version}. Ingen ekte kildetjenester er kontaktet.")
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except (ValueError, subprocess.CalledProcessError) as error:
+        raise SystemExit(f"Lanseringssjekken feilet: {error}") from None

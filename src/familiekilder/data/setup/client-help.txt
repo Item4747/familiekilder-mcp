@@ -1,0 +1,18 @@
+Klientoppsett for familiekilder-mcp
+
+Innloggingen din og oppsettet for koblingen er to forskjellige ting. Ikke legg passord eller innloggingsdata inn i en AI-samtale.
+
+Spond
+Velg «Logg inn» i veiviseren. Nettklientoppsettet lages lokalt uten en oppsettsfil eller klienthemmelighet. Du logger inn selv i et eget Brave-vindu.
+
+Gmail
+Opprett en OAuth-klient av typen Desktop app i ditt eget Google Cloud-prosjekt med Gmail API aktivert. Last ned JSON-filen, velg «Legg til oppsett» for Gmail og velg filen. Deretter kan du logge inn med Google.
+Veiledning: https://developers.google.com/workspace/gmail/api/quickstart/python#set_up_your_environment
+
+IST Home
+Hvis du bruker IST Home-appen på Mac og har logget inn der, velg «Hent fra IST Home-appen». Dette henter klientoppsettet lokalt. Du logger deretter inn på nytt for familiekilder-mcp. Personlige innloggingstokens fra appen blir ikke kopiert.
+
+Øvrige tjenester
+Du trenger foreløpig en klientfil med riktig oppsett for tjenesten. Det følger ikke med en ferdig oppskrift for å skaffe filen til alle tjenestene. Veiviseren kan importere filen og gjennomføre innloggingen, men kan ikke opprette en klientregistrering hos leverandøren.
+
+Du finner formatene i docs/klientoppsett.md i kildekoden. Hvis du ikke har en slik fil, meld behovet som et spørsmål i prosjektet. Ikke legg ved oppsettsfiler, tokens eller beskjeder fra ekte kontoer.

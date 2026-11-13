@@ -1,0 +1,10 @@
+# Local environment and everything the connectors store: sessions, tokens, cache.
+.private/
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+.ruff_cache/
+.DS_Store

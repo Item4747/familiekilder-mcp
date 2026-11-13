@@ -1,0 +1,10 @@
+include AGENTS.md
+include scripts/bootstrap-local-venv
+include scripts/test
+include scripts/setup
+include scripts/parallel_tests.py
+include scripts/check-release
+include CHANGELOG.md
+recursive-include docs *.md
+recursive-include tests/support *.py
+recursive-include .github *.yml

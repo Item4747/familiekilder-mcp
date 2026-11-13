@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="nb">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="setup-token" content="__SETUP_TOKEN__" />
+    <title>Oppsett · familiekilder-mcp</title>
+    <link rel="stylesheet" href="/setup.css" />
+    <script src="/setup.js" defer></script>
+  </head>
+  <body>
+    <div class="shell">
+      <header class="masthead">
+        <a class="brand" href="/">familiekilder<span class="brand-suffix">mcp</span></a>
+        <span class="local-label"
+          ><span class="local-dot" aria-hidden="true"></span> På din Mac</span
+        >
+      </header>
+      <div class="layout">
+        <aside class="sidebar">
+          <nav aria-label="Steg i oppsettet">
+            <ol class="steps">
+              <li>
+                <button class="step active" data-step="1" aria-current="step">
+                  <span>1</span>Tjenestene dine
+                </button>
+              </li>
+              <li>
+                <button class="step" data-step="2"><span>2</span>AI-assistenten</button>
+              </li>
+              <li>
+                <button class="step" data-step="3"><span>3</span>Prøv forbindelsen</button>
+              </li>
+            </ol>
+          </nav>
+          <p class="sidebar-note">
+            Du logger inn selv.<br />
+            Assistenten får bare lese.
+          </p>
+          <button id="close" class="text-button">Avslutt oppsett</button>
+        </aside>
+        <main id="main">
+          <div id="error" class="notice error" role="alert" hidden></div>
+          <div id="job" class="notice job" role="status" aria-live="polite" hidden>
+            <p id="job-message"></p>
+            <div class="actions">
+              <button id="continue-job" class="primary" hidden>Jeg er logget inn</button>
+              <button id="cancel-job" class="secondary">Avbryt</button>
+            </div>
+          </div>
+          <section id="step-1" aria-labelledby="title-1">
+            <p class="eyebrow">Lokalt oppsett</p>
+            <h1 id="title-1" tabindex="-1">
+              Koble til tjenestene<br />
+              du bruker.
+            </h1>
+            <p class="intro">
+              Velg én eller flere. Innloggingen åpnes i et eget nettleservindu, og lagres på denne
+              maskinen.
+            </p>
+            <div id="services" class="services" aria-label="Tjenester">
+              <p>Laster tilkoblinger …</p>
+            </div>
+            <details class="requirements">
+              <summary>Hva trenger jeg på maskinen?</summary>
+              <ul id="dependencies"></ul>
+              <p>
+                Brave brukes til innlogging, unntatt for Gmail. PDF og Word er valgfrie tillegg for
+                vedlegg.
+              </p>
+              <a href="https://brave.com/download/" target="_blank" rel="noreferrer"
+                >Last ned Brave</a
+              >
+            </details>
+            <div class="footer">
+              <span id="connected-count" class="muted"></span
+              ><button class="primary next" data-next="2">Fortsett til AI-assistent</button>
+            </div>
+          </section>
+          <section id="step-2" aria-labelledby="title-2" hidden>
+            <p class="eyebrow">Bruk din egen assistent</p>
+            <h1 id="title-2" tabindex="-1">
+              Hvor vil du lese<br />
+              beskjedene?
+            </h1>
+            <p class="intro">
+              Vi legger til familiekilder-mcp i den lokale AI-klienten du velger. Andre tilkoblinger
+              beholdes.
+            </p>
+            <div class="clients">
+              <article class="client">
+                <span class="client-mark" aria-hidden="true">C</span>
+                <h2>Claude Desktop</h2>
+                <p>Den installerte Claude-appen på Mac.</p>
+                <p class="client-status" id="claude-status"></p>
+                <button class="primary connect" data-client="claude">
+                  Koble til Claude Desktop
+                </button>
+              </article>
+              <article class="client">
+                <span class="client-mark" aria-hidden="true">↗</span>
+                <h2>ChatGPT / Codex</h2>
+                <p>Lokal Codex-kjøring i desktopappen, CLI eller IDE.</p>
+                <p class="client-status" id="codex-status"></p>
+                <button class="primary connect" data-client="codex">
+                  Koble til lokal ChatGPT / Codex
+                </button>
+              </article>
+            </div>
+            <p class="note">
+              Vanlig nett- og mobilchat kan ikke nå denne lokale koblingen direkte. Innhold
+              assistenten leser, kan sendes til AI-leverandøren du bruker.
+            </p>
+            <div class="footer">
+              <button class="text-button next" data-next="1">Tilbake</button
+              ><button class="primary next" data-next="3">Fortsett til test</button>
+            </div>
+          </section>
+          <section id="step-3" aria-labelledby="title-3" hidden>
+            <p class="eyebrow">Siste steg</p>
+            <h1 id="title-3" tabindex="-1">Prøv forbindelsen.</h1>
+            <p class="intro">
+              Testen starter MCP-serveren og kontrollerer at den svarer med leseverktøy. Den henter
+              ingen beskjeder.
+            </p>
+            <button id="test" class="primary">Test forbindelsen</button>
+            <div id="test-result" class="success-panel" hidden>
+              <h2>Forbindelsen virker.</h2>
+              <p>Start AI-appen på nytt og velg familiekilder-mcp i en lokal samtale.</p>
+              <blockquote>
+                Les de nye beskjedene. Forklar på språket mitt hva jeg må gjøre, og hvilke frister
+                som gjelder.
+              </blockquote>
+              <p>
+                Du kan avslutte oppsettet nå. AI-klienten starter MCP-serveren når den trenger den.
+              </p>
+            </div>
+            <div class="footer">
+              <button class="text-button next" data-next="2">Tilbake</button
+              ><button id="finish" class="secondary">Avslutt oppsett</button>
+            </div>
+          </section>
+          <noscript
+            ><p>Oppsettet trenger JavaScript for å vise tjenester og åpne innlogging.</p></noscript
+          >
+        </main>
+      </div>
+      <footer class="page-footer">
+        <span id="version">familiekilder-mcp</span><span>Innlogging lokalt. Bare lesing.</span>
+      </footer>
+    </div>
+    <dialog id="login-dialog" aria-labelledby="login-title">
+      <form id="login-form">
+        <h2 id="login-title">Koble til tjenesten</h2>
+        <p>Innloggingen skjer i nettleseren. BankID og telefonbekreftelser gjør du selv.</p>
+        <label id="consent-label" class="checkbox"
+          ><input id="consent" type="checkbox" />Jeg ønsker å bruke denne uoffisielle koblingen. Den
+          lokale innloggingen kan gi mer tilgang enn dette verktøyet bruker.</label
+        >
+        <label id="replace-label" class="checkbox" hidden
+          ><input id="replace" type="checkbox" />Erstatt den eksisterende innloggingen hvis den nye
+          innloggingen lykkes.</label
+        >
+        <div class="actions">
+          <button type="button" id="dismiss-login" class="secondary">Tilbake</button
+          ><button type="submit" class="primary">Åpne innlogging</button>
+        </div>
+      </form>
+    </dialog>
+    <input id="client-file" type="file" accept=".json,application/json" hidden />
+  </body>
+</html>

@@ -1,0 +1,59 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "familiekilder-mcp"
+version = "1.0.0rc1"
+description = "Koble AI-assistenten din til familiens beskjeder og aktiviteter"
+readme = "README.md"
+requires-python = ">=3.11"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Natural Language :: Norwegian",
+  "Operating System :: MacOS",
+  "Programming Language :: Python :: 3 :: Only",
+]
+dependencies = [
+  "mcp==2.2.0",
+  "Pillow==12.3.0",
+  "PyJWT[crypto]==2.15.1",
+  "cryptography==50.0.1",
+  "keyring==25.7.0",
+  "websocket-client==1.9.2",
+  "httpx==0.28.1",
+  "tomlkit==0.13.3",
+]
+
+[project.scripts]
+familiekilder-mcp = "familiekilder.source_cli:main"
+familiekilder = "familiekilder.source_cli:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+namespaces = false
+
+[tool.setuptools.package-data]
+familiekilder = ["data/setup/*.html", "data/setup/*.css", "data/setup/*.js", "data/setup/*.txt", "data/android-oauth-receiver/AndroidManifest.xml", "data/android-oauth-receiver/src/no/familiekilder/oauthreceiver/MainActivity.java"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.format]
+quote-style = "preserve"
+
+[tool.ruff.lint]
+# Pyflakes plus the spacing rules that keep compressed one-liners out.
+preview = true
+explicit-preview-rules = true
+select = ["F", "E9", "E225", "E231", "E701", "E702", "E703"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src", "tests/support"]

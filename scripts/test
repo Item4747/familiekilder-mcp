@@ -1,0 +1,25 @@
+#!/bin/sh
+# Run the tests, each file in its own process, with one combined result.
+#   scripts/test                      all tests
+#   scripts/test tests/test_spond.py  only the files you name
+# FAMILIEKILDER_TEST_JOBS=1 runs one file at a time.
+set -eu
+
+project_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+
+python_bin=${FAMILIEKILDER_TEST_PYTHON:-"$project_root/.private/venv/bin/python"}
+if [ ! -x "$python_bin" ]; then
+    echo "familiekilder-test: Kjør $project_root/scripts/bootstrap-local-venv først" >&2
+    exit 2
+fi
+
+# tests/support holds the fakes the tests share (familiekilder_testing).
+export PYTHONPATH="$project_root/src:$project_root/tests/support${PYTHONPATH:+:$PYTHONPATH}"
+cd "$project_root"
+
+if [ "$#" -eq 0 ]; then
+    set -- "$project_root"/tests/test_*.py
+fi
+
+exec "$python_bin" "$project_root/scripts/parallel_tests.py" \
+    ${FAMILIEKILDER_TEST_JOBS:+--jobs "$FAMILIEKILDER_TEST_JOBS"} "$@"

@@ -1,0 +1,489 @@
+:root {
+  color-scheme: light;
+  --ink: #203348;
+  --muted: #586b7c;
+  --blue: #254d91;
+  --blue-soft: #e9f0fa;
+  --line: #cfdae4;
+  --paper: #ffffff;
+  --ground: #f0f4f7;
+  --green: #176955;
+  --danger: #9b342b;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  color: var(--ink);
+  background: var(--ground);
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+}
+button,
+input {
+  font: inherit;
+}
+a {
+  color: var(--blue);
+  text-underline-offset: 3px;
+}
+button {
+  cursor: pointer;
+}
+button:disabled {
+  cursor: wait;
+  opacity: 0.55;
+}
+:focus-visible {
+  outline: 3px solid var(--blue);
+  outline-offset: 4px;
+}
+[hidden] {
+  display: none !important;
+}
+.shell {
+  max-width: 1152px;
+  margin: 0 auto;
+  padding: 0 44px;
+}
+.masthead {
+  height: 112px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--line);
+}
+.brand {
+  font-family: 'Avenir Next', 'Segoe UI', sans-serif;
+  font-size: 27px;
+  font-weight: 700;
+  letter-spacing: -1.1px;
+  color: var(--ink);
+  text-decoration: none;
+}
+.brand-suffix {
+  display: inline-block;
+  font-family: ui-monospace, monospace;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0;
+  margin-left: 10px;
+  border: 1px solid var(--line);
+  padding: 3px 5px;
+  vertical-align: middle;
+}
+.local-label {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-size: 13px;
+  color: var(--muted);
+}
+.local-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--green);
+}
+.layout {
+  display: grid;
+  grid-template-columns: 230px minmax(0, 1fr);
+  gap: 48px;
+  padding-top: 50px;
+  min-height: 720px;
+}
+.sidebar {
+  padding-top: 12px;
+}
+.steps {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.steps li {
+  padding-bottom: 22px;
+  position: relative;
+}
+.steps li:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  top: 34px;
+  left: 15px;
+  height: 16px;
+  border-left: 1px solid var(--line);
+}
+.step {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font-size: 14px;
+  padding: 0;
+  text-align: left;
+}
+.step span {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  font:
+    12px ui-monospace,
+    monospace;
+}
+.step.active {
+  color: var(--blue);
+  font-weight: 650;
+}
+.step.active span {
+  background: var(--blue);
+  border-color: var(--blue);
+  color: white;
+}
+.sidebar-note {
+  font-size: 13px;
+  line-height: 1.8;
+  margin: 36px 0 18px;
+  color: var(--muted);
+}
+.eyebrow {
+  margin: 0 0 15px;
+  text-transform: uppercase;
+  letter-spacing: 1.6px;
+  font:
+    11px ui-monospace,
+    monospace;
+  color: var(--blue);
+}
+h1 {
+  font-family: 'Avenir Next', 'Segoe UI', sans-serif;
+  font-size: clamp(32px, 3.7vw, 46px);
+  line-height: 1.16;
+  letter-spacing: -1.7px;
+  font-weight: 600;
+  margin: 0 0 22px;
+}
+h1:focus {
+  outline: none;
+}
+.intro {
+  max-width: 590px;
+  line-height: 1.65;
+  margin: 0 0 30px;
+  color: var(--muted);
+  font-size: 16px;
+}
+h2 {
+  font-size: 18px;
+  letter-spacing: -0.3px;
+  margin: 0 0 8px;
+}
+p {
+  line-height: 1.6;
+}
+.services {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.service {
+  padding: 20px 22px;
+  border-bottom: 1px solid var(--line);
+}
+.service:last-child {
+  border: 0;
+}
+.service-top {
+  display: flex;
+  gap: 20px;
+  justify-content: space-between;
+  align-items: center;
+}
+.service h2 {
+  font-size: 16px;
+  margin-bottom: 3px;
+}
+.service-description {
+  font-size: 13px;
+  color: var(--muted);
+  margin: 0;
+}
+.service-controls {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  gap: 12px;
+}
+.status {
+  font-size: 12px;
+  font-weight: 550;
+  color: var(--muted);
+}
+.status.connected {
+  color: var(--green);
+}
+.service details {
+  margin-top: 12px;
+  font-size: 13px;
+}
+summary {
+  cursor: pointer;
+  color: var(--blue);
+}
+.service details p {
+  color: var(--muted);
+  margin: 12px 0;
+}
+.service details .actions {
+  flex-wrap: wrap;
+}
+.primary,
+.secondary {
+  border-radius: 7px;
+  padding: 11px 16px;
+  min-height: 44px;
+  font-size: 14px;
+  font-weight: 550;
+  border: 1px solid transparent;
+}
+.primary {
+  background: var(--blue);
+  color: white;
+}
+.primary:hover {
+  background: #173b78;
+}
+.secondary {
+  background: var(--paper);
+  border-color: var(--line);
+  color: var(--ink);
+}
+.secondary:hover {
+  border-color: var(--blue);
+}
+.text-button {
+  background: none;
+  border: 0;
+  color: var(--muted);
+  padding: 8px 0;
+  font-size: 13px;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+.footer {
+  margin: 28px 0 52px;
+  padding-top: 22px;
+  border-top: 1px solid var(--line);
+  display: flex;
+  gap: 20px;
+  align-items: center;
+  justify-content: space-between;
+}
+.muted {
+  color: var(--muted);
+  font-size: 13px;
+}
+.requirements {
+  margin-top: 22px;
+  color: var(--muted);
+  font-size: 13px;
+}
+.requirements li {
+  padding: 4px 0;
+}
+.clients {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+}
+.client {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 24px;
+  background: var(--paper);
+  display: flex;
+  flex-direction: column;
+}
+.client p {
+  color: var(--muted);
+  font-size: 14px;
+}
+.client .primary {
+  margin-top: auto;
+}
+.client-mark {
+  font:
+    25px 'Avenir Next',
+    sans-serif;
+  color: var(--blue);
+  margin-bottom: 24px;
+}
+.client-status {
+  min-height: 22px;
+  color: var(--green) !important;
+}
+.note {
+  font-size: 13px;
+  color: var(--muted);
+  margin-top: 22px;
+}
+.notice {
+  padding: 18px 22px;
+  margin-bottom: 28px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--paper);
+}
+.notice p {
+  margin: 0 0 12px;
+}
+.notice.error {
+  color: var(--danger);
+  border-color: #dcaaa6;
+}
+.job {
+  background: var(--blue-soft);
+  border-color: #bacce6;
+}
+.actions {
+  display: flex;
+  gap: 12px;
+}
+.success-panel {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--green);
+  padding: 26px;
+  border-radius: 8px;
+  margin-top: 28px;
+}
+.success-panel h2 {
+  color: var(--green);
+}
+.success-panel p {
+  color: var(--muted);
+  font-size: 14px;
+}
+blockquote {
+  margin: 22px 0;
+  padding: 0 0 0 18px;
+  border-left: 2px solid var(--line);
+  line-height: 1.7;
+  font-size: 15px;
+}
+.page-footer {
+  border-top: 1px solid var(--line);
+  padding: 22px 0 30px;
+  display: flex;
+  justify-content: space-between;
+  font:
+    11px ui-monospace,
+    monospace;
+  color: var(--muted);
+}
+dialog {
+  max-width: 520px;
+  width: calc(100% - 32px);
+  border: 1px solid var(--line);
+  padding: 30px;
+  border-radius: 12px;
+  color: var(--ink);
+}
+dialog::backdrop {
+  background: rgb(15 32 52 / 45%);
+}
+dialog p {
+  color: var(--muted);
+  font-size: 14px;
+}
+.checkbox {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  font-size: 14px;
+  line-height: 1.6;
+  margin: 22px 0;
+}
+.checkbox input {
+  margin-top: 5px;
+  width: 17px;
+  height: 17px;
+  flex-shrink: 0;
+}
+@media (max-width: 800px) {
+  .shell {
+    padding: 0 22px;
+  }
+  .masthead {
+    height: 86px;
+  }
+  .layout {
+    grid-template-columns: 1fr;
+    gap: 26px;
+    padding-top: 28px;
+  }
+  .steps {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+  }
+  .steps li {
+    padding-bottom: 0;
+  }
+  .steps li::after {
+    display: none;
+  }
+  .step {
+    gap: 6px;
+    font-size: 12px;
+  }
+  .step span {
+    width: 26px;
+    height: 26px;
+  }
+  .sidebar-note,
+  .sidebar > .text-button {
+    display: none;
+  }
+  h1 {
+    font-size: 36px;
+  }
+  .clients {
+    grid-template-columns: 1fr;
+  }
+  .service {
+    padding: 17px;
+  }
+  .service-top {
+    align-items: flex-start;
+    gap: 14px;
+  }
+  .service-controls {
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 7px;
+  }
+  .service-controls button {
+    padding: 8px 12px;
+  }
+  .status {
+    max-width: 110px;
+    text-align: right;
+  }
+  .footer {
+    flex-wrap: wrap;
+  }
+  .page-footer {
+    gap: 14px;
+    line-height: 1.5;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  * {
+    scroll-behavior: auto !important;
+  }
+}

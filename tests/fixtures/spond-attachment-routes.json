@@ -1,0 +1,18 @@
+{
+  "provenance": "Routes and response MIME verified by authenticated metadata reads and token-free HTTP GET on 2026-10-15. All IDs and names below are fictional.",
+  "variants": [
+    {
+      "url": "https://spond.com/images/abc/abc11111111111111111111111111111.png",
+      "metadata_mime": "image/png",
+      "response_mime": "image/jpeg",
+      "allowed_mime": ["image/jpeg", "image/png"]
+    },
+    {
+      "media": "https://spond.com/storage/upload/AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA/1700000000_AB12CD34/file_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.png",
+      "ownerId": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+      "metadata_mime": "application/octet-stream",
+      "response_mime": "image/png",
+      "allowed_mime": ["image/png"]
+    }
+  ]
+}

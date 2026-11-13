@@ -1,0 +1,66 @@
+#!/bin/sh
+# Create .private/venv and install familiekilder-mcp in it, editable, with the
+# versions pinned in pyproject.toml. Run it again after pulling new code.
+set -eu
+
+umask 077
+ulimit -c 0 2>/dev/null || true
+
+script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+project_root=$(dirname -- "$script_dir")
+private_root="$project_root/.private"
+venv_root="$private_root/venv"
+
+fail() {
+    echo "familiekilder-mcp-bootstrap: $1" >&2
+    exit 2
+}
+
+# .private also holds sessions and tokens, so it must be a real, private folder.
+if [ -L "$private_root" ]; then
+    fail ".private kan ikke være en symbolsk lenke"
+fi
+if [ -e "$private_root" ] && [ ! -d "$private_root" ]; then
+    fail ".private må være en mappe"
+fi
+if [ ! -d "$private_root" ]; then
+    mkdir -m 0700 "$private_root" || fail ".private kunne ikke opprettes"
+fi
+chmod 0700 "$private_root" || fail ".private kunne ikke sikres"
+
+if [ -L "$venv_root" ] || [ -L "$venv_root/bin" ]; then
+    fail ".private/venv kan ikke være en symbolsk lenke"
+fi
+if [ -e "$venv_root" ] && [ ! -d "$venv_root" ]; then
+    fail ".private/venv må være en mappe"
+fi
+
+bootstrap_python=${FAMILIEKILDER_BOOTSTRAP_PYTHON:-$(command -v python3 || true)}
+if [ -z "$bootstrap_python" ] || [ ! -x "$bootstrap_python" ]; then
+    fail "fant ikke en kjørbar Python 3-tolk"
+fi
+if ! "$bootstrap_python" -c 'import sys; raise SystemExit(0 if sys.version_info >= (3, 11) else 1)' >/dev/null 2>&1; then
+    fail "Python 3.11 eller nyere kreves"
+fi
+
+if [ ! -x "$venv_root/bin/python" ]; then
+    "$bootstrap_python" -m venv "$venv_root" || fail "det lokale Python-miljøet kunne ikke opprettes"
+fi
+chmod 0700 "$venv_root" || fail ".private/venv kunne ikke sikres"
+
+venv_python="$venv_root/bin/python"
+if [ ! -x "$venv_python" ]; then
+    fail "det lokale Python-miljøet er ufullstendig"
+fi
+
+"$venv_python" -m pip install \
+    --disable-pip-version-check \
+    --no-input \
+    --editable "$project_root" \
+    || fail "familiekilder-mcp og de låste avhengighetene kunne ikke installeres"
+
+if ! "$venv_python" -c 'import familiekilder.source_cli' >/dev/null 2>&1; then
+    fail "familiekilder kan ikke importeres i det nye miljøet"
+fi
+
+echo "familiekilder-mcp er klart: $venv_root/bin/familiekilder-mcp"
