@@ -30,23 +30,23 @@ kobling som gir den tilgang til å opprette kalenderhendelser eller sende e-post
 > Les ukas beskjeder. Legg aktiviteter og frister som gjelder oss, i kalenderen.
 > Send meg en kort e-post med det vi må huske å ta med eller gjøre.
 
+## Hvor fungerer det?
+
+Du installerer MCP-serveren på Macen din og bruker den fra [Claude Desktop](https://claude.com/download) eller [ChatGPT-appen for Mac](https://chatgpt.com/download/) på samme maskin. I ChatGPT velger du **Codex** og **This computer**. Vanlig chat i nettleseren eller på mobilen kan ikke koble seg direkte til MCP-serveren.
+
 ## Kom i gang
 
-Dette er en lanseringskandidat for 1.0. Du trenger en Mac, Python 3.11 eller
-nyere og en lokal AI-klient: Claude Desktop eller lokal Codex-kjøring i
-ChatGPT-appen, CLI eller IDE. Vanlig nett- og mobilchat kan ikke koble til
-direkte.
+Dette er en lanseringskandidat for versjon 1.0. Du trenger Python 3.11 eller nyere og [Brave](https://brave.com/) for å logge inn på tjenestene.
 
-Etter at du har lastet ned kildekoden, åpner du Terminal i prosjektmappen og kjører:
+Last ned kildekoden, åpne Terminal i prosjektmappen og kjør:
 
 ```sh
 scripts/setup
 ```
 
-Da åpnes et lokalt oppsett i nettleseren. Legg til tjenestene, logg inn og koble
-til AI-assistenten. Noen tjenester trenger en egen oppsettsfil som ikke følger
-med. Du kan også [la kodeagenten gjøre installasjonen](docs/agentoppsett.md)
-eller følge [oppsettsveiledningen](docs/kom-i-gang.md).
+Veiviseren åpnes i nettleseren. Velg tjenestene du bruker, logg inn og koble til AI-assistenten. Noen tjenester krever en egen oppsettsfil.
+
+Du kan også [be kodeagenten om å installere for deg](docs/agentoppsett.md) eller følge [oppsettsveiledningen](docs/kom-i-gang.md).
 
 MCP-serveren tilbyr bare lesing. Innloggingene lagres lokalt. Innhold
 assistenten leser, kan sendes til AI-leverandøren du bruker. Gmail bruker
