@@ -21,6 +21,7 @@ Koblingene er uoffisielle, unntatt Gmail, som bruker Googles offisielle API.
 | [Spond](#spond) | Profil og grupper, innlegg, aktiviteter, kommentarer, varsler, chatter og vedlegg |
 | [Hoopit](#hoopit) | Profil og barn, innlegg, aktiviteter, kommentarer, varsler, chatter, kontaktgrupper og vedlegg |
 | [IST Home](#ist-home) | Barn og plasseringer, innlegg, samtaler, mottakere, fravær, samtaleinvitasjoner og vedlegg |
+| [Flyt](#flyt) | Barnehage: barn og plasser, beskjeder, dagbok med bilder, meldingstråd, kalender, registrert fravær, inn-/utsjekk og vedlegg |
 | [Gmail](#gmail) | Målrettede e-postsøk, meldinger og vedlegg |
 
 ## Vigilo
@@ -91,6 +92,16 @@ kilden oppgis i svaret. Bookinglisten er prøvd, men ikke detaljoppslag for en
 aktiv invitasjon. Et HTTP 200-svar kan inneholde `auth_error`; det regnes ikke
 som vellykket innlogging.
 
+## Flyt
+
+Leseren bruker API-rutene til Flyt Foresatt-appen fra Visma, og bare for
+barnehage; skole og SFO er ikke med ennå. Du velger kommune i oppsettsfilen
+(`{"municipality": "Kommunenavn"}`) og logger inn med Visma Connect og
+ID-porten. Lesing endrer ikke ulest-status, og alle andre ruter stoppes før
+nettverket. Innlogging og lesing av barnehage er prøvd mot en ekte konto i Oslo
+kommune i november 2026. [Flyt](flyt.md) beskriver innlogging, ruter, grenser
+og det som ikke er kontrollert ennå.
+
 ## Gmail
 
 Gmail brukes med `gmail.readonly` og målrettede søk, ikke som en full feed. Se
@@ -124,6 +135,7 @@ Python-modulene er interne, se [veien til 1.0](release.md).
 | Spond | Nye chatter, chatsvar, kommentarsvar og deltakelsessvar | Fravær |
 | Hoopit | Nye chatter, chatsvar, kommentarsvar og deltakelsessvar | Fravær |
 | IST Home | Nye samtaler og svar, fravær, booking og avbestilling av samtaletid | Andre deltakelsesformer; bookingdetaljer med aktiv invitasjon |
+| Flyt | Ingen skrivekode | — |
 | Gmail | Ingen skrivekode | — |
 
 Skriving er bare testet mot syntetiske mål. Koden krever verifisert

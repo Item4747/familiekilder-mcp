@@ -47,7 +47,7 @@ også én måte å lage den første økten på:
 
 | Vei | Funksjoner i auth-modulen | `auth_commands` | Brukes av |
 |---|---|---|---|
-| OAuth med callback | `consent_status`, `record_consent`, `begin_login`, `login_with_callback` | `login`, `browser-login` | Vigilo, Skolemelding, IST Home |
+| OAuth med callback | `consent_status`, `record_consent`, `begin_login`, `login_with_callback` | `login`, `browser-login` | Vigilo, Skolemelding, IST Home, Flyt |
 | Økt hentet fra nettleser | egen gren i `browser_bootstrap.bootstrap_source`, og `import_session` | `browser-bootstrap`, `import-session` | Spond, Hoopit |
 | Import av øktfil | `import_session(root, path, *, replace_existing)` | `import-session` | Spond, Hoopit |
 
@@ -204,6 +204,9 @@ tjenestene; `tests/test_web_script.py` krever at alle er satt. Verktøyene
 
 ### B. Andre steder, når tjenesten trenger dem
 
+- [ ] Brukeren velger leietaker, som en kommune: la `configure_client` godta en
+      fil med valget (`{"municipality": "..."}` i Flyt) og tilby en ren funksjon
+      som lister valgene for en vert (`flyt_auth.list_municipalities`).
 - [ ] `browser_bootstrap.bootstrap_source`: bare med `browser-bootstrap`.
       Passordutfylling krever i tillegg `password_origins` i `Source`.
 - [ ] `chat_discovery.py`: bare hvis `streams` har `"chat"` og leseren vil
@@ -261,7 +264,8 @@ Registrering som er inkonsekvent eller lett å overse.
 - **`auth_commands` kan ikke være tom.** `auth_cli._run_generic_auth` slår opp
   `_AUTH_CAPABILITIES[source]`. Bare Gmail slipper, fordi `source_cli.py` sender den
   videre før oppslaget.
-- **Kildelister skrevet for hånd:** `browser_bootstrap.bootstrap_source`.
+- **Kildelister skrevet for hånd:** `browser_bootstrap.bootstrap_source` og
+  diagnosekartet i `browser_bootstrap._report_unreachable`.
 - **IST Home bruker ikke feilklassene fra `source_adapter`.**
   `ist_home.IstHomeAuthError` og `ist_oauth_protocol.OAuthError` arver fra
   `FamiliekilderError`. Avvist innlogging blir derfor `source_error` i

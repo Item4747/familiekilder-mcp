@@ -75,14 +75,14 @@ Det er et eget oppsett for integrasjonen, i tillegg til brukerkontoen din.
 Deretter logger du inn:
 
 ```sh
-familiekilder-mcp auth vigilo browser-login        # Vigilo, Skolemelding, IST Home
+familiekilder-mcp auth vigilo browser-login        # Vigilo, Skolemelding, IST Home, Flyt
 familiekilder-mcp auth spond browser-bootstrap     # Spond, Hoopit
 familiekilder-mcp auth spond import-session --session-file /privat/mappe/spond-økt.json
 familiekilder-mcp auth gmail login                 # se docs/gmail.md
 ```
 
 Innlogging i nettleser åpner en isolert, midlertidig Brave-profil. BankID og
-telefonbekreftelse gjør du selv. For Vigilo, Skolemelding og IST Home ber
+telefonbekreftelse gjør du selv. For Vigilo, Skolemelding, IST Home og Flyt ber
 kommandoen deg første gang skrive `JEG FORSTÅR` for å bekrefte at integrasjonen
 er uoffisiell.
 
@@ -193,6 +193,7 @@ gjøre at en kobling slutter å virke.
 | [Gmail](gmail.md) | Søk, tempo og oppsett av egen OAuth-klient |
 | [Mellomlagring](read-cache.md) | Cache, ferskhet og trafikkbudsjett |
 | [Hoopit](hoopit-ingestion.md) | Oppslag og sideinndeling |
+| [Flyt](flyt.md) | Kommunevalg, innlogging, ruter og grenser |
 | [Trinnvis PDF-lesing](pdf-window-reading.md) | Vinduer, grenser og binding |
 | [Legge til en ny tjeneste](adding-a-service.md) | Filer, kontrakter, registrering og tester |
 

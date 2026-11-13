@@ -5,8 +5,8 @@ barnehage og fritid. Programmet er en **MCP-server**: en kobling som lar
 assistenten lese fra tjenestene du bruker, med din egen innlogging.
 
 <!-- Tjenestelisten er hentet fra sources.REGISTRY. -->
-Støtter Vigilo, Skolemelding, Spond, Hoopit, IST Home og Gmail.
-Vi jobber med støtte for MyKid og Flyt.
+Støtter Vigilo, Skolemelding, Spond, Hoopit, IST Home, Flyt (barnehage) og Gmail.
+Vi jobber med støtte for MyKid og for skole og SFO i Flyt.
 
 Savner du en tjeneste? Opprett en sak på GitHub med navnet på tjenesten,
 eller send en pull request hvis du vil bidra med en kobling.

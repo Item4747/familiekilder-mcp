@@ -11,7 +11,7 @@ class SourceAdapterTests(unittest.TestCase):
     def test_registry_lookup_is_lazy_and_covers_every_source(self) -> None:
         self.assertEqual(
             adapter_sources(),
-            ("vigilo", "skolemelding", "spond", "hoopit", "ist-home", "gmail"),
+            ("vigilo", "skolemelding", "spond", "hoopit", "ist-home", "flyt", "gmail"),
         )
         with patch("familiekilder.source_adapter.importlib.import_module") as imported:
             adapter = get_adapter("vigilo")

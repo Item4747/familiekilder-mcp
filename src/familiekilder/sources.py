@@ -150,6 +150,16 @@ REGISTRY = {
             paced=True,
             aliases=("ist_home", "ist home", "isthome"),
         ),
+        # Barnehage only so far; school (vfs) reads can be added in flyt.py.
+        Source(
+            "flyt", "Flyt", "flyt_auth", "live_flyt_reader",
+            letter="F", description="Beskjeder og dagbok fra barnehagen",
+            kind="school",
+            writes=False,
+            auth_commands=_OAUTH_COMMANDS,
+            paced=True,
+            provider_bundle=False,
+        ),
         # Email is searched for specific questions, never listed wholesale.
         Source(
             "gmail", "Gmail", "gmail_auth", "live_gmail_reader",

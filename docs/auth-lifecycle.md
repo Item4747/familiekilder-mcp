@@ -12,6 +12,7 @@ refresh-tokenet varer.
 | Skolemelding | Lokal portaløkt har `access_expires_at`; portalens tokenfornyelse er forskjellig fra ID-porten-innloggingen. | Ikke bruk ID-portens levetid som portalens levetid. `invalid_grant` beviser avvisning, ikke årsaken. |
 | IST Home | Lokal økt har `issued_at` og access `expires_in`; ingen bevart separat refresh-utløp. | Ingen dokumentert maksimum eller sikkert replayvindu for denne klienten. |
 | Spond | Faktiske API-svar og lokal økt har separate access-/refresh-utløp. | Bruk konkret `refresh_expires_at`. Ett slikt tidspunkt beviser ikke en absolutt grense for hele økten eller en rullerende garanti. |
+| Flyt | Målt 13. november 2026 (Oslo): access-token er JWT med `expires_in: 3600` (`exp − iat` = 3600), id-token 300 sekunder, opakt refresh-token på 64 tegn uten utløpsfelt. Én fornyelse ga nytt access-token og nytt refresh-token (rotasjon); `auth_time` var uendret. | Refresh-tokenets levetid og om et brukt refresh-token avvises, er ikke målt. Integrasjonen lagrer alltid det nye refresh-tokenet. |
 | Hoopit | Firebase ID-token + separat refresh-token. Firebase dokumenterer langvarige økter uten en generell fast månedsfrist; kontosletting, deaktivering, vesentlige kontoendringer og tilbakekalling kan avslutte dem. | Ingen oppdiktet refresh-utløpsdato eller keepalive-trafikk. |
 
 Kilder (kontrollert september 2026):

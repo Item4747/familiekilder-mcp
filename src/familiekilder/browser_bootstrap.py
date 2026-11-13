@@ -979,7 +979,8 @@ def _report_unreachable(event: Mapping[str, Any], expected_redirect_uri: str) ->
         if parsed.scheme in {'http', 'https'} and not host:
             return
         service = {'com.cgi.oslomelding.foresatte': 'skolemelding',
-                   'com.ist.home.miniforum-school': 'ist-home'}.get(expected.scheme, 'other')
+                   'com.ist.home.miniforum-school': 'ist-home',
+                   'com.visma.vfsparentapp': 'flyt'}.get(expected.scheme, 'other')
         logging.getLogger(__name__).warning('auth_navigation_unreachable service=%s scheme=%s host=%s', service, parsed.scheme, host or 'none')
     except Exception:
         # Diagnostics must never alter the authentication flow.

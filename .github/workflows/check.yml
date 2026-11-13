@@ -1,7 +1,10 @@
 name: Kontroller pakken
 
 on:
+  # Only main: a sync or release also pushes a tag to the same commit, and a
+  # second run would need another macOS machine without testing anything new.
   push:
+    branches: [main]
   pull_request:
   workflow_dispatch:
 

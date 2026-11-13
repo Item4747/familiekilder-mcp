@@ -26,7 +26,7 @@ class WebScriptTests(unittest.TestCase):
             'letters': {s.name: s.letter for s in REGISTRY.values()},
             'descriptions': {s.name: s.description for s in REGISTRY.values()},
             'kinds': {s.name: s.kind for s in REGISTRY.values()},
-            'readOnly': ['gmail'],
+            'readOnly': ['flyt', 'gmail'],
         })
 
 

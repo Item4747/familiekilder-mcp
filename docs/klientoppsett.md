@@ -70,4 +70,5 @@ er en formatoversikt, ikke en fil med verdier som kan brukes til innlogging.
 | Spond (`spond`) | `api_root`, `app_version`, `attachment_hosts` |
 | Hoopit (`hoopit`) | `api_root`, `firebase_api_key`, `firebase_project_id`, `app_version`, `attachment_hosts` |
 | IST Home (`ist-home`) | `authority`, `client_id`, `client_secret`, `redirect_uri`, `scope` |
+| Flyt (`flyt`) | `municipality` (kommunenavn eller organisasjonsnummer, slås opp i Flyts åpne kommuneliste), eller én oppføring fra listen: `organizationNumber`, `customerName`, `displayName`, `vismaConnectClientContext` |
 | Gmail (`gmail`) | Google-filen for en egen OAuth-klient av typen Desktop app; se [Gmail](gmail.md#oppsett). |
