@@ -11,6 +11,21 @@ Vi jobber med støtte for MyKid og for skole og SFO i Flyt.
 Savner du en tjeneste? Opprett en sak på GitHub med navnet på tjenesten,
 eller send en pull request hvis du vil bidra med en kobling.
 
+## Kom i gang
+
+Dette er en lanseringskandidat for versjon 1.0. Du trenger Python 3.11 eller
+nyere og [Brave](https://brave.com/) for å logge inn på tjenestene.
+
+Få kodeagenten til å installere for deg. Åpne Codex i ChatGPT-appen eller Claude og lim inn prompten under.
+
+> Installer familiekilder-mcp fra https://github.com/Item4747/familiekilder-mcp i ~/familiekilder-mcp. Prosjektet krever macOS, Python 3.11+ og Brave. Kjør scripts/setup i bakgrunnen. Veiviseren åpnes automatisk. Innlogging og resten av oppsettet gjør jeg selv der.
+
+Eller installer selv ved å følge [oppsettsveiledningen](docs/kom-i-gang.md).
+
+MCP-serveren tilbyr bare lesing. Innloggingene lagres lokalt. Innhold
+assistenten leser, kan sendes til AI-leverandøren du bruker. Gmail bruker
+Googles offisielle API. De øvrige koblingene er uoffisielle.
+
 ## Forstå beskjedene på ditt språk
 
 Assistenten kan forklare beskjeder på språket du foretrekker eller skrive
@@ -39,26 +54,7 @@ I ChatGPT velger du **Codex** og **This computer**. Lokal Codex-kjøring i CLI
 eller IDE kan også koble til. Vanlig chat i nettleseren eller på mobilen kan
 ikke koble seg direkte til MCP-serveren.
 
-## Kom i gang
 
-Dette er en lanseringskandidat for versjon 1.0. Du trenger Python 3.11 eller
-nyere og [Brave](https://brave.com/) for å logge inn på tjenestene.
-
-Last ned kildekoden, åpne Terminal i prosjektmappen og kjør:
-
-```sh
-scripts/setup
-```
-
-Veiviseren åpnes i nettleseren. Velg tjenestene du bruker, logg inn og koble til
-AI-assistenten. Noen tjenester krever en egen oppsettsfil.
-
-Du kan også [be kodeagenten om å installere for deg](docs/agentoppsett.md) eller
-følge [oppsettsveiledningen](docs/kom-i-gang.md).
-
-MCP-serveren tilbyr bare lesing. Innloggingene lagres lokalt. Innhold
-assistenten leser, kan sendes til AI-leverandøren du bruker. Gmail bruker
-Googles offisielle API. De øvrige koblingene er uoffisielle.
 
 [Hva tjenestene støtter](docs/service-capabilities.md) ·
 [Feilsøking og bidrag](docs/kom-i-gang.md#hjelp-og-bidrag) ·
