@@ -7,14 +7,9 @@ nettchat kan ikke gjøre installasjonen alene.
 Last ned kildekoden, åpne prosjektmappen med kodeagenten, og gi den denne
 beskjeden:
 
-> Installer familiekilder-mcp fra denne prosjektmappen og start det lokale
-> oppsettet. Les README og docs/kom-i-gang.md først. Kontroller at Python 3.11
-> eller nyere og Brave finnes. Be meg om å installere det som eventuelt
-> mangler, eller hjelp meg med det når jeg har godkjent det. Kjør scripts/setup.
-> La meg velge tjenester, oppsettsfiler og AI-klient i veiviseren. Jeg gjør
-> innlogging og BankID selv. Ikke kopier eller vis passord, tokens eller
-> oppsettsfiler i samtalen. Ikke gi tilgang til skriving eller bruk beskjeder
-> fra ekte kontoer som tester.
+> Installer familiekilder-mcp på Macen min fra https://github.com/Item4747/familiekilder-mcp. Klon prosjektet til en fast mappe, sjekk at Python 3.11+ og Brave er på plass, og kjør `scripts/setup`.
+
+
 
 Veiviseren legger til MCP-koblingen etter ditt valg. Kodeagenten trenger ikke
 redigere klientfilene manuelt. Når den lokale MCP-testen er grønn, starter du
