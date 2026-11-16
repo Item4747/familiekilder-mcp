@@ -7,7 +7,7 @@ nettchat kan ikke gjøre installasjonen alene.
 Last ned kildekoden, åpne prosjektmappen med kodeagenten, og gi den denne
 beskjeden:
 
-> Installer familiekilder-mcp på Macen min fra https://github.com/Item4747/familiekilder-mcp. Klon prosjektet til en fast mappe, sjekk at Python 3.11+ og Brave er på plass, og kjør `scripts/setup`.
+> Installer familiekilder-mcp fra https://github.com/Item4747/familiekilder-mcp i `~/familiekilder-mcp`. Prosjektet krever macOS, Python 3.11+ og Brave. Kjør `scripts/setup` i bakgrunnen. Veiviseren åpnes automatisk. Innlogging og resten av oppsettet gjør jeg selv der.
 
 
 
