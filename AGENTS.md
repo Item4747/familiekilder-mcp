@@ -7,6 +7,11 @@
   tjeneste, navn og ID-er skal ikke inn i Git, heller ikke som fixture.
 - Kopier aldri innloggingsopplysninger, tokens eller nøkler, og legg dem aldri i
   kommandolinjen, logger eller Git.
+- Unntak: appidentitet som er lik for alle brukere av leverandørens offisielle
+  app, og som kommer fra den offisielle apppakken eller nettsiden, kan ligge i
+  pakken som standardverdi (`src/familiekilder/data/client-defaults.json`).
+  Brukerens innlogging, tokens, økter og private nøkler skal aldri i Git.
+  Verdiene skjules ikke for hemmelighetsskannere.
 
 ## Les først
 

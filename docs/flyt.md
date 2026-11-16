@@ -6,7 +6,10 @@ Innlogging og lesing av barnehage er prøvd mot en ekte konto i Oslo kommune
 13. november 2026. Resultatet stemte med appen: beskjeder, dagbok med alle
 bilder, kalender, meldingstråd, fravær og inn-/utsjekk.
 
-**Innlogging.** Du velger kommune først. Kommunelisten
+**Innlogging.** Du velger kommune først. I veiviseren skjer det i
+innloggingsdialogen, når Flyt ikke har lagret kommune fra før. Fra
+kommandolinjen importerer du en fil med `{"municipality": "Kommunenavn"}` (eller
+organisasjonsnummeret) med `auth flyt configure --client-file`. Kommunelisten
 (`GET https://api.guardian.mobile.skole.visma.no/v1/municipalities`) er åpen og
 krever ikke innlogging. Valget lagres i `.private/credentials/flyt-client.json`:
 organisasjonsnummer, kundenavn (`customerName`), visningsnavn og

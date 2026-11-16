@@ -9,6 +9,7 @@ let polling = false;
 let busy = false;
 let closed = false;
 let renderedServices = '';
+let municipalities = null;
 
 async function api(path, value) {
   const options = { headers: { 'X-Setup-Token': token }, cache: 'no-store' };
@@ -65,9 +66,59 @@ function selectFile(source) {
   byId('client-file').click();
 }
 
+function loadMunicipalities() {
+  if (!municipalities) {
+    municipalities = api('/api/flyt-municipalities').then(
+      (result) => {
+        const list = byId('municipalities');
+        list.replaceChildren();
+        // Two entries can share a name; the organisation number tells them apart.
+        const counts = new Map();
+        result.municipalities.forEach((item) => {
+          counts.set(item.name, (counts.get(item.name) || 0) + 1);
+        });
+        const labelled = result.municipalities.map((item) => ({
+          id: item.id,
+          label: counts.get(item.name) > 1 ? `${item.name} (${item.id})` : item.name,
+        }));
+        labelled.forEach((municipality) => {
+          const option = document.createElement('option');
+          option.value = municipality.label;
+          list.append(option);
+        });
+        return labelled;
+      },
+      (exception) => {
+        municipalities = null;
+        throw exception;
+      },
+    );
+  }
+  return municipalities;
+}
+
+function loginError(message) {
+  byId('login-error').textContent = message;
+  byId('login-error').hidden = !message;
+}
+
+function needsMunicipality(source) {
+  return source.setup === 'municipality' && source.state === 'setup_required';
+}
+
 function openLogin(source) {
   selectedSource = source;
   byId('login-title').textContent = `Koble til ${source.label}`;
+  loginError('');
+  const municipality = needsMunicipality(source);
+  byId('municipality-field').hidden = !municipality;
+  byId('municipality').required = municipality;
+  byId('municipality').value = '';
+  if (municipality) {
+    loadMunicipalities().catch(() =>
+      loginError('Kommunelisten kunne ikke hentes. Kontroller nettforbindelsen og prøv igjen.'),
+    );
+  }
   byId('consent-label').hidden = source.id === 'gmail';
   byId('consent').checked = false;
   byId('consent').required = source.id !== 'gmail';
@@ -77,20 +128,48 @@ function openLogin(source) {
   byId('login-dialog').showModal();
 }
 
+function serviceAction(source) {
+  if (source.state === 'connected' && source.enabled) {
+    return {
+      status: 'Innlogging lagret',
+      label: 'Slå av',
+      action: () => perform('/api/service', { source: source.id, enabled: false }),
+    };
+  }
+  if (source.state === 'connected') {
+    return {
+      status: 'Klar til å aktiveres',
+      label: 'Bruk tjenesten',
+      action: () => perform('/api/service', { source: source.id, enabled: true }),
+    };
+  }
+  if (source.state === 'setup_required' && source.setup === 'file') {
+    return {
+      status: 'Trenger Google-fil',
+      label: 'Velg Google-fil',
+      action: () => selectFile(source.id),
+    };
+  }
+  if (source.state === 'setup_required' && source.setup === 'unavailable') {
+    return { status: 'Ikke tilgjengelig i veiviseren ennå', label: null, action: null };
+  }
+  const statuses = {
+    attention_required: 'Logg inn på nytt',
+    unavailable: 'Status kunne ikke leses',
+  };
+  return {
+    status: statuses[source.state] || 'Ikke logget inn',
+    label: 'Logg inn',
+    action: () => openLogin(source),
+  };
+}
+
 function renderServices(state) {
   const signature = JSON.stringify([state.services, busy]);
   if (signature === renderedServices) return;
   renderedServices = signature;
   const container = byId('services');
   container.replaceChildren();
-  const statuses = {
-    connected: 'Innlogging lagret',
-    ready: 'Klar til å aktiveres',
-    setup_required: 'Trenger oppsett',
-    login_required: 'Ikke logget inn',
-    attention_required: 'Logg inn på nytt',
-    unavailable: 'Kan ikke lese status',
-  };
   state.services.forEach((source) => {
     const row = document.createElement('article');
     row.className = 'service';
@@ -103,67 +182,35 @@ function renderServices(state) {
     description.className = 'service-description';
     description.textContent = source.description;
     info.append(heading, description);
+    if (source.setup === 'file') {
+      const help = document.createElement('a');
+      help.className = 'service-help';
+      help.href = '/help/client';
+      help.target = '_blank';
+      help.rel = 'noreferrer';
+      help.textContent = 'Slik lager du Google-filen';
+      info.append(help);
+    }
     const controls = document.createElement('div');
     controls.className = 'service-controls';
+    const choice = serviceAction(source);
     const status = document.createElement('span');
-    const effective = source.state === 'connected' && !source.enabled ? 'ready' : source.state;
-    status.className = `status ${effective}`;
-    status.textContent =
-      effective === 'setup_required' && source.automatic_setup
-        ? 'Klar til innlogging'
-        : statuses[effective];
-    let action;
-    if (effective === 'connected') {
-      action = button('Slå av', 'secondary', () =>
-        perform('/api/service', { source: source.id, enabled: false }),
-      );
-    } else if (effective === 'ready') {
-      action = button('Bruk tjenesten', 'secondary', () =>
-        perform('/api/service', { source: source.id, enabled: true }),
-      );
-    } else if (effective === 'setup_required' && !source.automatic_setup) {
-      action = button('Legg til oppsett', 'secondary', () => selectFile(source.id));
-    } else {
-      action = button('Logg inn', 'secondary', () => openLogin(source));
+    const ready = source.state === 'connected' && !source.enabled;
+    status.className = `status ${ready ? 'ready' : source.state}`;
+    status.textContent = choice.status;
+    controls.append(status);
+    if (choice.label) {
+      const action = button(choice.label, 'secondary', choice.action);
+      action.disabled = busy;
+      controls.append(action);
     }
-    action.disabled = busy;
-    controls.append(status, action);
+    if (source.has_session && choice.label !== 'Logg inn') {
+      const again = button('Logg inn på nytt', 'text-button', () => openLogin(source));
+      again.disabled = busy;
+      controls.append(again);
+    }
     top.append(info, controls);
     row.append(top);
-    const details = document.createElement('details');
-    const summary = document.createElement('summary');
-    summary.textContent = 'Oppsett og innlogging';
-    const help = document.createElement('p');
-    help.textContent = source.automatic_setup
-      ? 'Du trenger ingen oppsettsfil. Nettklientoppsettet lages lokalt når du velger «Logg inn».'
-      : source.id === 'gmail'
-        ? 'Gmail trenger en egen Google-klient av typen Desktop app. Velg JSON-filen du lastet ned fra Google.'
-        : 'Du kan legge til en klientfil hvis du har en. Filen behandles lokalt og sendes ikke til AI-assistenten.';
-    const actions = document.createElement('div');
-    actions.className = 'actions';
-    const upload = button('Velg oppsettsfil', 'secondary', () => selectFile(source.id));
-    upload.disabled = busy;
-    actions.append(upload);
-    if (source.id === 'ist-home') {
-      const auto = button('Hent fra IST Home-appen', 'secondary', () =>
-        perform('/api/start', { action: 'ist-client' }),
-      );
-      auto.disabled = busy;
-      actions.append(auto);
-    }
-    if (source.has_session) {
-      const login = button('Logg inn på nytt', 'secondary', () => openLogin(source));
-      login.disabled = busy;
-      actions.append(login);
-    }
-    const link = document.createElement('a');
-    link.href = '/help/client';
-    link.target = '_blank';
-    link.rel = 'noreferrer';
-    link.textContent = 'Hvordan skaffer jeg oppsettsfilen?';
-    details.append(summary, help, actions, document.createElement('p'));
-    details.lastChild.append(link);
-    row.append(details);
     container.append(row);
   });
 }
@@ -263,13 +310,31 @@ byId('finish').addEventListener('click', closeSetup);
 byId('dismiss-login').addEventListener('click', () => byId('login-dialog').close());
 byId('login-form').addEventListener('submit', async (event) => {
   event.preventDefault();
-  byId('login-dialog').close();
-  await perform('/api/start', {
+  const request = {
     action: 'login',
     source: selectedSource.id,
     consent: byId('consent').checked,
     replace: byId('replace').checked,
-  });
+  };
+  if (needsMunicipality(selectedSource)) {
+    let list;
+    try {
+      list = await loadMunicipalities();
+    } catch (exception) {
+      loginError('Kommunelisten kunne ikke hentes. Kontroller nettforbindelsen og prøv igjen.');
+      return;
+    }
+    const name = byId('municipality').value.trim().toLocaleLowerCase('nb');
+    const match = list.find((item) => item.label.toLocaleLowerCase('nb') === name);
+    if (!match) {
+      loginError('Fant ikke kommunen. Velg en kommune fra listen.');
+      byId('municipality').focus();
+      return;
+    }
+    request.municipality = match.id;
+  }
+  byId('login-dialog').close();
+  await perform('/api/start', request);
 });
 byId('continue-job').addEventListener('click', () =>
   perform('/api/job', { id: currentState.job.id, action: 'continue' }),
@@ -281,7 +346,7 @@ byId('client-file').addEventListener('change', async (event) => {
   const file = event.target.files[0];
   if (!file) return;
   if (file.size > 1024 * 1024) {
-    error('Oppsettsfilen er for stor. Velg en JSON-fil under 1 MB.');
+    error('Filen er for stor. Velg JSON-filen du lastet ned fra Google.');
     return;
   }
   try {

@@ -18,7 +18,9 @@ familiekilder-mcp --profile nabo auth spond browser-bootstrap
 familiekilder-mcp --profile nabo mcp serve
 ```
 
-Den andre profilen trenger sitt eget klientoppsett og sin egen innlogging. Del en ren utsjekking eller
+Den andre profilen trenger sitt eget klientoppsett og sin egen innlogging.
+`familiekilder-mcp --profile nabo setup` legger inn det innebygde oppsettet ved første innlogging
+i veiviseren; se [klientoppsett](klientoppsett.md). Del en ren utsjekking eller
 bygget pakke; ikke kopier `.private`, Application Support-katalogen eller
 nettleserprofiler. Profiler i samme OS-konto beskytter mot sammenblanding;
 for adskilte personer er egne OS-kontoer eller maskiner også nødvendig for å

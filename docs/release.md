@@ -25,11 +25,15 @@ assistenten tilgang til kildene; den inneholder ingen egen språkmodell.
 - Den selvstendige CLI-en og MCP-serveren avviser skriving, også fra eldre
   profiler. Den lokale oppsettsveiviseren må kontrolleres med en ny profil.
 - En ny bruker må kunne skaffe og importere klientkonfigurasjon uten tilgang
-  til utviklerens maskin eller private oppsett. Se [klientoppsett](klientoppsett.md).
+  til utviklerens maskin eller private oppsett. Det er løst for Vigilo,
+  Skolemelding, Spond, Hoopit og IST Home, som har innebygd appidentitet, og for
+  Flyt, der veiviseren spør om kommune. Gmail krever brukerens egen
+  Google-klient. Se [klientoppsett](klientoppsett.md).
 - Innlogging, liste, meldingsdetalj og ett vedlegg må bekreftes per tjeneste som
   skal omtales som klar. Bruk egen konto, eller en uttrykkelig avtalt testkonto,
   og noter versjon, dato og resultat uten personopplysninger. Testene i repoet
-  gir ikke denne bekreftelsen. Ingen ekte skrivehandling trengs for leseløftet.
+  gir ikke denne bekreftelsen, og det gjør heller ikke et innebygd oppsett.
+  Ingen ekte skrivehandling trengs for leseløftet.
 - Den tekniske sjekken under må bestå på Python 3.11 og 3.14 på Mac.
 - Velg utgiverkonto og kanal. Ved publisering under separat identitet må
   også eiernavn, historikk og offentlige lenker være vurdert. Et tomt

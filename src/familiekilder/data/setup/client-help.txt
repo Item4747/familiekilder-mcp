@@ -1,18 +1,15 @@
-Klientoppsett for familiekilder-mcp
+Slik lager du Google-filen for Gmail
 
-Innloggingen din og oppsettet for koblingen er to forskjellige ting. Ikke legg passord eller innloggingsdata inn i en AI-samtale.
+Gmail trenger en egen Google-klient som du lager selv. De andre tjenestene trenger ingen fil.
 
-Spond
-Velg «Logg inn» i veiviseren. Nettklientoppsettet lages lokalt uten en oppsettsfil eller klienthemmelighet. Du logger inn selv i et eget Brave-vindu.
+1. Gå til Google Cloud Console og lag et prosjekt, eller bruk et du har.
+2. Slå på Gmail API i prosjektet.
+3. Sett opp samtykkeskjermen for OAuth hvis Google ber om det. Legg til din egen Google-konto som testbruker.
+4. Lag en OAuth-klient av typen «Desktop app».
+5. Last ned JSON-filen for klienten.
+6. Velg «Velg Google-fil» på Gmail-raden i veiviseren, og velg filen.
+7. Velg «Logg inn» og logg inn med Google.
 
-Gmail
-Opprett en OAuth-klient av typen Desktop app i ditt eget Google Cloud-prosjekt med Gmail API aktivert. Last ned JSON-filen, velg «Legg til oppsett» for Gmail og velg filen. Deretter kan du logge inn med Google.
-Veiledning: https://developers.google.com/workspace/gmail/api/quickstart/python#set_up_your_environment
+Google ber bare om lesetilgang til e-posten (gmail.readonly). Filen behandles på denne maskinen og sendes ikke til AI-assistenten. Ikke legg filen, passord eller innloggingsdata inn i en AI-samtale.
 
-IST Home
-Hvis du bruker IST Home-appen på Mac og har logget inn der, velg «Hent fra IST Home-appen». Dette henter klientoppsettet lokalt. Du logger deretter inn på nytt for familiekilder-mcp. Personlige innloggingstokens fra appen blir ikke kopiert.
-
-Øvrige tjenester
-Du trenger foreløpig en klientfil med riktig oppsett for tjenesten. Det følger ikke med en ferdig oppskrift for å skaffe filen til alle tjenestene. Veiviseren kan importere filen og gjennomføre innloggingen, men kan ikke opprette en klientregistrering hos leverandøren.
-
-Du finner formatene i docs/klientoppsett.md i kildekoden. Hvis du ikke har en slik fil, meld behovet som et spørsmål i prosjektet. Ikke legg ved oppsettsfiler, tokens eller beskjeder fra ekte kontoer.
+Googles veiledning: https://developers.google.com/workspace/gmail/api/quickstart/python#set_up_your_environment

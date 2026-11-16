@@ -77,6 +77,13 @@ class Handler(BaseHTTPRequestHandler):
                 self._reply(200, self.server.service.state())
             except Exception:
                 self._reply(500, {"error": "Den lokale profilen kunne ikke leses."})
+        elif path == "/api/flyt-municipalities":
+            try:
+                self._reply(200, {"municipalities": self.server.service.flyt_municipalities()})
+            except SetupError as error:
+                self._reply(502, {"error": str(error)})
+            except Exception:
+                self._reply(500, {"error": "Kommunelisten kunne ikke vises."})
         elif path in {"/", "/setup.js", "/setup.css"}:
             name = "index.html" if path == "/" else path[1:]
             payload = (ASSETS / name).read_bytes().replace(b"__SETUP_TOKEN__", self.server.token.encode())
@@ -120,7 +127,8 @@ class Handler(BaseHTTPRequestHandler):
                 service.import_client(value.get("source"), value.get("content"))
             elif path == "/api/start":
                 service.start(value.get("action"), value.get("source", ""),
-                              consent=value.get("consent") is True, replace=value.get("replace") is True)
+                              consent=value.get("consent") is True, replace=value.get("replace") is True,
+                              municipality=value.get("municipality"))
             elif path == "/api/job":
                 if value.get("action") not in {"continue", "cancel"}:
                     raise SetupError("Ukjent oppsettshandling.")

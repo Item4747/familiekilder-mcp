@@ -95,8 +95,9 @@ som vellykket innlogging.
 ## Flyt
 
 Leseren bruker API-rutene til Flyt Foresatt-appen fra Visma, og bare for
-barnehage; skole og SFO er ikke med ennå. Du velger kommune i oppsettsfilen
-(`{"municipality": "Kommunenavn"}`) og logger inn med Visma Connect og
+barnehage; skole og SFO er ikke med ennå. Du velger kommune i veiviserens
+innloggingsdialog, eller fra kommandolinjen med en fil
+(`{"municipality": "Kommunenavn"}`), og logger inn med Visma Connect og
 ID-porten. Lesing endrer ikke ulest-status, og alle andre ruter stoppes før
 nettverket. Innlogging og lesing av barnehage er prøvd mot en ekte konto i Oslo
 kommune i november 2026. [Flyt](flyt.md) beskriver innlogging, ruter, grenser

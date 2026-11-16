@@ -226,20 +226,21 @@ p {
 .status.connected {
   color: var(--green);
 }
-.service details {
-  margin-top: 12px;
+.status.attention_required {
+  color: var(--danger);
+}
+.service-help {
+  display: inline-block;
+  margin-top: 6px;
   font-size: 13px;
+}
+.service-controls .text-button {
+  padding: 0;
+  font-size: 12px;
 }
 summary {
   cursor: pointer;
   color: var(--blue);
-}
-.service details p {
-  color: var(--muted);
-  margin: 12px 0;
-}
-.service details .actions {
-  flex-wrap: wrap;
 }
 .primary,
 .secondary {
@@ -399,6 +400,30 @@ dialog::backdrop {
 dialog p {
   color: var(--muted);
   font-size: 14px;
+}
+.field {
+  margin: 22px 0;
+}
+.field label {
+  display: block;
+  font-size: 14px;
+  font-weight: 550;
+  margin-bottom: 6px;
+}
+.field input {
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  color: var(--ink);
+}
+.field p {
+  font-size: 13px;
+  margin: 6px 0 0;
+}
+dialog .field-error {
+  color: var(--danger);
 }
 .checkbox {
   display: flex;

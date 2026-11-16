@@ -1,0 +1,53 @@
+{
+  "hoopit": {
+    "api_root": "https://api.hoopit.io",
+    "app_version": "Web 1104dffce00b",
+    "attachment_hosts": [],
+    "firebase_api_key": "AIzaSyBs2V8ZQQvQArdCPzNUiJ-nSR4x0e5G230",
+    "firebase_project_id": "hoopit-30d5c"
+  },
+  "ist-home": {
+    "authority": "https://skolid.se",
+    "client_id": "com.ist.home.miniforum-school",
+    "client_secret": "1c38b067e230a1882e81607edd35b0c0c9dbcc6de23c074f",
+    "redirect_uri": "com.ist.home.miniforum-school://authcode",
+    "scope": "consent live-translate-service miniforum notification offline_access openid profile skolid.full-access"
+  },
+  "skolemelding": {
+    "app_version": "6.0.4",
+    "attachment_hosts": [
+      "portal.skoleplattform.no"
+    ],
+    "attachment_path_prefixes": [
+      "/globalassets/attachments/"
+    ],
+    "issuer": "https://idporten.no",
+    "oidc_client_id": "d12dad8a-f092-4a96-8a37-371590825d22",
+    "portal_client_id": "consoleAPP",
+    "redirect_uri": "com.cgi.oslomelding.foresatte://oauth",
+    "scopes": [
+      "openid",
+      "profile"
+    ]
+  },
+  "spond": {
+    "api_root": "https://api.spond.com/core/v1",
+    "app_version": "web",
+    "attachment_hosts": [
+      "spond-secure-attachments.s3.eu-west-1.amazonaws.com",
+      "spond.com"
+    ]
+  },
+  "vigilo": {
+    "api_root": "https://api-gw-parent-app.prod.vigilo-oas.no/",
+    "app_version": "Android 3.3.0-4",
+    "attachment_hosts": [
+      "vigilofilestorageprod.blob.core.windows.net"
+    ],
+    "authority": "https://auth.prod.vigilo-oas.no",
+    "client_id": "fc442667-55b1-4072-ad4d-937133874514.ANDROID",
+    "client_secret": "a08d178c-ff65-4e4b-9133-45fa9546438b",
+    "redirect_uri": "app://ch-parent-android.vigilo.no",
+    "scope": "offline_access openid vigiloprofile"
+  }
+}

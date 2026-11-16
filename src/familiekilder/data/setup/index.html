@@ -153,6 +153,20 @@
       <form id="login-form">
         <h2 id="login-title">Koble til tjenesten</h2>
         <p>Innloggingen skjer i nettleseren. BankID og telefonbekreftelser gjør du selv.</p>
+        <div id="municipality-field" class="field" hidden>
+          <label for="municipality">Kommune</label>
+          <input
+            id="municipality"
+            list="municipalities"
+            autocomplete="off"
+            aria-describedby="municipality-hint"
+          />
+          <datalist id="municipalities"></datalist>
+          <p id="municipality-hint">
+            Skriv navnet på kommunen eller den som driver barnehagen, og velg fra listen.
+          </p>
+        </div>
+        <p id="login-error" class="field-error" role="alert" hidden></p>
         <label id="consent-label" class="checkbox"
           ><input id="consent" type="checkbox" />Jeg ønsker å bruke denne uoffisielle koblingen. Den
           lokale innloggingen kan gi mer tilgang enn dette verktøyet bruker.</label

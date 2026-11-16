@@ -1,60 +1,115 @@
 # Klientoppsett
 
-Hver tjeneste trenger både brukerkontoen din og oppsettet for selve koblingen.
-Dette oppsettet kalles klientkonfigurasjon. Det er ikke det samme som passordet
-ditt. Spond klargjøres automatisk; for andre tjenester må oppsettet skaffes
-eller hentes fra din egen klient.
+Hver tjeneste trenger to ting: brukerkontoen din og et oppsett for selve
+koblingen. Oppsettet kalles klientoppsett eller klientkonfigurasjon. Det
+beskriver hvilken app koblingen opptrer som hos leverandøren: appens
+identitet (klient-ID, for noen tjenester en klienthemmelighet), adressen
+innloggingen sendes tilbake til, og hvilke verter API-et og vedleggene ligger på.
 
-## Oppsett du kan gjøre med verktøyene som følger med
+## Hva appidentiteten er, og hva den ikke er
 
-**Spond:** Velg «Logg inn» i veiviseren. Den lager nettklientoppsettet lokalt
-fra de offentlige API- og filvertinnstillingene i koblingen. Det trengs ingen
-klienthemmelighet eller oppsettsfil. En eksisterende klientkonfigurasjon
-overskrives ikke. Du logger deretter inn selv i det isolerte Brave-vinduet.
+Appidentiteten er den samme for alle som bruker leverandørens offisielle app.
+Verdiene er hentet fra leverandørens offisielle apppakke eller nettside, ikke fra
+en bestemt installasjon eller bruker.
 
-**Gmail:** Opprett din egen Google OAuth-klient av typen Desktop app og følg
-[Gmail-veiledningen](gmail.md#oppsett). Du trenger tilgang til Google Cloud
-Console. Prosjektet deler ikke ut en felles Google-klient.
+- Den er ikke en innlogging. Den gir ikke tilgang til noen konto, heller ikke
+  din. Du må fortsatt logge inn selv, med BankID eller passord, i
+  nettleservinduet som åpnes.
+- En klienthemmelighet som ligger i en app alle kan laste ned, regnes ikke som
+  hemmelig. Den kan ikke bevise hvilken app som spør; se
+  [RFC 8252, punkt 8.5](https://www.rfc-editor.org/rfc/rfc8252#section-8.5).
+- Innloggingen din, tokens og økter lagres bare privat på maskinen din. De
+  følger aldri med pakken og legges aldri i Git.
 
-**IST Home:** Hvis du har IST Home-appen installert på Macen og har logget inn i den,
-kan kommandoen under hente klientoppsettet fra de lokale appdataene. Kjør fra
-prosjektmappen etter installasjon:
+Koblingene er uoffisielle. Leverandørene har ikke godkjent dem.
+
+## Tjenester med innebygd oppsett
+
+For Vigilo, Skolemelding, Spond, Hoopit og IST Home følger appidentiteten med
+pakken. Velg «Logg inn» i veiviseren (`familiekilder-mcp setup`). Mangler
+tjenesten klientoppsett, legger veiviseren inn det innebygde oppsettet og åpner
+innloggingen. Du trenger ingen fil.
+
+En tjeneste uten innebygd oppsett vises som «Ikke tilgjengelig i veiviseren
+ennå». Den kan fortsatt brukes med
+[import fra kommandolinjen](#importere-oppsett-fra-kommandolinjen).
+
+**Flyt:** Veiviseren spør om kommune i innloggingsdialogen. Kommunelisten er
+Flyts åpne liste og krever ikke innlogging. Valget lagres som klientoppsett for
+Flyt. Se [Flyt](flyt.md).
+
+**Gmail:** Du trenger din egen Google OAuth-klient av typen Desktop app. Prosjektet
+deler ikke ut en felles Google-klient. Opprett klienten i Google Cloud Console og
+velg filen med «Velg Google-fil» i veiviseren. Se
+[Gmail-veiledningen](gmail.md#oppsett).
+
+## Et lagret oppsett byttes ikke automatisk
+
+Veiviseren bruker det innebygde oppsettet bare når tjenesten ikke har noe
+klientoppsett fra før. Et oppsett som allerede er lagret, blir aldri byttet ut
+av veiviseren, heller ikke når pakken oppdateres med nye standardverdier.
+
+Det innebygde oppsettet hører til en bestemt versjon av leverandørens app.
+Noen leverandører krever etter hvert en nyere app. Da slutter innloggingen å
+virke, og standardverdien må fornyes i en ny versjon av pakken.
+
+Det finnes ingen kommando som bytter et lagret oppsett med en ny standardverdi.
+Slik tar du den i bruk etter at pakken er oppdatert:
+
+1. Logg ut av tjenesten, for eksempel `familiekilder-mcp auth vigilo logout`.
+2. Slett det lagrede oppsettet under `.private/credentials/` i dataroten:
+   `vigilo-client.json`, `skolemelding-client.json`, `spond-provider.json`,
+   `hoopit-client.json` eller `ist-home-client.json`.
+3. Velg «Logg inn» i veiviseren. Den legger da inn det nye innebygde oppsettet.
+
+Bytter en leverandør verdiene eller sperrer appidentiteten, slutter koblingen å
+virke for alle som bruker den. Standardverdien fjernes da fra pakken, og
+tjenesten vises som «Ikke tilgjengelig i veiviseren ennå» til et nytt oppsett er
+kontrollert. I mellomtiden kan du importere et gyldig oppsett fra
+kommandolinjen.
+
+## Importere oppsett fra kommandolinjen
+
+Har du et eget klientoppsett, kan du importere det fra kommandolinjen. Et
+importert oppsett erstatter det som er lagret, også det innebygde. Veiviseren
+bruker deretter det du importerte. Logg ut før importen hvis tjenesten har en
+lagret innlogging; noen koblinger avviser ellers et oppsett med en annen
+appidentitet.
+
+Innlogging som bare gjøres fra kommandolinjen, legger ikke inn det innebygde
+oppsettet. Bruk da veiviseren for første innlogging, eller importer en fil.
+
+Bytt `vigilo` med kilde-ID-en fra tabellen under:
+
+```sh
+familiekilder-mcp auth vigilo configure --client-file /privat/mappe/klient.json
+familiekilder-mcp configure vigilo
+familiekilder-mcp auth vigilo browser-login
+```
+
+Spond og Hoopit bruker `browser-bootstrap` i stedet for `browser-login`. Gmail
+bruker `auth gmail login`; se [Gmail](gmail.md#oppsett).
+
+Klientfilen må eies av din OS-bruker, være en vanlig fil og ha filmodus `0600`.
+Bruk en privat mappe med modus `0700`. Ikke legg filen i Git og ikke send den til
+andre.
+
+**IST Home fra Mac-appen:** Har du IST Home-appen installert på Macen og er
+logget inn i den, kan kommandoen under hente klientoppsettet fra appens lokale
+data. Eksporten gir ikke tilgang til kontoen din:
 
 ```sh
 umask 077
 mkdir -p .private
 familiekilder-mcp ist-auth export-mac-client --output "$PWD/.private/ist-home-client.json"
 familiekilder-mcp auth ist-home configure --client-file "$PWD/.private/ist-home-client.json"
-familiekilder-mcp configure ist-home
-familiekilder-mcp auth ist-home browser-login
 ```
 
-Eksporten gir ikke tilgang til kontoen din. Du logger inn selv i nettleseren.
-Hvis eksporten ikke støtter den installerte appen, stopp og meld versjonen som
-et spørsmål i prosjektet. Ikke del eksportfilen i en feilrapport.
+Støtter eksporten ikke den installerte appen, meld versjonen som et spørsmål i
+prosjektet. Ikke del eksportfilen i en feilrapport.
 
-## Øvrige koblinger
-
-Koblingene kan importere en privat klientfil med oppsett fra tjenestens egen
-klient. Det følger foreløpig ikke med en komplett oppskrift som skaffer denne
-filen for alle tjenestene. De kan derfor ikke presenteres som ferdig oppsett
-for en ny bruker uten teknisk hjelp. Dette må løses eller avgrenses før stabil
-1.0; se [lanseringsplanen](release.md).
-
-Hvis du allerede har en gyldig fil, importer den slik. Bytt `spond` med
-kilde-ID-en fra tabellen:
-
-```sh
-familiekilder-mcp auth spond configure --client-file /privat/mappe/klient.json
-familiekilder-mcp configure spond
-familiekilder-mcp auth spond browser-bootstrap
-```
-
-Klientfilen må eies av din OS-bruker, være en vanlig fil og ha filmodus `0600`.
-Bruk en privat mappe med modus `0700`. Ikke legg filen i Git eller send den til
-andre. Spond og Hoopit bruker `browser-bootstrap`; de andre nettleserkoblingene
-bruker `browser-login`. Den utgitte pakken inneholder ingen betrodde nøkler for
-signerte providerpakker; bruk derfor separate klientfiler i standardoppsettet.
+Den utgitte pakken inneholder ingen betrodde nøkler for signerte
+providerpakker. Bruk det innebygde oppsettet eller en egen klientfil.
 
 ## Felter i klientoppsettet
 

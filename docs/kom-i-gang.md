@@ -3,8 +3,7 @@
 [Tilbake til forsiden](../README.md).
 
 Denne veiledningen er for førstegangsoppsett og vedlikehold. Oppsettet krever
-terminalbruk og klientkonfigurasjon for tjenestene du vil koble til. Be gjerne
-om hjelp fra noen med teknisk erfaring.
+litt terminalbruk. Be gjerne om hjelp fra noen med teknisk erfaring.
 
 ## Installere
 
@@ -35,10 +34,10 @@ Kjør `familiekilder-mcp setup`, eller `scripts/setup` fra prosjektmappen.
 Sistnevnte installerer pakken først. Veiviseren åpnes på `127.0.0.1` med en
 ledig port og er bare tilgjengelig på denne maskinen.
 
-1. Velg tjenestene du bruker. Spond klargjøres automatisk ved innlogging. IST
-   Home kan hente oppsettet fra en innlogget Mac-app. Gmail trenger din egen
-   Google Desktop-klient; øvrige klientfiler velger du fra maskinen.
-   Se [klientoppsett](klientoppsett.md).
+1. Velg «Logg inn» på tjenestene du bruker. Vigilo, Skolemelding, Spond,
+   Hoopit og IST Home har innebygd oppsett, så du trenger ingen fil. Flyt spør
+   om kommune. Gmail trenger din egen Google-klient; velg den med «Velg
+   Google-fil». Se [klientoppsett](klientoppsett.md).
 2. Logg inn i det separate nettleservinduet. BankID gjør du selv. For Spond og
    Hoopit trykker du «Jeg er logget inn» når tjenesten er ferdig lastet.
 3. Velg Claude Desktop eller lokal ChatGPT / Codex. Veiviseren endrer bare
@@ -70,9 +69,10 @@ familiekilder-mcp configure hoopit --disable           # slå av igjen
 Den selvstendige CLI-en og MCP-serveren tilbyr bare lesing. En eldre profil
 med skriverettigheter får likevel bare leseverktøy; profilen skrives ikke om.
 
-Før innlogging må du legge inn [klientkonfigurasjon](#klientkonfigurasjon-per-tjeneste).
-Det er et eget oppsett for integrasjonen, i tillegg til brukerkontoen din.
-Deretter logger du inn:
+Innlogging fra terminalen krever at tjenesten har
+[klientkonfigurasjon](#klientkonfigurasjon-per-tjeneste). Veiviseren legger inn
+det innebygde oppsettet ved første innlogging; terminalen gjør ikke det.
+Logg derfor inn første gang i veiviseren, eller importer en fil. Deretter:
 
 ```sh
 familiekilder-mcp auth vigilo browser-login        # Vigilo, Skolemelding, IST Home, Flyt
@@ -126,10 +126,14 @@ Se [klientoppsett](klientoppsett.md) for hva hver kobling trenger og hvilke
 oppsettsveier som finnes. Bruk gjerne `familiekilder-mcp --version` når du ber
 om hjelp.
 
-Spond klargjøres lokalt i veiviseren uten en egen oppsettsfil. For andre
-tjenester trenger du klientoppsett i tillegg til brukerkontoen din. Prosjektet
-deler ikke ut klienthemmeligheter eller signerte providerpakker. Legg inn
-klientoppsettet for én tjeneste om gangen:
+Vigilo, Skolemelding, Spond, Hoopit og IST Home har innebygd appidentitet, som
+veiviseren legger inn når tjenesten mangler oppsett. Appidentiteten er lik for
+alle brukere av leverandørens offisielle app og gir ikke tilgang til noen
+konto. Flyt spør om kommune, og Gmail bruker din egen Google OAuth-klient av
+typen Desktop app; se [Gmail](gmail.md).
+
+Har du et eget klientoppsett, importerer du det for én tjeneste om gangen. Et
+importert oppsett erstatter det som er lagret, også det innebygde:
 
 ```sh
 familiekilder-mcp auth <tjeneste> configure --client-file FIL
@@ -140,12 +144,11 @@ Git. Feltene kontrolleres av `configure_client` i tjenestens auth-modul
 (`vigilo_auth.py`, `skolemelding_auth.py`, `spond_auth.py`, `hoopit_auth.py`
 og `ist_oauth.py`).
 For IST Home kan `familiekilder-mcp ist-auth export-mac-client --output FIL` hente
-klientkonfigurasjonen fra IST Home-appen på Macen din. Gmail bruker din egen
-Google OAuth-klient av typen Desktop app; se [Gmail](gmail.md).
+klientkonfigurasjonen fra IST Home-appen på Macen din.
 
 Den utgitte pakken har ingen betrodde leverandørnøkler og kan derfor ikke
 installere en signert providerpakke uten at prosjektets nøkkelliste først
-endres. Bruk separat klientkonfigurasjon i standardoppsettet.
+endres. Bruk det innebygde oppsettet eller en egen klientfil.
 
 ## Profiler og passord
 

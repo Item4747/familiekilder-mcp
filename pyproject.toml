@@ -38,7 +38,7 @@ where = ["src"]
 namespaces = false
 
 [tool.setuptools.package-data]
-familiekilder = ["data/setup/*.html", "data/setup/*.css", "data/setup/*.js", "data/setup/*.txt"]
+familiekilder = ["data/*.json", "data/setup/*.html", "data/setup/*.css", "data/setup/*.js", "data/setup/*.txt"]
 
 [tool.ruff]
 line-length = 100
