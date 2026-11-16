@@ -451,7 +451,6 @@ def default_transport(access: HoopitAccess) -> ApiTransport:
         timeout=45,
         max_json_bytes=MAX_JSON_BYTES,
         max_download_bytes=MAX_ATTACHMENT_BYTES,
-        user_agent="familiekilder-hoopit/0.2",
     )
 
 

@@ -20,6 +20,7 @@ from .network_usage import http_attempt
 from .private_state import (
     ensure_private_directory,
 )
+from .user_agent import source_user_agent
 
 
 ENDPOINT = "https://miniforum-api.home.ist.com/v2/school?env=prod-home&version=2.14.0&locale=nb"
@@ -213,6 +214,7 @@ def _graphql(token: str, query: str, variables: dict[str, Any] | None = None) ->
             "Authorization": f"Bearer {token}",
             "Content-Type": "application/json",
             "Accept-Language": "nb-NO",
+            "User-Agent": source_user_agent(),
         },
         method="POST",
     )
@@ -397,7 +399,7 @@ def _open_pinned_https(
             )
             http_attempt()
             connection.request(
-                "GET", request_target, headers={"User-Agent": "familiekilder/0.1"}
+                "GET", request_target, headers={"User-Agent": source_user_agent()}
             )
             response = connection.getresponse()
             return connection, response

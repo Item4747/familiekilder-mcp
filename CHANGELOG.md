@@ -1,5 +1,11 @@
 # Endringer
 
+## Ikke utgitt
+
+- Forespørsler til tjenestene oppgir ikke lenger pakkens navn i User-Agent.
+  Alle kilder sender samme User-Agent som Brave eller Chrome på maskinen, med
+  Chromium-versjonen fra den installerte nettleseren.
+
 ## 1.0.0rc2
 
 - Ny kilde: Flyt (Flyt Foresatt fra Visma) for barnehage. Leser beskjeder,

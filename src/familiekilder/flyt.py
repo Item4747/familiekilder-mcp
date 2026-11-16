@@ -141,7 +141,6 @@ def default_transport() -> ApiTransport:
         timeout=45,
         max_json_bytes=10 * 1024 * 1024,
         max_download_bytes=MAX_ATTACHMENT_BYTES,
-        user_agent="familiekilder-flyt/0.1",
     )
 
 

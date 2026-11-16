@@ -122,7 +122,6 @@ def default_transport(config: ClientConfig) -> ApiTransport:
         timeout=45,
         max_json_bytes=25 * 1024 * 1024,
         max_download_bytes=MAX_ATTACHMENT_BYTES,
-        user_agent="familiekilder-skolemelding/0.2",
     )
 
 

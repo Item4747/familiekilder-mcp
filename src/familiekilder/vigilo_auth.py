@@ -561,7 +561,6 @@ def _default_transport(config: ClientConfig) -> ApiTransport:
         allowed_hosts={urllib.parse.urlsplit(config.api_root).hostname or ""},
         safe_error_codes=_SAFE_OAUTH_ERRORS,
         max_json_bytes=MAX_JSON_BYTES,
-        user_agent="familiekilder-vigilo-auth/0.2",
     )
 
 

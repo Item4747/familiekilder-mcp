@@ -142,12 +142,6 @@ def pacing_path(root: Path | str | None) -> Path:
     return credential_path(root, PACING_FILE)
 
 
-def provider_user_agent(config: ClientConfig) -> str:
-    """Represent the signed app release consistently on Spond requests."""
-
-    return f"familiekilder-spond/0.2 (Spond {config.app_version})"
-
-
 def _default_transport(config: ClientConfig) -> ApiTransport:
     return ApiTransport(
         allowed_urls={
@@ -156,7 +150,6 @@ def _default_transport(config: ClientConfig) -> ApiTransport:
         },
         timeout=30,
         max_json_bytes=MAX_PRIVATE_JSON_BYTES,
-        user_agent=provider_user_agent(config),
     )
 
 

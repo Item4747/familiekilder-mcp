@@ -29,6 +29,7 @@ from .auth_lifecycle import NOT_BEFORE_LEEWAY_SECONDS
 from .core import FamiliekilderError
 from .live_traffic import paced_request
 from .network_usage import http_attempt
+from .user_agent import source_user_agent
 
 ISSUER = "https://skolid.se"
 AUTHORITY = ISSUER
@@ -301,14 +302,14 @@ class UrllibOAuthTransport:
             headers={
                 "Accept": "application/json",
                 "Content-Type": "application/x-www-form-urlencoded",
-                "User-Agent": "familiekilder-ist-oauth/0.1",
+                "User-Agent": source_user_agent(),
             },
             method="POST",
             expect_json=expect_json,
         )
 
     def get_json(self, url: str, *, bearer_token: str | None = None) -> Mapping[str, Any]:
-        headers = {"Accept": "application/json", "User-Agent": "familiekilder-ist-oauth/0.1"}
+        headers = {"Accept": "application/json", "User-Agent": source_user_agent()}
         if bearer_token:
             headers["Authorization"] = f"Bearer {bearer_token}"
         value = self._request(url, data=None, headers=headers, method="GET", expect_json=True)
@@ -321,7 +322,7 @@ class UrllibOAuthTransport:
         headers = {
             "Accept": "application/json",
             "Content-Type": "application/json",
-            "User-Agent": "familiekilder-ist-oauth/0.1",
+            "User-Agent": source_user_agent(),
         }
         if bearer_token:
             headers["Authorization"] = f"Bearer {bearer_token}"

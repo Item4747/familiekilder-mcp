@@ -605,7 +605,7 @@ class SpondAdapterTests(unittest.TestCase):
             spond._default_transport(config).user_agent,
             spond_auth._default_transport(config).user_agent,
         )
-        self.assertIn("4.63.0", spond._default_transport(config).user_agent)
+        self.assertNotIn("familie", spond._default_transport(config).user_agent.lower())
 
         target = self.root / ".private" / "incoming" / "provider-host.bin"
         client.download(

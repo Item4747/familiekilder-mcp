@@ -219,7 +219,6 @@ def _default_transport(
             *verified_idporten_urls,
         },
         safe_error_codes=_SAFE_OAUTH_ERRORS,
-        user_agent="familiekilder-skolemelding/0.2",
     )
 
 

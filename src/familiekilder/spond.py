@@ -46,7 +46,6 @@ from .spond_auth import (
     load_client_config,
     local_session_for_use,
     pace_network_request,
-    provider_user_agent,
     record_cooldown,
     refresh_session,
 )
@@ -148,7 +147,6 @@ def _default_transport(config: ClientConfig) -> ApiTransport:
         timeout=45,
         max_json_bytes=25 * 1024 * 1024,
         max_download_bytes=MAX_ATTACHMENT_BYTES,
-        user_agent=provider_user_agent(config),
     )
 
 

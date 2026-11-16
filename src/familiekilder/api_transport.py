@@ -28,6 +28,7 @@ from .core import FamiliekilderError
 from .live_traffic import paced_request
 from .network_usage import http_attempt
 from .private_state import PrivateStateError, ensure_private_directory, fsync_directory
+from .user_agent import source_user_agent
 
 
 DEFAULT_MAX_JSON_BYTES = 1024 * 1024
@@ -237,12 +238,14 @@ class ApiTransport:
         timeout: float = 30.0,
         max_json_bytes: int = DEFAULT_MAX_JSON_BYTES,
         max_download_bytes: int = DEFAULT_MAX_DOWNLOAD_BYTES,
-        user_agent: str = "familiekilder-source/0.2",
+        user_agent: str | None = None,
     ) -> None:
         if not allowed_urls and not allowed_hosts:
             raise ApiTransportError("API-transporten krever en eksplisitt tillatelsesliste")
         if timeout <= 0 or max_json_bytes <= 0 or max_download_bytes <= 0:
             raise ApiTransportError("API-transportens grenser er ugyldige")
+        if user_agent is None:
+            user_agent = source_user_agent()
         if (
             not isinstance(user_agent, str)
             or not user_agent

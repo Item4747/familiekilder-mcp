@@ -577,7 +577,6 @@ def _default_verification_transport() -> ApiTransport:
         allowed_urls={FIREBASE_CERTS_URL},
         timeout=45,
         max_json_bytes=MAX_PRIVATE_JSON_BYTES,
-        user_agent="familiekilder-hoopit-auth/0.2",
     )
 
 
@@ -1001,7 +1000,6 @@ def _default_refresh_transport(config: ClientConfig) -> ApiTransport:
         allowed_urls={f"{SECURE_TOKEN_ROOT}?key={config.firebase_api_key}"},
         timeout=45,
         max_json_bytes=MAX_PRIVATE_JSON_BYTES,
-        user_agent="familiekilder-hoopit-auth/0.2",
     )
 
 

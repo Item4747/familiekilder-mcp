@@ -4,6 +4,11 @@ Koble AI-assistenten din til beskjeder, aktiviteter og vedlegg fra skole,
 barnehage og fritid. Programmet er en **MCP-server**: en kobling som lar
 assistenten lese fra tjenestene du bruker, med din egen innlogging.
 
+![Illustrasjon: Beskjeder fra barnehage i Vigilo, skole i Skolemelding og fotball i Spond går til assistenten. Hver kveld kl. 19 legger den oppgaver og aktiviteter i familiekalenderen, og telefonen varsler kvelden før.](docs/bilder/fra-beskjeder-til-paminnelser.webp)
+
+*Illustrasjon med oppdiktede data. Assistenten må ha en planlagt oppgave og en
+egen kalenderkobling. Macen må være på når oppgaven kjører.*
+
 <!-- Tjenestelisten er hentet fra sources.REGISTRY. -->
 Støtter Vigilo, Skolemelding, Spond, Hoopit, IST Home, Flyt (barnehage) og Gmail.
 Vi jobber med støtte for MyKid og for skole og SFO i Flyt.
@@ -60,6 +65,10 @@ seg hva som skjer, følge opp frister og svare på beskjeder.
 
 > Les de nye beskjedene fra skolen. Forklar på polsk hva vi må gjøre
 > og hvilke frister som gjelder. Foreslå et kort svar på norsk.
+
+![Illustrasjon: En skolebeskjed ber om signert samtykke til turen innen fredag. Assistenten forklarer beskjeden på polsk og foreslår et kort svar på norsk.](docs/bilder/beskjeder-pa-polsk.webp)
+
+*Illustrasjon med oppdiktede data. Svaret er et forslag du selv kan sende.*
 
 ## Hvor fungerer det?
 

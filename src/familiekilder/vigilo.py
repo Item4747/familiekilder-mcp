@@ -103,7 +103,6 @@ def api_transport(session: Mapping[str, Any]) -> ApiTransport:
         timeout=45,
         max_json_bytes=MAX_JSON_BYTES,
         max_download_bytes=MAX_ATTACHMENT_BYTES,
-        user_agent="familiekilder-vigilo/0.2",
     )
 
 

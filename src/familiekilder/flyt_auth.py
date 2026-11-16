@@ -203,7 +203,6 @@ def default_transport() -> ApiTransport:
         allowed_urls={TOKEN_ENDPOINT, MUNICIPALITIES_ENDPOINT, SESSION_ENDPOINT},
         safe_error_codes=_SAFE_OAUTH_ERRORS,
         max_json_bytes=4 * 1024 * 1024,
-        user_agent="familiekilder-flyt/0.1",
     )
 
 
