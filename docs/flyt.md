@@ -7,7 +7,13 @@ Innlogging og lesing av barnehage er prøvd mot en ekte konto i Oslo kommune
 bilder, kalender, meldingstråd, fravær og inn-/utsjekk.
 
 **Innlogging.** Du velger kommune først. I veiviseren skjer det i
-innloggingsdialogen, når Flyt ikke har lagret kommune fra før. Fra
+innloggingsdialogen så lenge Flyt ikke har en lagret innlogging. Er kommunen
+lagret fra før, står den ferdig utfylt. Har du valgt feil kommune, velger du en
+annen i feltet før du logger inn; det nye valget erstatter det lagrede. Samme
+kommune som før slås ikke opp på nytt. Har Flyt en lagret innlogging, viser
+dialogen ikke kommunefeltet, og veiviseren bytter ikke kommune. «Slå av» i
+veiviseren sletter ikke innloggingen; logg ut med
+`familiekilder-mcp auth flyt logout` først. Fra
 kommandolinjen importerer du en fil med `{"municipality": "Kommunenavn"}` (eller
 organisasjonsnummeret) med `auth flyt configure --client-file`. Kommunelisten
 (`GET https://api.guardian.mobile.skole.visma.no/v1/municipalities`) er åpen og

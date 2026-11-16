@@ -86,12 +86,15 @@ class SetupService:
                     existing = bool(status.get("session_present"))
                 except Exception:
                     state, existing = "unavailable", False
-                rows.append({
+                row = {
                     "id": source.name, "label": source.label, "description": source.description,
                     "state": state, "enabled": source.name in config.services,
                     "has_session": existing,
                     "setup": self._setup_kind(source.name),
-                })
+                }
+                if source.name == "flyt":
+                    row["municipality"] = self._stored_municipality()
+                rows.append(row)
             job = None if self.job is None else {
                 "id": self.job.id, "source": self.job.source, "phase": self.job.phase,
                 "message": self.job.message,
@@ -103,6 +106,17 @@ class SetupService:
                                  "pdf": bool(shutil.which("pdftotext") and shutil.which("pdftoppm")),
                                  "word": bool(shutil.which("soffice") or Path("/Applications/LibreOffice.app").exists())},
             }
+
+    def _stored_municipality(self) -> dict[str, str] | None:
+        """The stored Flyt municipality as id and name; nothing else from the setup."""
+
+        from .flyt_auth import load_client_config
+
+        try:
+            stored = load_client_config(self.root).municipality
+        except Exception:
+            return None
+        return {"id": stored.organization_number, "name": stored.display_name}
 
     @staticmethod
     def _setup_kind(source: str) -> str:
@@ -136,6 +150,16 @@ class SetupService:
             raise SetupError("Velg en gyldig JSON-fil for tjenesten.")
         with self.lock:
             self._idle()
+            # The file is replaced only before a login; a session keeps its client.
+            try:
+                session = has_local_session(auth_module(source), self.root)
+            except Exception:
+                session = True
+            if session:
+                raise SetupError(
+                    f"{REGISTRY[source].label} har en lagret innlogging, så filen byttes ikke. "
+                    f"Logg ut med «familiekilder-mcp auth {source} logout» først."
+                )
             try:
                 self._configure_client(source, content)
             except Exception:
@@ -177,8 +201,7 @@ class SetupService:
                 if source != "gmail" and consent is not True:
                     raise SetupError("Bekreft at du vil bruke den uoffisielle koblingen.")
                 if status.get("configured"):
-                    # The municipality only sets up Flyt; a stored choice stays.
-                    municipality = None
+                    municipality = self._municipality_change(module, municipality)
                 elif self._has_stored_client(module):
                     # Stored but unreadable: never replace it with the default.
                     raise SetupError(
@@ -207,6 +230,25 @@ class SetupService:
                 kwargs={"municipality": municipality}, daemon=True,
             )
             self.worker.start()
+
+    def _municipality_change(self, module, municipality: str | None) -> str | None:
+        """The Flyt municipality to look up, or None to keep the stored one.
+
+        A new choice replaces the stored municipality only while Flyt has no
+        session; the same organisation number needs no lookup and no rewrite.
+        """
+
+        if municipality is None:
+            return None
+        stored = self._stored_municipality()
+        if stored is not None and municipality == stored["id"]:
+            return None
+        if has_local_session(module, self.root):
+            raise SetupError(
+                "Flyt har en lagret innlogging, så kommunen byttes ikke. "
+                "Logg ut med «familiekilder-mcp auth flyt logout» først."
+            )
+        return municipality
 
     def _has_stored_client(self, module) -> bool:
         path_factory = getattr(module, "client_config_path", None)

@@ -36,18 +36,27 @@ ennå». Den kan fortsatt brukes med
 
 **Flyt:** Veiviseren spør om kommune i innloggingsdialogen. Kommunelisten er
 Flyts åpne liste og krever ikke innlogging. Valget lagres som klientoppsett for
-Flyt. Se [Flyt](flyt.md).
+Flyt. Så lenge Flyt ikke har en lagret innlogging, viser dialogen den lagrede
+kommunen, og du kan velge en annen før du logger inn. Det nye valget erstatter
+det lagrede. Med en lagret innlogging bytter ikke veiviseren kommune; logg ut
+med `familiekilder-mcp auth flyt logout` først. Se [Flyt](flyt.md).
 
 **Gmail:** Du trenger din egen Google OAuth-klient av typen Desktop app. Prosjektet
 deler ikke ut en felles Google-klient. Opprett klienten i Google Cloud Console og
 velg filen med «Velg Google-fil» i veiviseren. Se
-[Gmail-veiledningen](gmail.md#oppsett).
+[Gmail-veiledningen](gmail.md#oppsett). Valgte du feil fil, velger du
+«Velg en annen Google-fil» på Gmail-raden før du logger inn. Den nye filen
+erstatter den lagrede bare hvis den er en gyldig Desktop app-klient; ellers
+beholdes den gamle. Med en lagret Gmail-innlogging byttes ikke filen; logg ut
+med `familiekilder-mcp auth gmail logout` først.
 
 ## Et lagret oppsett byttes ikke automatisk
 
 Veiviseren bruker det innebygde oppsettet bare når tjenesten ikke har noe
 klientoppsett fra før. Et oppsett som allerede er lagret, blir aldri byttet ut
 av veiviseren, heller ikke når pakken oppdateres med nye standardverdier.
+Unntakene er når du selv velger en annen kommune for Flyt eller en annen
+Google-fil for Gmail, og tjenesten ikke har en lagret innlogging.
 
 Det innebygde oppsettet hører til en bestemt versjon av leverandørens app.
 Noen leverandører krever etter hvert en nyere app. Da slutter innloggingen å

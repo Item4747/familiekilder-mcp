@@ -10,6 +10,8 @@ Gmail trenger en egen Google-klient som du lager selv. De andre tjenestene treng
 6. Velg «Velg Google-fil» på Gmail-raden i veiviseren, og velg filen.
 7. Velg «Logg inn» og logg inn med Google.
 
+Valgte du feil fil, velger du «Velg en annen Google-fil» på Gmail-raden før du logger inn.
+
 Google ber bare om lesetilgang til e-posten (gmail.readonly). Filen behandles på denne maskinen og sendes ikke til AI-assistenten. Ikke legg filen, passord eller innloggingsdata inn i en AI-samtale.
 
 Googles veiledning: https://developers.google.com/workspace/gmail/api/quickstart/python#set_up_your_environment

@@ -37,7 +37,9 @@ ledig port og er bare tilgjengelig på denne maskinen.
 1. Velg «Logg inn» på tjenestene du bruker. Vigilo, Skolemelding, Spond,
    Hoopit og IST Home har innebygd oppsett, så du trenger ingen fil. Flyt spør
    om kommune. Gmail trenger din egen Google-klient; velg den med «Velg
-   Google-fil». Se [klientoppsett](klientoppsett.md).
+   Google-fil». Valgte du feil kommune eller fil, kan du velge på nytt så lenge
+   du ikke har logget inn: kommunen i innloggingsdialogen, Google-filen med
+   «Velg en annen Google-fil». Se [klientoppsett](klientoppsett.md).
 2. Logg inn i det separate nettleservinduet. BankID gjør du selv. For Spond og
    Hoopit trykker du «Jeg er logget inn» når tjenesten er ferdig lastet.
 3. Velg Claude Desktop eller lokal ChatGPT / Codex. Veiviseren endrer bare

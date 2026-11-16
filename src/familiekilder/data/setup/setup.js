@@ -27,6 +27,12 @@ async function api(path, value) {
 function error(message) {
   byId('error').textContent = message;
   byId('error').hidden = !message;
+  if (message) showInfo('');
+}
+
+function showInfo(message) {
+  byId('info').textContent = message;
+  byId('info').hidden = !message;
 }
 
 function button(text, className, action) {
@@ -39,6 +45,7 @@ function button(text, className, action) {
 
 async function perform(path, value) {
   error('');
+  showInfo('');
   try {
     await api(path, value);
     await refresh();
@@ -102,8 +109,18 @@ function loginError(message) {
   byId('login-error').hidden = !message;
 }
 
+// The municipality can be chosen or changed only while the service has no login.
 function needsMunicipality(source) {
-  return source.setup === 'municipality' && source.state === 'setup_required';
+  return source.setup === 'municipality' && !source.has_session;
+}
+
+// The names the stored municipality can have in the field, in lower case.
+function storedMunicipalityLabels(source) {
+  const stored = source.municipality;
+  if (!stored) return [];
+  return [stored.name, `${stored.name} (${stored.id})`].map((label) =>
+    label.toLocaleLowerCase('nb'),
+  );
 }
 
 function openLogin(source) {
@@ -111,12 +128,24 @@ function openLogin(source) {
   byId('login-title').textContent = `Koble til ${source.label}`;
   loginError('');
   const municipality = needsMunicipality(source);
+  const stored = municipality ? source.municipality : null;
   byId('municipality-field').hidden = !municipality;
   byId('municipality').required = municipality;
-  byId('municipality').value = '';
+  byId('municipality').value = stored ? stored.name : '';
+  byId('municipality-hint').textContent = stored
+    ? 'Kommunen som er lagret. Er den feil, velger du en annen fra listen før du logger inn.'
+    : 'Skriv navnet på kommunen eller den som driver barnehagen, og velg fra listen.';
   if (municipality) {
-    loadMunicipalities().catch(() =>
-      loginError('Kommunelisten kunne ikke hentes. Kontroller nettforbindelsen og prøv igjen.'),
+    loadMunicipalities().then(
+      (list) => {
+        // Show the stored choice the way the list names it.
+        const match = stored && list.find((item) => item.id === stored.id);
+        if (match && byId('municipality').value === stored.name) {
+          byId('municipality').value = match.label;
+        }
+      },
+      () =>
+        loginError('Kommunelisten kunne ikke hentes. Kontroller nettforbindelsen og prøv igjen.'),
     );
   }
   byId('consent-label').hidden = source.id === 'gmail';
@@ -208,6 +237,15 @@ function renderServices(state) {
       const again = button('Logg inn på nytt', 'text-button', () => openLogin(source));
       again.disabled = busy;
       controls.append(again);
+    }
+    if (
+      source.setup === 'file' &&
+      !source.has_session &&
+      !['setup_required', 'unavailable'].includes(source.state)
+    ) {
+      const other = button('Velg en annen Google-fil', 'text-button', () => selectFile(source.id));
+      other.disabled = busy;
+      controls.append(other);
     }
     top.append(info, controls);
     row.append(top);
@@ -316,7 +354,14 @@ byId('login-form').addEventListener('submit', async (event) => {
     consent: byId('consent').checked,
     replace: byId('replace').checked,
   };
-  if (needsMunicipality(selectedSource)) {
+  const typed = byId('municipality').value.trim().toLocaleLowerCase('nb');
+  if (
+    needsMunicipality(selectedSource) &&
+    storedMunicipalityLabels(selectedSource).includes(typed)
+  ) {
+    // Unchanged: the service keeps the stored municipality without a lookup.
+    request.municipality = selectedSource.municipality.id;
+  } else if (needsMunicipality(selectedSource)) {
     let list;
     try {
       list = await loadMunicipalities();
@@ -324,8 +369,7 @@ byId('login-form').addEventListener('submit', async (event) => {
       loginError('Kommunelisten kunne ikke hentes. Kontroller nettforbindelsen og prøv igjen.');
       return;
     }
-    const name = byId('municipality').value.trim().toLocaleLowerCase('nb');
-    const match = list.find((item) => item.label.toLocaleLowerCase('nb') === name);
+    const match = list.find((item) => item.label.toLocaleLowerCase('nb') === typed);
     if (!match) {
       loginError('Fant ikke kommunen. Velg en kommune fra listen.');
       byId('municipality').focus();
@@ -349,12 +393,22 @@ byId('client-file').addEventListener('change', async (event) => {
     error('Filen er for stor. Velg JSON-filen du lastet ned fra Google.');
     return;
   }
+  let content;
   try {
-    const content = await file.text();
-    await perform('/api/client-file', { source: fileSource, content });
+    content = await file.text();
   } catch (exception) {
     error('Filen kunne ikke leses. Prøv å velge den på nytt.');
+    return;
   }
+  error('');
+  showInfo('');
+  try {
+    await api('/api/client-file', { source: fileSource, content });
+    showInfo('Google-filen er lagret. Velg «Logg inn» for å ta den i bruk.');
+  } catch (exception) {
+    error(exception.message);
+  }
+  await refresh();
 });
 refresh();
 setInterval(refresh, 1200);

@@ -13,13 +13,28 @@ from familiekilder.client_defaults import default_client_config
 from familiekilder.connection_status import auth_module
 from familiekilder.setup_service import SetupError, SetupService
 from familiekilder.live_config import Config
-from familiekilder.private_state import atomic_write_private_bytes, ensure_private_directory
+from familiekilder.private_state import (
+    atomic_write_private_bytes, atomic_write_private_json, credential_path, ensure_private_directory,
+)
 from familiekilder.setup_web import SetupServer
 from familiekilder.source_adapter import SourceUnavailable
 from familiekilder.sources import REGISTRY
 from familiekilder_testing.flyt import FakeMunicipalityTransport
 
 AUTOMATIC_SOURCES = [source for source in REGISTRY if default_client_config(source) is not None]
+
+
+def google_file(name):
+    # An invented desktop client in the shape Google's download has.
+    return json.dumps({"installed": {
+        "client_id": f"{name}.apps.googleusercontent.com", "client_secret": f"{name}-secret",
+    }})
+
+
+def store_fake_session(path):
+    # Only the presence of the file matters to the wizard.
+    ensure_private_directory(path.parent)
+    atomic_write_private_json(path, {"refresh_token": "fictional-refresh-token"})
 
 
 def default_strings(value):
@@ -126,6 +141,7 @@ class SetupHttpTests(SetupServerCase):
 
     def test_upload_failure_is_sanitized_and_temporary_file_removed(self):
         with patch("familiekilder.setup_service.auth_module") as module:
+            module.return_value.session_path.return_value.exists.return_value = False
             module.return_value.configure_client.side_effect = ValueError("private-client-content")
             status, _, body = self.request("/api/client-file", method="POST", value={"source": "gmail", "content": '{"fictional": true}'})
         self.assertEqual(status, 400)
@@ -317,19 +333,101 @@ class FlytSetupTests(SetupServerCase):
         self.assertIn("Kommunelisten fra Flyt kunne ikke hentes", self.service.job.message)
         login.assert_not_called()
 
-    def test_a_stored_municipality_is_kept(self):
-        self.root.mkdir()
-        flyt_auth.configure_municipality(self.root, "912345678", transport=self.transport)
-        calls = len(self.transport.calls)
+    def store_municipality(self, number):
+        self.root.mkdir(exist_ok=True)
+        flyt_auth.configure_municipality(self.root, number, transport=self.transport)
+        self.transport.calls.clear()
+        self.transport.threads.clear()
+        self.held_lock.clear()
+        return flyt_auth.client_config_path(self.root)
+
+    def stored_number(self):
+        return flyt_auth.load_client_config(self.root).municipality.organization_number
+
+    def test_a_stored_municipality_is_kept_when_none_is_chosen(self):
+        self.store_municipality("912345678")
         with patch.object(self.service, "_login"):
             self.assertEqual(self.start_flyt()[0], 200)
             self.service.worker.join(timeout=3)
-            self.assertEqual(self.service.job.phase, "done")
+        self.assertEqual(self.service.job.phase, "done")
+        self.assertEqual(self.transport.calls, [])
+        self.assertEqual(self.stored_number(), "912345678")
+
+    def test_a_new_municipality_replaces_the_stored_one_without_a_session(self):
+        self.store_municipality("912345678")
+        with patch.object(self.service, "_login") as login:
+            login.side_effect = lambda job, **_: self.assertEqual(self.stored_number(), "923456789")
             self.assertEqual(self.start_flyt(municipality="923456789")[0], 200)
             self.service.worker.join(timeout=3)
-        self.assertEqual(len(self.transport.calls), calls)
-        config = flyt_auth.load_client_config(self.root)
-        self.assertEqual(config.municipality.organization_number, "912345678")
+        self.assertEqual(self.service.job.phase, "done")
+        self.assertEqual(login.call_count, 1)
+        self.assertEqual(self.transport.threads, [self.service.worker])
+        self.assertEqual(self.held_lock, [False])
+        self.assertEqual(self.stored_number(), "923456789")
+
+    def test_the_municipality_is_not_changed_while_flyt_has_a_session(self):
+        path = self.store_municipality("912345678")
+        store_fake_session(flyt_auth.session_path(self.root))
+        before = path.read_bytes()
+        with patch.object(self.service, "_login") as login:
+            status, _, body = self.start_flyt(municipality="923456789", replace=True)
+        self.assertEqual(status, 400)
+        self.assertEqual(
+            json.loads(body)["error"],
+            "Flyt har en lagret innlogging, så kommunen byttes ikke. "
+            "Logg ut med «familiekilder-mcp auth flyt logout» først.",
+        )
+        login.assert_not_called()
+        self.assertIsNone(self.service.job)
+        self.assertEqual(self.transport.calls, [])
+        self.assertEqual(path.read_bytes(), before)
+
+    def test_the_same_municipality_needs_no_lookup_and_no_rewrite(self):
+        path = self.store_municipality("912345678")
+        before = path.read_bytes(), path.stat().st_mtime_ns, path.stat().st_ino
+        with patch.object(self.service, "_login") as login:
+            self.assertEqual(self.start_flyt(municipality="912345678")[0], 200)
+            self.service.worker.join(timeout=3)
+        self.assertEqual(self.service.job.phase, "done")
+        self.assertEqual(login.call_count, 1)
+        self.assertEqual(self.transport.calls, [])
+        self.assertEqual((path.read_bytes(), path.stat().st_mtime_ns, path.stat().st_ino), before)
+
+    def test_an_unknown_new_municipality_keeps_the_stored_one(self):
+        path = self.store_municipality("912345678")
+        before = path.read_bytes()
+        with patch.object(self.service, "_login") as login:
+            self.assertEqual(self.start_flyt(municipality="999999999")[0], 200)
+            self.service.worker.join(timeout=3)
+        self.assertEqual(self.service.job.phase, "error")
+        self.assertEqual(self.service.job.message, "Fant ingen kommune i Flyt som passer «999999999».")
+        login.assert_not_called()
+        self.assertEqual(len(self.transport.calls), 1)
+        self.assertEqual(path.read_bytes(), before)
+        self.assertEqual(Config.load(self.root).services, {})
+
+    def flyt_row(self):
+        status, _, body = self.request("/api/state")
+        self.assertEqual(status, 200)
+        rows = {row["id"]: row for row in json.loads(body)["services"]}
+        for source, row in rows.items():
+            if source != "flyt":
+                self.assertNotIn("municipality", row)
+        return rows["flyt"], body.decode()
+
+    def test_state_shows_the_stored_municipality_and_nothing_else_from_the_setup(self):
+        row, _ = self.flyt_row()
+        self.assertIsNone(row["municipality"])
+        path = self.store_municipality("912345678")
+        row, text = self.flyt_row()
+        self.assertEqual(row["municipality"], {"id": "912345678", "name": "Fjordvik kommune"})
+        self.assertEqual(
+            set(row), {"id", "label", "description", "state", "enabled", "has_session", "setup", "municipality"})
+        for value in ("fjordvik", "Vismaconnect998877665", flyt_auth.CLIENT_ID, flyt_auth.REDIRECT_URI):
+            self.assertNotIn(json.dumps(value), text)
+        atomic_write_private_bytes(path, b"{not json")
+        row, _ = self.flyt_row()
+        self.assertIsNone(row["municipality"])
 
     def test_municipality_list_is_sorted_by_name_and_fetched_once(self):
         for _ in range(2):
@@ -360,6 +458,52 @@ class FlytSetupTests(SetupServerCase):
             with self.subTest(headers=headers):
                 self.assertEqual(self.request("/api/flyt-municipalities", headers=headers)[0], 403)
         self.assertEqual(self.transport.calls, [])
+
+
+class GmailFileTests(SetupServerCase):
+    """Gmail is set up with the user's own Google file."""
+
+    def import_file(self, content):
+        return self.request("/api/client-file", method="POST", value={"source": "gmail", "content": content})
+
+    def stored_client(self):
+        return json.loads(credential_path(self.root, "gmail-client.json").read_bytes())
+
+    def test_another_google_file_replaces_the_stored_one_without_a_session(self):
+        self.assertEqual(self.import_file(google_file("fictional-first"))[0], 200)
+        self.assertEqual(self.import_file(google_file("fictional-second"))[0], 200)
+        self.assertEqual(self.stored_client()["client_id"], "fictional-second.apps.googleusercontent.com")
+        self.assertEqual(list((self.root / ".private/setup-imports").iterdir()), [])
+
+    def test_an_invalid_new_google_file_keeps_the_stored_one(self):
+        self.assertEqual(self.import_file(google_file("fictional-first"))[0], 200)
+        path = credential_path(self.root, "gmail-client.json")
+        before = path.read_bytes()
+        web_client = json.dumps({"web": {
+            "client_id": "fictional-web.apps.googleusercontent.com", "client_secret": "fictional-web-secret",
+        }})
+        for content in ("{not json", "[]", json.dumps({"installed": {"client_id": "x"}}), web_client):
+            with self.subTest(content=content):
+                status, _, body = self.import_file(content)
+                self.assertEqual(status, 400)
+                self.assertIn("Filen kunne ikke brukes", json.loads(body)["error"])
+                self.assertEqual(path.read_bytes(), before)
+
+    def test_the_google_file_is_not_replaced_while_gmail_has_a_session(self):
+        self.assertEqual(self.import_file(google_file("fictional-first"))[0], 200)
+        path = credential_path(self.root, "gmail-client.json")
+        before = path.read_bytes()
+        store_fake_session(credential_path(self.root, "gmail.json"))
+        status, _, body = self.import_file(google_file("fictional-second"))
+        self.assertEqual(status, 400)
+        self.assertEqual(
+            json.loads(body)["error"],
+            "Gmail har en lagret innlogging, så filen byttes ikke. "
+            "Logg ut med «familiekilder-mcp auth gmail logout» først.",
+        )
+        self.assertEqual(path.read_bytes(), before)
+        rows = {row["id"]: row for row in self.service.state()["services"]}
+        self.assertTrue(rows["gmail"]["has_session"])
 
 
 if __name__ == "__main__":
