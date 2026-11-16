@@ -26,6 +26,32 @@ MCP-serveren tilbyr bare lesing. Innloggingene lagres lokalt. Innhold
 assistenten leser, kan sendes til AI-leverandøren du bruker. Gmail bruker
 Googles offisielle API. De øvrige koblingene er uoffisielle.
 
+## Slipp å huske alt selv
+
+Koble assistenten også til kalenderen din. Da kan den gå gjennom alt fra
+skole, barnehage og fritid og legge det inn i familiekalenderen. Det dere må
+gjøre, får egne oppføringer med varsel kvelden før, så telefonen minner dere
+på det. Bruker dere en delt kalender, får begge foreldrene det samme.
+Assistenten trenger en egen kobling som gir den tilgang til å opprette
+kalenderhendelser.
+
+> Gå gjennom alt fra skole, barnehage og fritid. Legg det som skjer, i
+> familiekalenderen. Legg det vi må gjøre, inn som egne oppføringer med varsel
+> kvelden før: ting som skal være med, skjemaer som skal signeres og påmeldinger
+> med frist. Sjekk hva som står der fra før, så ingenting kommer inn to ganger.
+
+## La assistenten passe på hver dag
+
+Codex og Claude Desktop kan kjøre en oppgave fast hver dag. Lag en planlagt
+oppgave med prompten over, og legg til teksten under. Da holder assistenten
+kalenderen oppdatert uten at du må be om det. Kjøring om kvelden gir tid til å
+vaske gymtøy eller kjøpe gave før neste dag. Macen må være på når oppgaven
+kjører.
+
+> Gjør dette hver kveld kl. 19. Oppdater oppføringer når tid eller sted er
+> endret, og slett bare noe når en beskjed sier at det er avlyst. Legg inn en
+> oppføring i dag hvis en innlogging har utløpt.
+
 ## Forstå beskjedene på ditt språk
 
 Assistenten kan forklare beskjeder på språket du foretrekker eller skrive
@@ -34,16 +60,6 @@ seg hva som skjer, følge opp frister og svare på beskjeder.
 
 > Les de nye beskjedene fra skolen. Forklar på polsk hva vi må gjøre
 > og hvilke frister som gjelder. Foreslå et kort svar på norsk.
-
-## Få det viktigste i kalenderen eller på e-post
-
-Koble assistenten også til kalenderen eller e-posten din. Da kan du be den
-legge inn foreldremøter, kamper og påmeldingsfrister som gjelder familien din,
-eller sende deg en oppsummering på e-post. Assistenten trenger en egen
-kobling som gir den tilgang til å opprette kalenderhendelser eller sende e-post.
-
-> Les ukas beskjeder. Legg aktiviteter og frister som gjelder oss, i kalenderen.
-> Send meg en kort e-post med det vi må huske å ta med eller gjøre.
 
 ## Hvor fungerer det?
 
