@@ -7,6 +7,7 @@ import base64
 import hashlib
 import json
 import os
+import queue
 import secrets
 import signal
 import subprocess
@@ -29,6 +30,7 @@ from familiekilder.core import FamiliekilderError
 from familiekilder.live_config import Config
 from familiekilder.remote_http import build_http_app
 from familiekilder.source_server import ReadOnlyRuntime
+from familiekilder_testing import headless_browser
 from familiekilder_testing import remote as fake
 
 ITEM = {
@@ -45,6 +47,11 @@ def _pkce() -> tuple[str, str]:
     verifier = secrets.token_urlsafe(48)
     challenge = base64.urlsafe_b64encode(hashlib.sha256(verifier.encode()).digest()).decode().rstrip("=")
     return verifier, challenge
+
+
+# A redirect URI with a user name and password in it. Built from parts so
+# secret scanners do not read the made-up pair as a real credential.
+USERINFO_REDIRECT = "https://" + ":".join(("bruker", "oppdiktet")) + "@claude.ai/"
 
 
 class Host:
@@ -69,8 +76,8 @@ class Host:
         self.base = self.context.__enter__()
         test.addCleanup(self.context.__exit__, None, None, None)
 
-    def approve(self, client_id: str, *, challenge: str, redirect_uri=fake.REDIRECT_URI,
-                owner_code=fake.OWNER_CODE, **extra) -> httpx.Response:
+    def authorization_url(self, client_id: str, *, challenge: str, redirect_uri=fake.REDIRECT_URI,
+                          **extra) -> str:
         query = {
             "response_type": "code",
             "client_id": client_id,
@@ -82,7 +89,25 @@ class Host:
             "scope": "familiekilder offline_access",
             **extra,
         }
-        response = httpx.get(self.base + "/authorize?" + urlencode(query))
+        return self.base + "/authorize?" + urlencode(query)
+
+    def approval_page(self, client_id: str, *, challenge: str, redirect_uri=fake.REDIRECT_URI,
+                      **extra) -> tuple[str, httpx.Response]:
+        """Request ID and approval page of a new authorization request."""
+
+        response = httpx.get(self.authorization_url(
+            client_id, challenge=challenge, redirect_uri=redirect_uri, **extra
+        ))
+        assert response.status_code == 302, response.text
+        page = response.headers["location"]
+        request_id = parse_qs(urlsplit(page).query)["foresporsel"][0]
+        return request_id, httpx.get(page)
+
+    def approve(self, client_id: str, *, challenge: str, redirect_uri=fake.REDIRECT_URI,
+                owner_code=fake.OWNER_CODE, **extra) -> httpx.Response:
+        response = httpx.get(self.authorization_url(
+            client_id, challenge=challenge, redirect_uri=redirect_uri, **extra
+        ))
         if response.status_code != 302 or "/godkjenn" not in response.headers.get("location", ""):
             return response
         page = response.headers["location"]
@@ -254,6 +279,96 @@ class RemoteHttpTests(unittest.TestCase):
         )
         self.assertEqual(switched.status_code, 400)
 
+    def test_approval_form_may_submit_only_to_itself_and_the_redirect_origin(self) -> None:
+        host = Host(self)
+        _, challenge = _pkce()
+        for redirect_uri, origin in (
+            ("https://claude.ai/api/mcp/auth_callback", "https://claude.ai"),
+            ("http://127.0.0.1:53682/callback", "http://127.0.0.1:53682"),
+            (fake.REDIRECT_URI, "http://localhost:3030"),
+        ):
+            with self.subTest(redirect=redirect_uri):
+                client = fake.register(host.base, redirect_uri)["client_id"]
+                request_id, page = host.approval_page(
+                    client, challenge=challenge, redirect_uri=redirect_uri
+                )
+                self.assertEqual(page.status_code, 200)
+                self.assertEqual(_policy(page), {**_STRICT_POLICY, "form-action": ["'self'", origin]})
+                self.assertEqual(_other_security_headers(page), _EXPECTED_SECURITY_HEADERS)
+        # The form shown again after a wrong code carries the same policy.
+        wrong = httpx.post(
+            host.base + "/godkjenn",
+            data={"foresporsel": request_id, "eierkode": "feil-kode-0000", "valg": "godkjenn"},
+        )
+        self.assertEqual(wrong.status_code, 401)
+        self.assertEqual(_policy(wrong)["form-action"], ["'self'", "http://localhost:3030"])
+        # A page without a form allows no other origin.
+        expired = httpx.get(host.base + "/godkjenn?foresporsel=ukjent")
+        self.assertEqual(expired.status_code, 400)
+        self.assertEqual(_policy(expired), {**_STRICT_POLICY, "form-action": ["'self'"]})
+        self.assertEqual(_other_security_headers(expired), _EXPECTED_SECURITY_HEADERS)
+
+    def test_an_odd_redirect_uri_cannot_add_to_the_policy(self) -> None:
+        host = Host(self)
+        client = fake.register(host.base)["client_id"]
+        _, challenge = _pkce()
+        _, page = host.approval_page(client, challenge=challenge)
+        pending = next(iter(host.built.provider._pending.values()))
+        for uri, origin in (
+            ("https://claude.ai/sti;script-src 'unsafe-inline'?x=1#y", "https://claude.ai"),
+            ("https://CLAUDE.AI:443/callback", "https://claude.ai:443"),
+            ("https://claude.ai; script-src *", None),
+            ("https://claude.ai,evil.example/", None),
+            ("https://claude.ai%20script-src/", None),
+            ("https://claude.ai:99999/", None),
+            ("https://claude.ai:abc/", None),
+            (USERINFO_REDIRECT, None),
+            ("https://claude.ai./callback", None),
+            ("http://[::1]:3030/callback", None),
+            ("javascript:alert(1)", None),
+            ("data:text/html,x", None),
+            ("ftp://claude.ai/", None),
+            ("", None),
+        ):
+            with self.subTest(uri=uri):
+                self.assertEqual(remote_auth.redirect_origin(uri), origin)
+                odd = pending.params.model_copy(update={"redirect_uri": uri})
+                response = remote_auth._form_page(
+                    "oppdiktet", remote_auth.PendingRequest(pending.client, odd, pending.expires_at),
+                    error=None,
+                )
+                header = response.headers["content-security-policy"]
+                expected = ["'self'"] + ([origin] if origin else [])
+                self.assertEqual(_policy(response), {**_STRICT_POLICY, "form-action": expected})
+                self.assertEqual(header.count(";"), 3)
+
+    def test_a_second_answer_to_the_same_request_says_it_was_already_answered(self) -> None:
+        host = Host(self)
+        client = fake.register(host.base)["client_id"]
+        _, challenge = _pkce()
+        for choice in ("godkjenn", "avvis"):
+            with self.subTest(choice=choice):
+                request_id, _ = host.approval_page(client, challenge=challenge)
+                form = {"foresporsel": request_id, "eierkode": fake.OWNER_CODE, "valg": choice}
+                first = httpx.post(host.base + "/godkjenn", data=form)
+                self.assertEqual(first.status_code, 303)
+                again = httpx.post(host.base + "/godkjenn", data=form)
+                self.assertEqual(again.status_code, 409)
+                self.assertIn("allerede besvart", again.text)
+                self.assertNotIn("location", again.headers)
+                self.assertEqual(_policy(again)["form-action"], ["'self'"])
+                shown = httpx.get(host.base + "/godkjenn?foresporsel=" + request_id)
+                self.assertEqual(shown.status_code, 409)
+                self.assertNotIn("<form", shown.text)
+        unknown = httpx.get(host.base + "/godkjenn?foresporsel=ukjent")
+        self.assertIn("utløpt", unknown.text)
+        # Once the request would have expired, it is just expired.
+        provider = host.built.provider
+        with patch.object(provider, "clock", lambda: time.time() + remote_auth.PENDING_REQUEST_SECONDS + 1):
+            late = httpx.get(host.base + "/godkjenn?foresporsel=" + request_id)
+        self.assertEqual(late.status_code, 400)
+        self.assertIn("utløpt", late.text)
+
     def test_access_tokens_expire_and_can_be_revoked(self) -> None:
         host = Host(self)
         client = fake.register(host.base)["client_id"]
@@ -326,6 +441,106 @@ class RemoteHttpTests(unittest.TestCase):
         self.assertEqual(listed[0]["client_id"], registered["client_id"])
         self.assertEqual(listed[0]["active_connections"], 1)
         self.assertNotIn("client_secret", json.dumps(listed))
+
+
+class ApprovalInBrowserTests(unittest.TestCase):
+    """The approval flow in a real headless browser.
+
+    Chromium applies the form page's form-action to the redirect that follows
+    the submission; an HTTP client does not. The callback runs on another
+    port, so it is another origin, as claude.ai or a CLI's loopback port is.
+    """
+
+    def setUp(self) -> None:
+        executable = headless_browser.find_browser()
+        if executable is None:
+            self.skipTest("Brave or Chrome is not installed on this Mac (or this is not macOS)")
+        self.executable = executable
+
+    def test_the_browser_reaches_the_assistant_after_approve_and_refuse(self) -> None:
+        host = Host(self)
+        with headless_browser.callback_server() as (callback_base, received):
+            redirect_uri = callback_base + "/callback"
+            client = fake.register(host.base, redirect_uri)["client_id"]
+            with headless_browser.HeadlessBrowser(self.executable) as browser:
+                for choice in ("godkjenn", "avvis"):
+                    with self.subTest(choice=choice):
+                        verifier, challenge = _pkce()
+                        browser.navigate(host.authorization_url(
+                            client, challenge=challenge, redirect_uri=redirect_uri
+                        ))
+                        browser.wait_for(
+                            "location.pathname === '/godkjenn'"
+                            " && document.readyState === 'complete'"
+                            " && !!document.getElementById('eierkode')"
+                        )
+                        browser.evaluate(
+                            "document.getElementById('eierkode').value = "
+                            + json.dumps(fake.OWNER_CODE)
+                            + "; document.querySelector('button[value="
+                            + choice
+                            + "]').click(); true"
+                        )
+                        path = _next_callback(received)
+                        if path is None:
+                            location = browser.evaluate("location.href")
+                            self.fail(f"The browser never reached the callback; it is on {location}")
+                        query = parse_qs(urlsplit(path).query)
+                        self.assertEqual(query["state"], ["oppdiktet-tilstand"])
+                        self.assertEqual(query["iss"], [host.base])
+                        if choice == "avvis":
+                            self.assertEqual(query["error"], ["access_denied"])
+                            self.assertNotIn("code", query)
+                            continue
+                        token = host.token(
+                            grant_type="authorization_code", code=query["code"][0],
+                            redirect_uri=redirect_uri, client_id=client,
+                            code_verifier=verifier, resource=host.base + "/mcp",
+                        )
+                        self.assertEqual(token.status_code, 200, token.text)
+                        self.assertEqual(host.call(token.json()["access_token"]).status_code, 200)
+
+
+def _next_callback(received, timeout: float = 15.0) -> str | None:
+    """The next request to /callback, ignoring anything else such as a favicon."""
+
+    deadline = time.monotonic() + timeout
+    while True:
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            return None
+        try:
+            path = received.get(timeout=remaining)
+        except queue.Empty:
+            return None
+        if urlsplit(path).path == "/callback":
+            return path
+
+
+_STRICT_POLICY = {
+    "default-src": ["'none'"],
+    "style-src": ["'unsafe-inline'"],
+    "frame-ancestors": ["'none'"],
+}
+
+_EXPECTED_SECURITY_HEADERS = {
+    "cache-control": "no-store",
+    "x-frame-options": "DENY",
+    "referrer-policy": "no-referrer",
+    "x-content-type-options": "nosniff",
+}
+
+
+def _policy(response) -> dict[str, list[str]]:
+    directives = {}
+    for directive in response.headers["content-security-policy"].split(";"):
+        name, *values = directive.split()
+        directives[name] = values
+    return directives
+
+
+def _other_security_headers(response) -> dict[str, str]:
+    return {name: response.headers.get(name) for name in _EXPECTED_SECURITY_HEADERS}
 
 
 class CatalogTests(unittest.IsolatedAsyncioTestCase):
@@ -415,8 +630,9 @@ class StartupTests(unittest.TestCase):
 
                 asyncio.run(flow())
                 wrong = fake.register(base)
-                approval = Host.approve.__get__(type("H", (), {"base": base})())
-                approval(wrong["client_id"], challenge=_pkce()[1], owner_code="feil-kode-1234")
+                remote = Host.__new__(Host)
+                remote.base = base
+                remote.approve(wrong["client_id"], challenge=_pkce()[1], owner_code="feil-kode-1234")
             finally:
                 process.terminate()
                 output, _ = process.communicate(timeout=20)

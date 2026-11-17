@@ -21,6 +21,7 @@ from __future__ import annotations
 import hashlib
 import html
 import json
+import re
 import secrets
 import threading
 import time
@@ -389,6 +390,9 @@ class OwnerAuthorizationProvider:
         self.redirect_hosts = redirect_hosts(extra_redirect_hosts)
         # Short-lived and in memory only: a restart just means trying again.
         self._pending: dict[str, PendingRequest] = {}
+        # Request IDs already approved or refused, until they would have
+        # expired, so a second submit can say so instead of "expired".
+        self._answered: dict[str, float] = {}
         self._codes: dict[str, AuthorizationCode] = {}
         self._lock = threading.Lock()
 
@@ -414,6 +418,7 @@ class OwnerAuthorizationProvider:
     def _prune(self) -> None:
         now = self.clock()
         self._pending = {k: v for k, v in self._pending.items() if v.expires_at > now}
+        self._answered = {k: v for k, v in self._answered.items() if v > now}
         self._codes = {k: v for k, v in self._codes.items() if v.expires_at > now}
 
     async def authorize(self, client: OAuthClientInformationFull, params: AuthorizationParams) -> str:
@@ -442,11 +447,20 @@ class OwnerAuthorizationProvider:
             self._prune()
             return self._pending.get(request_id)
 
+    def answered(self, request_id: str) -> bool:
+        with self._lock:
+            self._prune()
+            return request_id in self._answered
+
     def _finish(self, request_id: str, *, approved: bool) -> str | None:
         with self._lock:
             pending = self._pending.pop(request_id, None)
             if pending is None or pending.expires_at <= self.clock():
                 return None
+            while len(self._answered) >= MAX_PENDING_REQUESTS:
+                oldest = min(self._answered, key=self._answered.__getitem__)
+                self._answered.pop(oldest)
+            self._answered[request_id] = pending.expires_at
             params = pending.params
             if not approved:
                 return construct_redirect_uri(
@@ -552,38 +566,46 @@ class OwnerAuthorizationProvider:
 
     # Approval page
 
+    def _gone(self, request_id: str) -> Response:
+        """The page for a request that is no longer pending."""
+
+        if self.answered(request_id):
+            return _page(_ANSWERED, status_code=409)
+        return _page(_EXPIRED, status_code=400)
+
     async def approval_page(self, request: Request) -> Response:
         request_id = request.query_params.get("foresporsel", "")
         pending = self.pending(request_id)
         if pending is None:
-            return _page(_EXPIRED, status_code=400)
-        return _page(_approval_form(request_id, pending, error=None))
+            return self._gone(request_id)
+        return _form_page(request_id, pending, error=None)
 
     async def approval_submit(self, request: Request) -> Response:
         form = await request.form(max_files=0, max_fields=10)
         request_id = str(form.get("foresporsel", ""))
         pending = self.pending(request_id)
         if pending is None:
-            return _page(_EXPIRED, status_code=400)
+            return self._gone(request_id)
         if form.get("valg") == "avvis":
             target = self._finish(request_id, approved=False)
-            return _redirect(target) if target else _page(_EXPIRED, status_code=400)
+            return _redirect(target) if target else self._gone(request_id)
         code = str(form.get("eierkode", ""))
         try:
             correct = await self.gate.check_async(code)
         except OwnerCodeLimited as exc:
-            return _page(
-                _approval_form(request_id, pending, error=str(exc)),
+            return _form_page(
+                request_id,
+                pending,
+                error=str(exc),
                 status_code=429,
                 headers={"Retry-After": str(exc.retry_after)},
             )
         if not correct:
-            return _page(
-                _approval_form(request_id, pending, error="Feil eierkode. Prøv igjen."),
-                status_code=401,
+            return _form_page(
+                request_id, pending, error="Feil eierkode. Prøv igjen.", status_code=401
             )
         target = self._finish(request_id, approved=True)
-        return _redirect(target) if target else _page(_EXPIRED, status_code=400)
+        return _redirect(target) if target else self._gone(request_id)
 
 
 class _StoredRefresh(RefreshToken):
@@ -597,14 +619,67 @@ class _StoredAccess(AccessToken):
 
 _SECURITY_HEADERS = {
     "Cache-Control": "no-store",
-    "Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; frame-ancestors 'none'",
     "X-Frame-Options": "DENY",
     "Referrer-Policy": "no-referrer",
     "X-Content-Type-Options": "nosniff",
 }
 
+# One DNS label (or one part of a dotted IPv4 address), as CSP's host-source
+# grammar allows it. Hostnames from urlsplit are already lower case.
+_HOST_LABEL = re.compile(r"[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\Z")
 
-def _page(body: str, *, status_code: int = 200, headers: dict[str, str] | None = None) -> HTMLResponse:
+
+def redirect_origin(uri: str) -> str | None:
+    """The origin of a redirect URI as a CSP source, or None.
+
+    Built from the parsed scheme, host and port only, so no path, query or
+    other text from the URI can reach the header. Anything that is not a plain
+    http or https origin with a DNS or IPv4 host gives None. That includes
+    IPv6 literals such as [::1]: CSP source expressions cannot name them, and
+    Chromium ignores one if it is sent, so such a redirect stays blocked in
+    the browser. Loopback clients use 127.0.0.1 or localhost instead.
+    """
+
+    try:
+        parts = urlsplit(uri)
+        port = parts.port
+    except ValueError:
+        return None
+    host = parts.hostname or ""
+    if parts.scheme not in ("http", "https") or parts.username or parts.password:
+        return None
+    if not host or len(host) > 253:
+        return None
+    if not all(_HOST_LABEL.match(label) for label in host.split(".")):
+        return None
+    if port is None:
+        return f"{parts.scheme}://{host}"
+    return f"{parts.scheme}://{host}:{port}"
+
+
+def _content_security_policy(form_origin: str | None) -> str:
+    """Strict policy; a form page may also submit to the client's origin.
+
+    Chromium checks form-action on every redirect that follows a form
+    submission. The approval form answers with a 303 to the client's
+    redirect URI, so that origin must be allowed on the page with the form,
+    or the browser stops on the form and the assistant never gets the code.
+    """
+
+    form_action = "'self'" if form_origin is None else f"'self' {form_origin}"
+    return (
+        "default-src 'none'; style-src 'unsafe-inline'; "
+        f"form-action {form_action}; frame-ancestors 'none'"
+    )
+
+
+def _page(
+    body: str,
+    *,
+    status_code: int = 200,
+    headers: dict[str, str] | None = None,
+    form_origin: str | None = None,
+) -> HTMLResponse:
     document = f"""<!doctype html>
 <html lang="nb">
 <head>
@@ -625,7 +700,27 @@ button {{ margin-top: 1rem; margin-right: .5rem; font-size: 1rem; padding: .5rem
 </body>
 </html>
 """
-    return HTMLResponse(document, status_code=status_code, headers={**_SECURITY_HEADERS, **(headers or {})})
+    security = {
+        **_SECURITY_HEADERS,
+        "Content-Security-Policy": _content_security_policy(form_origin),
+    }
+    return HTMLResponse(document, status_code=status_code, headers={**security, **(headers or {})})
+
+
+def _form_page(
+    request_id: str,
+    pending: PendingRequest,
+    *,
+    error: str | None,
+    status_code: int = 200,
+    headers: dict[str, str] | None = None,
+) -> HTMLResponse:
+    return _page(
+        _approval_form(request_id, pending, error=error),
+        status_code=status_code,
+        headers=headers,
+        form_origin=redirect_origin(str(pending.params.redirect_uri)),
+    )
 
 
 def _redirect(target: str) -> Response:
@@ -634,6 +729,10 @@ def _redirect(target: str) -> Response:
 
 _EXPIRED = """<h1>Forespørselen er utløpt</h1>
 <p>Start tilkoblingen på nytt fra assistenten.</p>"""
+
+_ANSWERED = """<h1>Forespørselen er allerede besvart</h1>
+<p>Denne godkjenningssiden er allerede brukt. Gå tilbake til assistenten. Hvis den ikke
+ble koblet til, starter du tilkoblingen på nytt derfra.</p>"""
 
 
 def _approval_form(request_id: str, pending: PendingRequest, *, error: str | None) -> str:

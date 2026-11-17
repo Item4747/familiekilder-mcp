@@ -1,6 +1,6 @@
 # Veien til 1.0
 
-`1.0.0rc2` er en lanseringskandidat. Den er ikke en ferdig stabil utgivelse.
+`1.0.0rc3` er en lanseringskandidat. Den er ikke en ferdig stabil utgivelse.
 
 ## Hva 1.0 skal love
 
@@ -23,8 +23,11 @@ assistenten tilgang til kildene; den inneholder ingen egen språkmodell.
 ## Prøveordning utenfor 1.0
 
 [HTTP og egen vert](alltid-pa.md) inngår ikke i løftet for 1.0 og blokkerer
-ikke lokal 1.0. Ekte Fly-utrulling, klientkobling, øktflytting og planlagt
-skykjøring må fortsatt bekreftes særskilt.
+ikke lokal 1.0. Den første prøven på en ekte Fly-vert bekreftet utrulling,
+flytting av innloggingene for Spond og Hoopit og tilkobling fra Claude på nett
+og Codex CLI. ChatGPT, Claude på mobil, planlagt skykjøring, de andre kildene
+og drift over tid må
+fortsatt bekreftes særskilt; se [Prøvd på ekte vert](alltid-pa.md#prøvd-på-ekte-vert).
 
 ## Før stabil utgivelse
 
@@ -64,7 +67,7 @@ mot den installerte pakken. MCP-testen starter serveren med en tom profil og
 utfører et verktøykall. Ingen ekte kildetjenester kontaktes. Resultater og
 bygde pakker legges i `dist/`; de sendes ingen steder.
 
-GitHub-workflowen kjører samme sjekk på Mac med begge Python-versjonene,
+GitHub-workflowen kjører samme sjekk på Linux med begge Python-versjonene,
 ved hver push til `main` og hver PR. Tagger starter ingen egen kjøring, fordi
 de peker på en commit som alt er kontrollert fra `main`.
 Den publiserer ikke pakker og trenger ingen publiseringsnøkkel.

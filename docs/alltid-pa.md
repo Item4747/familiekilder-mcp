@@ -1,9 +1,12 @@
 # En vert som assistenten kan nå
 
 Dette er en prøveordning utenfor løftet for 1.0. Lokal bruk på Mac over stdio
-er fortsatt standard. HTTP-oppsettet må prøves med ekte Fly-konto, ekte
-klienter og en flyttet økt før det kan omtales som bekreftet i daglig bruk.
-Funksjonen er foreløpig bare i kildekoden, ikke i den publiserte 1.0.0rc2.
+er fortsatt standard. Funksjonen er med fra 1.0.0rc3. En første ekte prøve på
+Fly.io 17. november 2026 bekreftet utrulling, stopp og start ved kall, flytting
+av innloggingene for Spond og Hoopit, lesing på verten og tilkobling fra
+Claude på nett og Codex CLI. ChatGPT, Claude på mobil, planlagt skykjøring,
+de andre kildene og drift over tid er ennå ikke prøvd. Se
+[Prøvd på ekte vert](#prøvd-på-ekte-vert).
 
 Verten kjører samme lesende MCP-server i en Linux-container. Den henter bare
 når assistenten spør; den har ingen egen modell, kalenderkobling eller
@@ -14,7 +17,10 @@ innloggingene til verten. Macen skal deretter ikke fornye dem.
 
 Fly.io gir container, vedvarende disk, HTTPS, hemmeligheter og start ved kall.
 Oppsettet bruker én shared-cpu-1x-maskin med 256 MB og én disk på 1 GB. Den
-stopper når den er ubrukt. Ingen vedlikeholdskall holder den våken.
+stopper når den er ubrukt. Ingen vedlikeholdskall holder den våken. I prøven
+stoppet Fly maskinen etter omtrent fem minutter uten kall. Neste kall startet
+den igjen: maskinen var i gang etter omtrent 0,65 sekunder og svarte etter
+omtrent 2,4 sekunder, og kallet lyktes uten feil i klienten.
 
 Kontrollert 17. november 2026: [Fly-prisene](https://fly.io/pricing/) viser
 2,19 USD per måned for kontinuerlig kjøring med 256 MB i billigste region,
@@ -34,7 +40,7 @@ OAuth er et vern, ikke en garanti mot feil i kode, vert eller assistent.
 
 ## Fly.io, steg for steg
 
-Kommandoene under kjøres fra en utsjekking som inneholder funksjonen.
+Kjør kommandoene under fra kildeutsjekkingen, med 1.0.0rc3 eller nyere.
 Installer først etter [oppsettsveiledningen](kom-i-gang.md), og logg inn i den
 lokale veiviseren. Google-klienten for Gmail følger samme flytting som økten.
 
@@ -47,7 +53,7 @@ lokale veiviseren. Google-klienten for Gmail følger samme flytting som økten.
    ```
 
 Kommandoen lager app og disk, setter hemmeligheter via stdin og bygger fra
-kildeutsjekkingen. Den bruker nøyaktig én maskin, aldri en reservemaskin.
+kildeutsjekkingen på Flys byggetjeneste. Den bruker nøyaktig én maskin, aldri en reservemaskin.
 Utrulling skjer med `immediate`, som gir et kort avbrudd. En eksisterende app
 med flere maskiner avvises før endringer. Installasjons-ID-en endres ikke ved
 ny utrulling. `--region arn` og `--org personal` er standard.
@@ -70,11 +76,33 @@ agentkjøring. Den skal aldri stå i argumentene. `--source KILDE` begrenser
 flyttingen og kan gjentas. Uten dette flyttes påslåtte kilder som har en økt.
 Skriverettigheter følger ikke med; verten tilbyr bare lesing.
 
+## Codex CLI
+
+Codex CLI fra OpenAI er prøvd mot en ekte vert med versjon 0.169.0. Legg til
+verten slik (`familiekilder` er bare navnet Codex bruker på koblingen):
+
+```sh
+codex mcp add familiekilder --url https://DITT-UNIKE-APPNAVN.fly.dev/mcp
+```
+
+Med `--url` registrerer Codex serveren og starter innloggingen selv i
+nettleseren. Vertens godkjenningsside viser appen som «Codex». Skriv eierkoden
+der, ikke i terminalen og ikke i en samtale med Codex. Vil du heller få
+adressen skrevet ut enn å få nettleseren åpnet, bruk:
+
+```sh
+codex mcp login familiekilder --no-browser
+```
+
+Etter godkjenningen kan Codex bruke verktøyene, også i en kjøring med
+`codex exec`.
+
 ## Claude og ChatGPT
 
 Faktaene her er kontrollert mot originalkilder 17. november 2026. Menyer,
-abonnementer og utrulling kan endres. Ekte klienttilkobling med denne serveren
-er fortsatt en egen prøve; SDK-testen erstatter den ikke.
+abonnementer og utrulling kan endres. Claude på nett er prøvd med denne
+serveren; se [Prøvd på ekte vert](#prøvd-på-ekte-vert). ChatGPT er ennå ikke
+prøvd; prøvene med de andre klientene erstatter ikke det.
 
 **Claude:** [egne koblinger](https://support.claude.com/en/articles/11175166-get-started-with-custom-connectors-using-remote-mcp)
 finnes også på Free, begrenset til én. Legg til under **Customize > Connectors
@@ -82,7 +110,7 @@ finnes også på Free, begrenset til én. Legg til under **Customize > Connector
 OAuth-innlogging og automatisk klientregistrering der valget vises. Skriv
 eierkoden bare på vertens godkjenningsside. Claude dokumenterer at eksterne
 koblinger brukes gjennom skyen også fra mobil. Kontroller dette med egen
-konto; denne koblingen er ikke prøvd i den ekte mobilklienten.
+konto; denne koblingen er prøvd på nett, men ikke i mobilklienten.
 [Autentisering](https://claude.com/docs/connectors/building/authentication)
 støtter DCR, som denne serveren bruker. CIMD annonseres ikke.
 
@@ -119,6 +147,74 @@ Kalenderendringer krever en egen kalenderkobling og en uttrykkelig bestilling.
 Kontroller én planlagt kjøring med Macen avslått før du stoler på rutinen.
 Ingen slik klientprøve er utført for dette oppsettet. ChatGPTs muligheter må
 prøves særskilt; det gis ikke et løfte om denne oppgaven på mobil eller i skyen.
+
+## Prøvd på ekte vert
+
+Den første ekte prøven ble gjort 17. november 2026 på Fly.io i region `arn`,
+med én shared-cpu-1x-maskin med 256 MB, én disk på 1 GB og `flyctl` v0.5.11.
+Utrullingen ble gjort fra kildeutsjekkingen med
+`familiekilder-mcp deploy fly --no-move`.
+
+Dette virket:
+
+- **Utrulling.** App, disk og hemmeligheter ble opprettet. Flys byggetjeneste
+  bygde bildet; `flyctl` oppga 69 MB. Appen fikk nøyaktig én maskin og HTTPS
+  på `fly.dev`-adressen. Det aller første forsøket feilet på grunn av en feil i
+  stien til Dockerfile. Feilen ble rettet samme dag. Tre nye utrullinger til
+  samme app beholdt eierkoden, installasjons-ID-en, godkjente apper og
+  flyttede innlogginger.
+- **Adressene.** `/healthz` svarte 200. `/mcp` uten token svarte 401 med
+  henvisning til ressursmetadataene, og begge metadataadressene svarte.
+- **Stopp og start.** Fly stoppet maskinen etter omtrent fem minutter uten
+  kall. Neste kall startet den: maskinen var i gang etter omtrent 0,65 sekunder
+  og svarte etter omtrent 2,4 sekunder. MCP-kallet lyktes uten feil i klienten.
+  Etter rettingen samme dag logger et stopp
+  «Main child exited normally with code: 0» og ingen traceback.
+- **Flytting.** `remote move ADRESSE --source spond` og deretter
+  `--source hoopit`, med eierkoden på én linje på stdin. Begge ble meldt som
+  flyttet. På Macen viste `connections` deretter statusen `moved_to_host` for
+  begge, og de lokale øktfilene var borte.
+- **Lesing på verten.** `spond_list_items` ga ekte oppføringer.
+  Access-tokenet for Spond hadde vært utløpt siden 31. oktober, og verten
+  fornyet det ved første lesing. Det første kallet tok derfor omtrent 20
+  sekunder. `hoopit_list_items` og `spond_list_chats` virket også. Tokenet for
+  Hoopit hadde vært utløpt siden 30. oktober og ble også fornyet på verten.
+- **OAuth med ekte klienter.** MCP Python SDK-klienten gikk gjennom
+  registrering, PKCE og godkjenningssiden med eierkode. Tokenene ble gjenbrukt
+  i senere kjøringer, etter omstart av maskinen og etter ny utrulling.
+  [Codex CLI](#codex-cli) 0.169.0 koblet til som beskrevet over. Deretter kalte
+  en modellkjøring med `codex exec` `family_connections` og
+  `spond_list_items` på verten. Codex-innloggingen i prøven ble fullført uten
+  nettleser. Sendingen fra godkjenningssiden tilbake til assistenten i
+  nettleseren ble derfor først prøvd med Claude på nett, der Brave stoppet den.
+  Feilen ble rettet samme dag.
+- **Claude på nett.** Etter rettingen ble koblingen lagt til i Claude i Brave
+  med **Customize > Connectors > Add > Add custom connector**. Vertens
+  godkjenningsside viste appen som «Claude». Etter eierkoden og «Godkjenn»
+  gikk nettleseren tilbake til claude.ai, og koblingen sto som tilkoblet med
+  20 leseverktøy. `family_connections` og `spond_list_items` ble deretter
+  kalt gjennom Claude-koblingen fra Claude Code, som bruker koblingene
+  kontoen har på nett. En samtale i nettgrensesnittet ble ikke fullført, fordi
+  kontoens bruksgrense var nådd.
+- **Fornyelse av OAuth-token.** Etter én time var klientens access-token
+  utløpt. MCP SDK-klienten fornyet det med refresh-tokenet, og lesingen
+  virket videre. Verten fornyet da Hoopit-økten en gang til.
+- **Tilbakekalling.** `remote clients` og `remote revoke --client ID` virket
+  gjennom `flyctl ssh console --app APP -C '...'` som beskrevet under
+  [Feilsøking og tilbakekalling](#feilsøking-og-tilbakekalling).
+- **Loggen.** Vertsloggen ble gjennomsøkt. Den inneholdt ingen eierkode,
+  access- eller refresh-token, bearer-header eller OAuth-parametere fra
+  adresser.
+
+Dette er ennå ikke prøvd:
+
+- Tilkobling fra ChatGPT på nett og fra Claude på mobil, og en hel samtale i
+  Claudes nettgrensesnitt.
+- En planlagt skyoppgave som kjører mens Macen er av.
+- Kilder som logger inn med BankID (Vigilo, Skolemelding, IST Home og Flyt),
+  og Gmail, på verten. Bare Spond og Hoopit ble flyttet.
+- Fornyelse over dager og uker, og hva verten faktisk koster per måned.
+- Word-vedlegg på verten (byggvalget `WITH_LIBREOFFICE=1`).
 
 ## Når en innlogging må fornyes
 
@@ -187,7 +283,9 @@ verktøyliste, gjenbruk av token etter omstart, UID 10001 og datamodus 0700.
 ## Feilsøking og tilbakekalling
 
 - Fly stopper en ubrukt maskin med SIGINT. Serveren avslutter da rolig med
-  status 0, også ved SIGTERM. En traceback i loggen er altså en ekte feil.
+  status 0, også ved SIGTERM. Fly-loggen viser da
+  «Main child exited normally with code: 0». En traceback i loggen er altså en
+  ekte feil.
 - Mangler `flyctl` eller innlogging? Kommandoen sier hva som må installeres
   eller at `flyctl auth login` må kjøres. Eierkoden er noe annet enn Fly-login.
 - Feil kode fem ganger på 15 minutter eller 20 ganger på ett døgn sperrer nye

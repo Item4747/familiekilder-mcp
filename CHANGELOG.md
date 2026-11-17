@@ -1,12 +1,35 @@
 # Endringer
 
-## Ikke utgitt
+## 1.0.0rc3
 
-- Prøveordning for egen Linux-vert: lesende MCP over streamable HTTP med
-  OAuth, eierkode, roterende refresh-token, kryptert flytting av innlogginger
-  fra Mac og veiledet Fly.io-oppsett. Lokal stdio er fortsatt standard.
-  Se [alltid-på-oppsettet](docs/alltid-pa.md); ekte vert og klienter gjenstår.
-
+- Prøveordning for egen Linux-vert, utenfor løftet for 1.0: lesende MCP over
+  streamable HTTP med OAuth, eierkode, roterende refresh-token, kryptert
+  flytting av innlogginger fra Mac og veiledet Fly.io-oppsett med
+  `familiekilder-mcp deploy fly`. Lokal stdio er fortsatt standard. Prøvd
+  17. november 2026 på en ekte Fly-vert: utrulling, stopp og start ved kall,
+  flyttede innlogginger for Spond og Hoopit, lesing på verten og tilkobling fra
+  Claude på nett og Codex CLI. ChatGPT på nett og Claude på mobil er ennå ikke
+  prøvd, og heller ikke de andre kildene på verten. Se
+  [alltid-på-oppsettet](docs/alltid-pa.md).
+- Tre feil som den ekte prøven avdekket, er rettet. `deploy fly` fant ikke
+  Dockerfile med `flyctl` v0.5.11, så bygget feilet. Når Fly stopper en ubrukt
+  maskin, avslutter serveren nå rolig med status 0 uten traceback i loggen,
+  også ved SIGTERM. Godkjenningssiden stoppet Brave og Chrome fra å sende
+  svaret tilbake til assistenten etter «Godkjenn» eller «Avvis», så ingen
+  tilkobling gjennom nettleseren kunne fullføres. Nå kan siden sende svaret til
+  akkurat den adressen assistenten oppga, og ingen andre steder. Sender du
+  skjemaet en gang til etter svaret, står det nå at forespørselen allerede er
+  besvart, ikke at den er utløpt.
+- Veiviseren logger inn med ett klikk. Vigilo, Skolemelding, Spond, Hoopit og
+  IST Home har innebygd appidentitet fra leverandørens offisielle app, så
+  «Logg inn» trenger ingen oppsettsfil. Flyt spør om kommune i
+  innloggingsdialogen, og Gmail trenger fortsatt din egen Google-fil.
+  «Legg til oppsett» og «Oppsett og innlogging» er fjernet fra veiviseren;
+  andre oppsettsfiler importeres med kommandolinjen. Se
+  [klientoppsett](docs/klientoppsett.md).
+- I veiviseren kan du velge en annen kommune for Flyt og en annen Google-fil
+  for Gmail før du logger inn. Med en lagret Flyt-innlogging bytter du kommune
+  med «Logg inn på nytt»; da logges du ut av Flyt først.
 - Et klientoppsett som veiviseren har lagt inn fra pakkens innebygde oppsett,
   byttes nå ut av seg selv når en nyere pakke har et nyere. Det skjer når
   veiviseren åpnes og når MCP-serveren starter. Oppsett du har importert eller
@@ -21,6 +44,7 @@
 - Forespørsler til tjenestene oppgir ikke lenger pakkens navn i User-Agent.
   Alle kilder sender samme User-Agent som Brave eller Chrome på maskinen, med
   Chromium-versjonen fra den installerte nettleseren.
+- Pakkesjekken på GitHub kjører nå på Linux med Python 3.11 og 3.14.
 
 ## 1.0.0rc2
 
