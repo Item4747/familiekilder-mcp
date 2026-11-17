@@ -413,7 +413,8 @@ class FlytSetupTests(SetupServerCase):
         row, _ = self.flyt_row()
         self.assertEqual(row["municipality"], {"id": "923456789", "name": "Bergli kommune"})
         self.assertEqual(
-            set(row), {"id", "label", "description", "state", "enabled", "has_session", "setup", "municipality"})
+            set(row), {"id", "label", "description", "state", "enabled", "has_session", "setup", "municipality",
+            "renewal_pending"})
 
     def test_a_failed_lookup_on_relogin_keeps_login_and_municipality(self):
         for failure, municipality, message in (
@@ -550,7 +551,8 @@ class FlytSetupTests(SetupServerCase):
         row, text = self.flyt_row()
         self.assertEqual(row["municipality"], {"id": "912345678", "name": "Fjordvik kommune"})
         self.assertEqual(
-            set(row), {"id", "label", "description", "state", "enabled", "has_session", "setup", "municipality"})
+            set(row), {"id", "label", "description", "state", "enabled", "has_session", "setup", "municipality",
+            "renewal_pending"})
         for value in ("fjordvik", "Vismaconnect998877665", flyt_auth.CLIENT_ID, flyt_auth.REDIRECT_URI):
             self.assertNotIn(json.dumps(value), text)
         atomic_write_private_bytes(path, b"{not json")

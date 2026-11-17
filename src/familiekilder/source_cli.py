@@ -341,6 +341,11 @@ def _run_connections(args: argparse.Namespace, config: Config) -> int:
 
 
 def _run_mcp_serve(args: argparse.Namespace, config: Config) -> int:
+    from .client_defaults import refresh_stored_defaults
+
+    # A newer built-in setup replaces one the setup wizard stored, so a package
+    # update reaches the user at the next start. Never raises; logs to stderr.
+    refresh_stored_defaults(config.root)
     build_server, _ = source_server_api()
     server, runtime = build_server(config, read_only=True)
     return serve_stdio(server, runtime)

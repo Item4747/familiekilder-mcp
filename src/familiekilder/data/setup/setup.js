@@ -123,7 +123,8 @@ function storedMunicipalityLabels(source) {
   );
 }
 
-// A new municipality logs out of the stored login at once, so say so first.
+// A new municipality or a new built-in setup logs out of the stored login at
+// once, so say so first.
 function showMunicipalityWarning() {
   const source = selectedSource;
   const typed = byId('municipality').value.trim().toLocaleLowerCase('nb');
@@ -132,8 +133,10 @@ function showMunicipalityWarning() {
     needsMunicipality(source) &&
     source.has_session &&
     !storedMunicipalityLabels(source).includes(typed);
+  const renewal = !!source && !!source.renewal_pending;
   byId('municipality-warning').hidden = !warn;
-  byId('replace-when').hidden = warn;
+  byId('renewal-warning').hidden = !renewal;
+  byId('replace-when').hidden = warn || renewal;
 }
 
 function openLogin(source) {

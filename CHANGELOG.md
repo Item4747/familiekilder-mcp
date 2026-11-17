@@ -2,6 +2,13 @@
 
 ## Ikke utgitt
 
+- Et klientoppsett som veiviseren har lagt inn fra pakkens innebygde oppsett,
+  byttes nå ut av seg selv når en nyere pakke har et nyere. Det skjer når
+  veiviseren åpnes og når MCP-serveren starter. Oppsett du har importert eller
+  endret selv, byttes aldri, og innloggingen slettes ikke. Et oppsett
+  veiviseren la inn i 1.0.0rc1 eller 1.0.0rc2 (i praksis Spond), har ikke merke
+  og behandles som ditt eget. Se
+  [klientoppsett](docs/klientoppsett.md#nytt-innebygd-oppsett-etter-en-pakkeoppdatering).
 - Flyt velger bare en kommune når navnet er likt navnet i Flyts kommuneliste
   («kommune» på slutten kan sløyfes) eller organisasjonsnummeret stemmer. Før
   kunne en del av et navn velge en annen kommune med et lignende navn. Nå får du

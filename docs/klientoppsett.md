@@ -52,40 +52,76 @@ erstatter den lagrede bare hvis den er en gyldig Desktop app-klient; ellers
 beholdes den gamle. Med en lagret Gmail-innlogging byttes ikke filen; logg ut
 med `familiekilder-mcp auth gmail logout` først.
 
-## Et lagret oppsett byttes ikke automatisk
-
-Veiviseren bruker det innebygde oppsettet bare når tjenesten ikke har noe
-klientoppsett fra før. Et oppsett som allerede er lagret, blir aldri byttet ut
-av veiviseren, heller ikke når pakken oppdateres med nye standardverdier.
-Unntakene er når du selv velger en annen kommune for Flyt, eller en annen
-Google-fil for Gmail mens Gmail ikke har en lagret innlogging.
+## Nytt innebygd oppsett etter en pakkeoppdatering
 
 Det innebygde oppsettet hører til en bestemt versjon av leverandørens app.
-Noen leverandører krever etter hvert en nyere app. Da slutter innloggingen å
-virke, og standardverdien må fornyes i en ny versjon av pakken.
+Noen leverandører krever etter hvert en nyere app. Da kommer det et nytt
+innebygd oppsett i en ny versjon av pakken.
 
-Det finnes ingen kommando som bytter et lagret oppsett med en ny standardverdi.
-Slik tar du den i bruk etter at pakken er oppdatert:
+Et oppsett som veiviseren selv har lagt inn fra det innebygde, byttes ut av seg
+selv når pakken har et nyere. Det skjer når veiviseren åpnes
+(`familiekilder-mcp setup`) og når MCP-serveren starter
+(`familiekilder-mcp mcp serve`, som AI-appen starter). Etter en
+pakkeoppdatering holder det altså å starte AI-appen på nytt. Byttet bruker ikke
+nettet.
+
+For å kjenne igjen sine egne oppsett lagrer veiviseren et merke ved siden av
+oppsettet under `.private/credentials/` i dataroten, for eksempel
+`vigilo-default-setup.json`. Merket inneholder ingen verdier, bare to
+SHA-256-fingeravtrykk: ett av den lagrede oppsettsfilen og ett av det innebygde
+oppsettet den kom fra. Merket gjelder bare så lenge filen er nøyaktig slik
+veiviseren skrev den.
+
+Disse oppsettene byttes aldri ut automatisk:
+
+- Et oppsett veiviseren la inn i 1.0.0rc1 eller 1.0.0rc2. Det har ikke noe
+  merke og behandles som ditt eget. I praksis gjelder det Spond, som veiviseren
+  la inn allerede i 1.0.0rc1 og 1.0.0rc2. Følg stegene for eget oppsett under
+  hvis du vil gå over til et oppsett som fornyes.
+- Et oppsett du har importert selv med `auth … configure`, også om det skjedde
+  etter at veiviseren la inn det innebygde.
+- Et oppsett du har endret i filen.
+- Et oppsett som ikke kan leses.
+- Oppsettet for Flyt og Gmail. Det har ikke noe innebygd oppsett.
+- Oppsett i en datarot med en signert providerpakke (`onboard --bundle`).
+
+Innloggingen din slettes aldri av byttet. Gjelder det nye oppsettet bare en
+nyere appversjon, beholdes innloggingen. Endrer det appidentiteten (klient-ID,
+klienthemmelighet eller adresser), avviser Vigilo, Skolemelding, Hoopit og IST
+Home byttet så lenge tjenesten har en lagret innlogging. Da beholdes både det
+gamle oppsettet og innloggingen, og byttet prøves igjen ved neste start. Slik
+tar du det nye oppsettet i bruk:
+
+- Velg «Logg inn på nytt» i veiviseren og kryss av for «Erstatt den
+  eksisterende innloggingen». Dialogen sier fra om at et nytt innebygd
+  oppsett tas i bruk. Veiviseren logger deg da ut av tjenesten med en gang,
+  legger inn det nye oppsettet og åpner innloggingen. Avbryter du innloggingen,
+  er du logget ut.
+- Eller logg ut med for eksempel `familiekilder-mcp auth vigilo logout`, og
+  åpne veiviseren eller start AI-appen på nytt.
+
+Har du importert et eget oppsett og vil gå over til det innebygde:
 
 1. Logg ut av tjenesten, for eksempel `familiekilder-mcp auth vigilo logout`.
 2. Slett det lagrede oppsettet under `.private/credentials/` i dataroten:
    `vigilo-client.json`, `skolemelding-client.json`, `spond-provider.json`,
    `hoopit-client.json` eller `ist-home-client.json`.
-3. Velg «Logg inn» i veiviseren. Den legger da inn det nye innebygde oppsettet.
+3. Velg «Logg inn» i veiviseren. Den legger da inn det innebygde oppsettet og
+   merker det, så senere versjoner fornyer det.
 
 Bytter en leverandør verdiene eller sperrer appidentiteten, slutter koblingen å
 virke for alle som bruker den. Standardverdien fjernes da fra pakken, og
 tjenesten vises som «Ikke tilgjengelig i veiviseren ennå» til et nytt oppsett er
-kontrollert. I mellomtiden kan du importere et gyldig oppsett fra
-kommandolinjen.
+kontrollert. Et lagret oppsett blir stående som det er. I mellomtiden kan du
+importere et gyldig oppsett fra kommandolinjen.
 
 ## Importere oppsett fra kommandolinjen
 
 Har du et eget klientoppsett, kan du importere det fra kommandolinjen. Et
 importert oppsett erstatter det som er lagret, også det innebygde. Veiviseren
-bruker deretter det du importerte. Logg ut før importen hvis tjenesten har en
-lagret innlogging; noen koblinger avviser ellers et oppsett med en annen
-appidentitet.
+bruker deretter det du importerte, og en nyere pakke bytter det ikke ut. Logg
+ut før importen hvis tjenesten har en lagret innlogging; noen koblinger avviser
+ellers et oppsett med en annen appidentitet.
 
 Innlogging som bare gjøres fra kommandolinjen, legger ikke inn det innebygde
 oppsettet. Bruk da veiviseren for første innlogging, eller importer en fil.

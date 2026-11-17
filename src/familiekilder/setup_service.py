@@ -12,10 +12,16 @@ import threading
 import time
 
 from . import __version__
-from .client_defaults import default_client_config
+from .client_defaults import (
+    RenewalRefused,
+    default_client_config,
+    import_client_text,
+    refresh_stored_default,
+    renewal_pending,
+    store_default,
+)
 from .connection_status import auth_module, connection_state, has_local_session
 from .live_config import Config
-from .private_state import atomic_write_private_bytes, ensure_private_directory
 from .setup_clients import check_connection, client_state, install_client
 from .sources import REGISTRY
 
@@ -47,6 +53,8 @@ class Job:
     message: str = "Starter …"
     complete: threading.Event = field(default_factory=threading.Event)
     cancel: threading.Event = field(default_factory=threading.Event)
+    # Set when the job logged out to take a newer built-in setup.
+    logged_out: bool = False
 
 
 class SetupService:
@@ -68,13 +76,6 @@ class SetupService:
         if self.job and self.job.phase in {"working", "waiting"}:
             raise SetupError("Fullfør eller avbryt det pågående steget først.")
 
-    def _import_directory(self):
-        self.root.mkdir(parents=True, exist_ok=True)
-        ensure_private_directory(self.root / ".private")
-        directory = self.root / ".private/setup-imports"
-        ensure_private_directory(directory)
-        return directory
-
     def state(self) -> dict:
         with self.lock:
             rows = []
@@ -91,6 +92,8 @@ class SetupService:
                     "state": state, "enabled": source.name in config.services,
                     "has_session": existing,
                     "setup": self._setup_kind(source.name),
+                    # A newer built-in setup the source refuses while logged in.
+                    "renewal_pending": self._renewal_pending(source.name),
                 }
                 if source.name == "flyt":
                     row["municipality"] = self._stored_municipality()
@@ -117,6 +120,17 @@ class SetupService:
         except Exception:
             return None
         return {"id": stored.organization_number, "name": stored.display_name}
+
+    def _renewal_pending(self, source: str) -> bool:
+        """A renewal waits and the source has a session, so a re-login logs out first."""
+
+        try:
+            module = auth_module(source)
+            return renewal_pending(self.root, source, module=module) and has_local_session(
+                module, self.root
+            )
+        except Exception:
+            return False
 
     @staticmethod
     def _setup_kind(source: str) -> str:
@@ -167,16 +181,7 @@ class SetupService:
             self.tested = False
 
     def _configure_client(self, source: str, content: str) -> None:
-        # The auth modules import from a private file, so write one briefly.
-        if not isinstance(json.loads(content), dict):
-            raise ValueError
-        directory = self._import_directory()
-        path = directory / f"client-{secrets.token_hex(12)}.json"
-        try:
-            atomic_write_private_bytes(path, content.encode())
-            auth_module(source).configure_client(self.root, path)
-        finally:
-            path.unlink(missing_ok=True)
+        import_client_text(self.root, auth_module(source), content)
 
     def _enable(self, source):
         config = Config.load(self.root)
@@ -267,7 +272,8 @@ class SetupService:
         if default is None:
             return
         try:
-            self._configure_client(source, json.dumps(default))
+            # The mark lets a newer package renew this setup later.
+            store_default(self.root, source, default, module=auth_module(source))
         except Exception:
             raise SetupError(
                 "Det innebygde oppsettet for tjenesten kunne ikke brukes. "
@@ -348,6 +354,57 @@ class SetupService:
                 raise _JobFailure(self._sentence(error)) from None
             raise
 
+    def _renew_default(self, job: Job, *, replace: bool) -> None:
+        """Take a newer built-in setup before the login; runs in the worker.
+
+        A setup the wizard stored is usually renewed when the wizard opens.
+        A source refuses a new app identity while it has a session. Only on
+        that refusal, and when the user has confirmed that the login may be
+        replaced, the worker logs out first so the new login uses the new
+        setup. Any other failure leaves the stored setup for the login.
+        Cancellation is checked under the setup lock right before the logout.
+        """
+
+        from .private_lock import PrivateLockBusy, private_source_lock
+
+        source = job.source
+        label = REGISTRY[source].label
+        module = auth_module(source)
+        try:
+            if not renewal_pending(self.root, source, module=module):
+                return
+        except Exception:
+            return
+        try:
+            with private_source_lock(self.root, source, wait=True, timeout=30):
+                try:
+                    refresh_stored_default(self.root, source, module=module)
+                    return
+                except RenewalRefused:
+                    pass
+                except Exception:
+                    return
+                if not replace:
+                    return
+                with self.lock:
+                    if job.cancel.is_set():
+                        raise SetupError("Innloggingen ble avbrutt.")
+                    job.message = f"Logger ut av {label} før det nye oppsettet tas i bruk …"
+                module.logout(self.root)
+                with self.lock:
+                    job.logged_out = True
+                try:
+                    refresh_stored_default(self.root, source, module=module)
+                except Exception:
+                    raise _JobFailure(
+                        f"Du er logget ut av {label}, men det nye oppsettet kunne ikke lagres. "
+                        "Prøv igjen."
+                    ) from None
+        except PrivateLockBusy:
+            raise _JobFailure(
+                f"En annen {label}-handling pågår, så ingenting er endret. Prøv igjen om litt."
+            ) from None
+
     @staticmethod
     def _sentence(error: Exception) -> str:
         text = str(error).strip()
@@ -364,6 +421,7 @@ class SetupService:
                     self._configure_municipality(job, municipality, replace=replace)
                 if job.cancel.is_set():
                     raise SetupError("Innloggingen ble avbrutt.")
+                self._renew_default(job, replace=replace)
                 self._login(job, replace=replace)
                 with self.lock:
                     if job.cancel.is_set():
@@ -372,16 +430,30 @@ class SetupService:
                 message = "Innloggingen er lagret på denne maskinen."
             with self.lock:
                 job.phase = "cancelled" if job.cancel.is_set() else "done"
-                job.message = "Steget er avbrutt." if job.cancel.is_set() else message
+                job.message = self._cancelled_message(job) if job.cancel.is_set() else message
         except Exception as error:
             with self.lock:
                 job.phase = "cancelled" if job.cancel.is_set() else "error"
                 if job.cancel.is_set():
-                    job.message = "Steget er avbrutt."
+                    job.message = self._cancelled_message(job)
                 elif isinstance(error, _JobFailure):
                     job.message = str(error)
+                elif job.logged_out:
+                    job.message = (
+                        f"Innloggingen ble ikke fullført, og du er logget ut av "
+                        f"{REGISTRY[job.source].label}. Prøv å logge inn på nytt."
+                    )
                 else:
                     job.message = "Steget kunne ikke fullføres. Kontroller oppsettet og nettleseren, og prøv igjen."
+
+    @staticmethod
+    def _cancelled_message(job: Job) -> str:
+        if job.logged_out:
+            return (
+                f"Steget er avbrutt, og du er logget ut av {REGISTRY[job.source].label}. "
+                "Logg inn på nytt for å bruke tjenesten."
+            )
+        return "Steget er avbrutt."
 
     def _login(self, job: Job, *, replace: bool):
         from .browser_bootstrap import bootstrap_source, capture_oauth_callback

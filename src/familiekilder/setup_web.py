@@ -11,6 +11,7 @@ import threading
 from urllib.parse import urlsplit
 import webbrowser
 
+from .client_defaults import refresh_stored_defaults
 from .setup_clients import ClientSetupError
 from .setup_service import SetupError, SetupService
 
@@ -153,6 +154,8 @@ class Handler(BaseHTTPRequestHandler):
 
 
 def serve(root: Path, *, port=0, open_browser=True) -> int:
+    # A newer built-in setup replaces one the wizard stored; never raises.
+    refresh_stored_defaults(root)
     with SetupServer(root, port=port) as server:
         print(f"Åpne lokalt oppsett: {server.origin}", flush=True)
         print("Lukk med «Avslutt oppsett» eller Ctrl+C.", flush=True)
