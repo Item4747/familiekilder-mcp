@@ -145,18 +145,116 @@ class FlytAuthTests(unittest.TestCase):
             wall_time=1_800_000_000,
         )
 
-    def test_municipality_selection_by_number_name_and_ambiguity(self) -> None:
+    def test_municipality_selection_by_number_and_exact_name(self) -> None:
         municipalities = parse_municipalities(MUNICIPALITIES)
         self.assertEqual(len(municipalities), 3)
+        # Organization number.
         self.assertEqual(select_municipality(municipalities, "923456789").customer_name, "bergli")
+        # Exact display name, and the customer name.
+        self.assertEqual(
+            select_municipality(municipalities, "Bergli kommune").customer_name, "bergli"
+        )
         self.assertEqual(select_municipality(municipalities, "bergli").customer_name, "bergli")
         self.assertEqual(
-            select_municipality(municipalities, "Fjordvik kommune").customer_name, "fjordvik"
+            select_municipality(municipalities, "nord-bergli").customer_name, "nord-bergli"
         )
-        with self.assertRaisesRegex(FlytAuthError, "Flere kommuner passer"):
+        # Case, extra spaces and a trailing «kommune» do not matter on either side.
+        self.assertEqual(
+            select_municipality(municipalities, "  FJORDVIK   Kommune ").customer_name, "fjordvik"
+        )
+        self.assertEqual(select_municipality(municipalities, "Fjordvik").customer_name, "fjordvik")
+        self.assertEqual(
+            select_municipality(municipalities, "Nord-Bergli").customer_name, "nord-bergli"
+        )
+
+    def test_partial_name_is_only_a_suggestion(self) -> None:
+        municipalities = parse_municipalities(
+            [
+                *MUNICIPALITIES,
+                {
+                    "customerName": "steiner-havlund",
+                    "displayName": "Steiner Havlund",
+                    "organizationNumber": "945678901",
+                },
+            ]
+        )
+        with self.assertRaises(FlytAuthError) as one:
+            select_municipality(municipalities, "Havlund kommune")
+        self.assertEqual(
+            str(one.exception),
+            "Fant ingen kommune i Flyt som heter «Havlund kommune». "
+            "Mente du Steiner Havlund (945678901)? Bruk navnet eller organisasjonsnummeret.",
+        )
+        with self.assertRaises(FlytAuthError) as several:
             select_municipality(municipalities, "berg")
-        with self.assertRaisesRegex(FlytAuthError, "Fant ingen kommune"):
+        self.assertEqual(
+            str(several.exception),
+            "Fant ingen kommune i Flyt som heter «berg». Mente du en av disse: "
+            "Bergli kommune (923456789), Nord-Bergli kommune (934567890)? "
+            "Bruk navnet eller organisasjonsnummeret.",
+        )
+
+    def test_suggestions_are_capped(self) -> None:
+        municipalities = parse_municipalities(
+            [
+                {
+                    "customerName": f"dal-{index}",
+                    "displayName": f"Dal {index} kommune",
+                    "organizationNumber": f"9100000{index:02d}",
+                }
+                for index in range(10)
+            ]
+        )
+        with self.assertRaises(FlytAuthError) as raised:
+            select_municipality(municipalities, "Dal")
+        message = str(raised.exception)
+        self.assertIn("Dal 7 kommune (910000007) med flere?", message)
+        self.assertNotIn("Dal 8", message)
+        self.assertEqual(message.count("("), 8)
+
+    def test_several_exact_names_need_the_organization_number(self) -> None:
+        municipalities = parse_municipalities(
+            [
+                {
+                    "customerName": "lia-a",
+                    "displayName": "Lia kommune",
+                    "organizationNumber": "956789012",
+                },
+                {"customerName": "lia-b", "displayName": "Lia", "organizationNumber": "967890123"},
+            ]
+        )
+        with self.assertRaises(FlytAuthError) as raised:
+            select_municipality(municipalities, "lia")
+        self.assertEqual(
+            str(raised.exception),
+            "Flere kommuner passer: Lia (967890123), Lia kommune (956789012). "
+            "Bruk organisasjonsnummeret.",
+        )
+        self.assertEqual(select_municipality(municipalities, "967890123").customer_name, "lia-b")
+
+    def test_no_match_at_all(self) -> None:
+        municipalities = parse_municipalities(MUNICIPALITIES)
+        with self.assertRaises(FlytAuthError) as by_name:
             select_municipality(municipalities, "Ukjentby")
+        self.assertEqual(str(by_name.exception), "Fant ingen kommune i Flyt som passer «Ukjentby»")
+        with self.assertRaisesRegex(FlytAuthError, "Fant ingen kommune i Flyt som passer"):
+            select_municipality(municipalities, "999999999")
+        with self.assertRaisesRegex(FlytAuthError, "Oppgi kommunens navn"):
+            select_municipality(municipalities, "   ")
+
+    def test_configure_stores_nothing_for_a_partial_name(self) -> None:
+        with self.assertRaisesRegex(FlytAuthError, "Mente du en av disse"):
+            self.configure("Berg kommune")
+        with self.assertRaisesRegex(FlytAuthError, "Mente du Fjordvik kommune"):
+            self.configure("Fjord")
+        self.assertFalse(flyt_auth.client_config_path(self.root).exists())
+        self.assertEqual([path for path in self.root.rglob("*") if path.is_file()], [])
+        # An earlier choice stays as it was.
+        self.configure("bergli")
+        with self.assertRaisesRegex(FlytAuthError, "Mente du"):
+            self.configure("Fjord")
+        stored = read_private_json(flyt_auth.client_config_path(self.root))
+        self.assertEqual(stored["organization_number"], "923456789")
 
     def test_public_list_and_stored_client_context(self) -> None:
         listed = list_municipalities(transport=self.transport)
@@ -434,9 +532,11 @@ class FlytAuthTests(unittest.TestCase):
         self.assertIn("Fjordvik kommune", output.getvalue())
         stored = read_private_json(flyt_auth.client_config_path(self.root))
         self.assertEqual(stored["organization_number"], "912345678")
-        atomic_write_private_json(client_file, {"municipality": "berg"})
-        with self.assertRaisesRegex(FamiliekilderError, "Flere kommuner passer"):
+        atomic_write_private_json(client_file, {"municipality": "Fjord"})
+        with self.assertRaisesRegex(FamiliekilderError, "Mente du Fjordvik kommune"):
             flyt_auth.configure_client(self.root, client_file, transport=self.transport)
+        stored = read_private_json(flyt_auth.client_config_path(self.root))
+        self.assertEqual(stored["organization_number"], "912345678")
 
 
 if __name__ == "__main__":

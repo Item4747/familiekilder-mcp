@@ -201,7 +201,7 @@ class SetupService:
                 if source != "gmail" and consent is not True:
                     raise SetupError("Bekreft at du vil bruke den uoffisielle koblingen.")
                 if status.get("configured"):
-                    municipality = self._municipality_change(module, municipality)
+                    municipality = self._municipality_change(module, municipality, replace=replace)
                 elif self._has_stored_client(module):
                     # Stored but unreadable: never replace it with the default.
                     raise SetupError(
@@ -231,11 +231,12 @@ class SetupService:
             )
             self.worker.start()
 
-    def _municipality_change(self, module, municipality: str | None) -> str | None:
+    def _municipality_change(self, module, municipality: str | None, *, replace) -> str | None:
         """The Flyt municipality to look up, or None to keep the stored one.
 
-        A new choice replaces the stored municipality only while Flyt has no
-        session; the same organisation number needs no lookup and no rewrite.
+        The same organisation number needs no lookup and no rewrite. While Flyt
+        has a session, a new municipality needs the confirmation that the login
+        may be replaced; the worker then logs out before it stores the choice.
         """
 
         if municipality is None:
@@ -243,10 +244,10 @@ class SetupService:
         stored = self._stored_municipality()
         if stored is not None and municipality == stored["id"]:
             return None
-        if has_local_session(module, self.root):
+        if has_local_session(module, self.root) and replace is not True:
             raise SetupError(
-                "Flyt har en lagret innlogging, så kommunen byttes ikke. "
-                "Logg ut med «familiekilder-mcp auth flyt logout» først."
+                "Flyt har en lagret innlogging. Vil du bytte kommune, krysser du av for "
+                "«Erstatt den eksisterende innloggingen». Da logges du ut av Flyt med en gang."
             )
         return municipality
 
@@ -274,10 +275,18 @@ class SetupService:
             ) from None
         self.tested = False
 
-    def _configure_municipality(self, job: Job, municipality: str) -> None:
-        """Look up and store the Flyt municipality; runs in the worker (network)."""
+    def _configure_municipality(self, job: Job, municipality: str, *, replace: bool) -> None:
+        """Look up the Flyt municipality, then store it; runs in the worker.
+
+        The lookup is the only network step, runs without the setup lock and
+        changes nothing, so a failed lookup leaves login and municipality as
+        they were. Cancellation is checked under the setup lock right before
+        the first change; from there the logout and the new municipality are
+        stored together and stand even if the login that follows is cancelled.
+        """
 
         from . import flyt_auth
+        from .private_lock import PrivateLockBusy, private_source_lock
         from .source_adapter import SourceUnavailable
 
         with self.lock:
@@ -285,16 +294,64 @@ class SetupService:
         # A new profile has no data folder yet; the auth modules expect one.
         self.root.mkdir(parents=True, exist_ok=True)
         try:
-            flyt_auth.configure_municipality(self.root, municipality)
+            listed = [flyt_auth.parse_municipality(item) for item in flyt_auth.list_municipalities()]
+            chosen = flyt_auth.select_municipality(listed, municipality)
         except flyt_auth.FlytAuthError as error:
             # These messages are fixed Norwegian text about the public list,
             # for example that no municipality matched.
-            text = str(error).strip()
-            raise _JobFailure(text if text.endswith(".") else f"{text}.") from None
+            raise _JobFailure(self._sentence(error)) from None
         except SourceUnavailable:
             raise _JobFailure(
                 "Kommunelisten fra Flyt kunne ikke hentes. Kontroller nettforbindelsen og prøv igjen."
             ) from None
+        try:
+            # The Flyt lock keeps other Flyt operations out between logout and store.
+            with private_source_lock(self.root, flyt_auth.SOURCE, wait=True, timeout=30):
+                with self.lock:
+                    if job.cancel.is_set():
+                        raise SetupError("Innloggingen ble avbrutt.")
+                    self._store_municipality(job, chosen, replace=replace)
+        except PrivateLockBusy:
+            raise _JobFailure(
+                "En annen Flyt-handling pågår, så ingenting er endret. Prøv igjen om litt."
+            ) from None
+
+    def _store_municipality(self, job: Job, chosen, *, replace: bool) -> None:
+        """Log out of Flyt if confirmed, then store the chosen municipality.
+
+        Called with the setup lock and the Flyt lock held; only local files change.
+        """
+
+        from . import flyt_auth
+
+        try:
+            stored = flyt_auth.load_client_config(self.root).municipality
+        except Exception:
+            stored = None
+        if stored == chosen:
+            return
+        # A session belongs to its municipality, so it cannot be kept.
+        logged_out = False
+        if replace and has_local_session(flyt_auth, self.root):
+            job.message = "Logger ut av Flyt …"
+            flyt_auth.logout(self.root)
+            logged_out = True
+        try:
+            content = json.dumps(flyt_auth.ClientConfig(chosen).as_private_json())
+            self._configure_client(flyt_auth.SOURCE, content)
+        except Exception as error:
+            if logged_out:
+                raise _JobFailure(
+                    "Du er logget ut av Flyt, men den nye kommunen kunne ikke lagres. Prøv igjen."
+                ) from None
+            if isinstance(error, flyt_auth.FlytAuthError):
+                raise _JobFailure(self._sentence(error)) from None
+            raise
+
+    @staticmethod
+    def _sentence(error: Exception) -> str:
+        text = str(error).strip()
+        return text if text.endswith(".") else f"{text}."
 
     def _run(self, job: Job, action: str, consent: bool, replace: bool, *, municipality=None):
         try:
@@ -304,7 +361,7 @@ class SetupService:
                 message = "Den lokale forbindelsen virker. Start AI-appen på nytt og velg familiekilder-mcp."
             else:
                 if municipality is not None:
-                    self._configure_municipality(job, municipality)
+                    self._configure_municipality(job, municipality, replace=replace)
                 if job.cancel.is_set():
                     raise SetupError("Innloggingen ble avbrutt.")
                 self._login(job, replace=replace)

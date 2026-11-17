@@ -7,15 +7,25 @@ Innlogging og lesing av barnehage er prøvd mot en ekte konto i Oslo kommune
 bilder, kalender, meldingstråd, fravær og inn-/utsjekk.
 
 **Innlogging.** Du velger kommune først. I veiviseren skjer det i
-innloggingsdialogen så lenge Flyt ikke har en lagret innlogging. Er kommunen
-lagret fra før, står den ferdig utfylt. Har du valgt feil kommune, velger du en
-annen i feltet før du logger inn; det nye valget erstatter det lagrede. Samme
-kommune som før slås ikke opp på nytt. Har Flyt en lagret innlogging, viser
-dialogen ikke kommunefeltet, og veiviseren bytter ikke kommune. «Slå av» i
-veiviseren sletter ikke innloggingen; logg ut med
-`familiekilder-mcp auth flyt logout` først. Fra
+innloggingsdialogen. Er kommunen lagret fra før, står den ferdig utfylt. Har du
+valgt feil kommune, velger du en annen i feltet før du logger inn; det nye valget
+erstatter det lagrede. Samme kommune som før slås ikke opp på nytt.
+
+Har Flyt en lagret innlogging, bytter du kommune med «Logg inn på nytt». Velg
+den nye kommunen og kryss av for «Erstatt den eksisterende innloggingen».
+Veiviseren slår først opp kommunen. Finnes den ikke, eller kan listen ikke
+hentes, endres ingenting. Ellers logges du ut av Flyt med en gang, den nye
+kommunen lagres, og innloggingen starter. En innlogging hører til én kommune,
+så den gamle kan ikke beholdes. Avbryter du den nye innloggingen, er du logget
+ut og har den nye kommunen lagret. Dialogen sier fra om dette når du velger en
+annen kommune. Avbryter du før utloggingen, endres ingenting. Med samme kommune
+gjelder det vanlige: den gamle innloggingen beholdes til den nye er fullført.
+«Slå av» i veiviseren sletter ikke innloggingen. Fra
 kommandolinjen importerer du en fil med `{"municipality": "Kommunenavn"}` (eller
-organisasjonsnummeret) med `auth flyt configure --client-file`. Kommunelisten
+organisasjonsnummeret) med `auth flyt configure --client-file`. Navnet må være
+likt navnet i Flyts kommuneliste; «kommune» på slutten kan sløyfes. Ligner navnet
+bare på noen i listen, lagres ingenting, og du får forslag med
+organisasjonsnummer. Kommunelisten
 (`GET https://api.guardian.mobile.skole.visma.no/v1/municipalities`) er åpen og
 krever ikke innlogging. Valget lagres i `.private/credentials/flyt-client.json`:
 organisasjonsnummer, kundenavn (`customerName`), visningsnavn og

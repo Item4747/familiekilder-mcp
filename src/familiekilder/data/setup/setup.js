@@ -109,9 +109,9 @@ function loginError(message) {
   byId('login-error').hidden = !message;
 }
 
-// The municipality can be chosen or changed only while the service has no login.
+// The municipality is chosen in the login dialog, also when logging in again.
 function needsMunicipality(source) {
-  return source.setup === 'municipality' && !source.has_session;
+  return source.setup === 'municipality';
 }
 
 // The names the stored municipality can have in the field, in lower case.
@@ -121,6 +121,19 @@ function storedMunicipalityLabels(source) {
   return [stored.name, `${stored.name} (${stored.id})`].map((label) =>
     label.toLocaleLowerCase('nb'),
   );
+}
+
+// A new municipality logs out of the stored login at once, so say so first.
+function showMunicipalityWarning() {
+  const source = selectedSource;
+  const typed = byId('municipality').value.trim().toLocaleLowerCase('nb');
+  const warn =
+    !!source &&
+    needsMunicipality(source) &&
+    source.has_session &&
+    !storedMunicipalityLabels(source).includes(typed);
+  byId('municipality-warning').hidden = !warn;
+  byId('replace-when').hidden = warn;
 }
 
 function openLogin(source) {
@@ -143,6 +156,7 @@ function openLogin(source) {
         if (match && byId('municipality').value === stored.name) {
           byId('municipality').value = match.label;
         }
+        showMunicipalityWarning();
       },
       () =>
         loginError('Kommunelisten kunne ikke hentes. Kontroller nettforbindelsen og prøv igjen.'),
@@ -154,6 +168,7 @@ function openLogin(source) {
   byId('replace-label').hidden = !source.has_session;
   byId('replace').checked = false;
   byId('replace').required = source.has_session;
+  showMunicipalityWarning();
   byId('login-dialog').showModal();
 }
 
@@ -346,6 +361,7 @@ byId('test').addEventListener('click', () => perform('/api/start', { action: 'ch
 byId('close').addEventListener('click', closeSetup);
 byId('finish').addEventListener('click', closeSetup);
 byId('dismiss-login').addEventListener('click', () => byId('login-dialog').close());
+byId('municipality').addEventListener('input', showMunicipalityWarning);
 byId('login-form').addEventListener('submit', async (event) => {
   event.preventDefault();
   const request = {

@@ -160,11 +160,15 @@
             id="municipality"
             list="municipalities"
             autocomplete="off"
-            aria-describedby="municipality-hint"
+            aria-describedby="municipality-hint municipality-warning"
           />
           <datalist id="municipalities"></datalist>
           <p id="municipality-hint">
             Skriv navnet på kommunen eller den som driver barnehagen, og velg fra listen.
+          </p>
+          <p id="municipality-warning" class="field-warning" hidden>
+            Bytter du kommune, logges du ut av Flyt med en gang. Det gjelder også om du avbryter den
+            nye innloggingen.
           </p>
         </div>
         <p id="login-error" class="field-error" role="alert" hidden></p>
@@ -173,8 +177,11 @@
           lokale innloggingen kan gi mer tilgang enn dette verktøyet bruker.</label
         >
         <label id="replace-label" class="checkbox" hidden
-          ><input id="replace" type="checkbox" />Erstatt den eksisterende innloggingen hvis den nye
-          innloggingen lykkes.</label
+          ><input id="replace" type="checkbox" />Erstatt den eksisterende innloggingen<span
+            id="replace-when"
+          >
+            hvis den nye innloggingen lykkes</span
+          >.</label
         >
         <div class="actions">
           <button type="button" id="dismiss-login" class="secondary">Tilbake</button

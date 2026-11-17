@@ -36,10 +36,12 @@ ennå». Den kan fortsatt brukes med
 
 **Flyt:** Veiviseren spør om kommune i innloggingsdialogen. Kommunelisten er
 Flyts åpne liste og krever ikke innlogging. Valget lagres som klientoppsett for
-Flyt. Så lenge Flyt ikke har en lagret innlogging, viser dialogen den lagrede
-kommunen, og du kan velge en annen før du logger inn. Det nye valget erstatter
-det lagrede. Med en lagret innlogging bytter ikke veiviseren kommune; logg ut
-med `familiekilder-mcp auth flyt logout` først. Se [Flyt](flyt.md).
+Flyt. Dialogen viser den lagrede kommunen, og du kan velge en annen før du
+logger inn. Det nye valget erstatter det lagrede. Har Flyt en lagret
+innlogging, bytter du kommune med «Logg inn på nytt» og krysser av for «Erstatt
+den eksisterende innloggingen». Da logges du ut av Flyt med en gang, også om du
+avbryter den nye innloggingen. Finnes ikke den nye kommunen i listen, endres
+ingenting. Se [Flyt](flyt.md).
 
 **Gmail:** Du trenger din egen Google OAuth-klient av typen Desktop app. Prosjektet
 deler ikke ut en felles Google-klient. Opprett klienten i Google Cloud Console og
@@ -55,8 +57,8 @@ med `familiekilder-mcp auth gmail logout` først.
 Veiviseren bruker det innebygde oppsettet bare når tjenesten ikke har noe
 klientoppsett fra før. Et oppsett som allerede er lagret, blir aldri byttet ut
 av veiviseren, heller ikke når pakken oppdateres med nye standardverdier.
-Unntakene er når du selv velger en annen kommune for Flyt eller en annen
-Google-fil for Gmail, og tjenesten ikke har en lagret innlogging.
+Unntakene er når du selv velger en annen kommune for Flyt, eller en annen
+Google-fil for Gmail mens Gmail ikke har en lagret innlogging.
 
 Det innebygde oppsettet hører til en bestemt versjon av leverandørens app.
 Noen leverandører krever etter hvert en nyere app. Da slutter innloggingen å
@@ -134,5 +136,5 @@ er en formatoversikt, ikke en fil med verdier som kan brukes til innlogging.
 | Spond (`spond`) | `api_root`, `app_version`, `attachment_hosts` |
 | Hoopit (`hoopit`) | `api_root`, `firebase_api_key`, `firebase_project_id`, `app_version`, `attachment_hosts` |
 | IST Home (`ist-home`) | `authority`, `client_id`, `client_secret`, `redirect_uri`, `scope` |
-| Flyt (`flyt`) | `municipality` (kommunenavn eller organisasjonsnummer, slås opp i Flyts åpne kommuneliste), eller én oppføring fra listen: `organizationNumber`, `customerName`, `displayName`, `vismaConnectClientContext` |
+| Flyt (`flyt`) | `municipality` (kommunens navn slik det står i Flyts åpne kommuneliste, eller organisasjonsnummeret), eller én oppføring fra listen: `organizationNumber`, `customerName`, `displayName`, `vismaConnectClientContext` |
 | Gmail (`gmail`) | Google-filen for en egen OAuth-klient av typen Desktop app; se [Gmail](gmail.md#oppsett). |

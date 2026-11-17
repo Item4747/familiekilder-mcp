@@ -425,6 +425,10 @@ dialog p {
 dialog .field-error {
   color: var(--danger);
 }
+dialog .field-warning {
+  color: var(--danger);
+  font-weight: 550;
+}
 .checkbox {
   display: flex;
   align-items: flex-start;

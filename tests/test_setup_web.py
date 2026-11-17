@@ -365,22 +365,150 @@ class FlytSetupTests(SetupServerCase):
         self.assertEqual(self.held_lock, [False])
         self.assertEqual(self.stored_number(), "923456789")
 
-    def test_the_municipality_is_not_changed_while_flyt_has_a_session(self):
-        path = self.store_municipality("912345678")
+    def logged_in_with(self, number):
+        path = self.store_municipality(number)
         store_fake_session(flyt_auth.session_path(self.root))
-        before = path.read_bytes()
-        with patch.object(self.service, "_login") as login:
-            status, _, body = self.start_flyt(municipality="923456789", replace=True)
-        self.assertEqual(status, 400)
+        return path, path.read_bytes()
+
+    def record_steps(self):
+        """Record lookup, logout and store in the order the worker takes them."""
+
+        steps = []
+        real_logout, real_configure = flyt_auth.logout, flyt_auth.configure_client
+
+        def logout(root):
+            steps.append("logout")
+            return real_logout(root)
+
+        def configure(*args, **kwargs):
+            steps.append("store")
+            return real_configure(*args, **kwargs)
+
+        self.transport.on_call = lambda: steps.append("lookup")
+        for name, replacement in (("logout", logout), ("configure_client", configure)):
+            replaced = patch.object(flyt_auth, name, side_effect=replacement)
+            replaced.start()
+            self.addCleanup(replaced.stop)
+        return steps
+
+    def test_a_new_municipality_on_relogin_looks_up_then_logs_out_then_stores(self):
+        self.logged_in_with("912345678")
+        steps = self.record_steps()
+        session = flyt_auth.session_path(self.root)
+
+        def login(job, *, replace):
+            steps.append("login")
+            self.assertTrue(replace)
+            self.assertFalse(session.exists())
+            self.assertEqual(self.stored_number(), "923456789")
+
+        with patch.object(self.service, "_login", side_effect=login):
+            self.assertEqual(self.start_flyt(municipality="923456789", replace=True)[0], 200)
+            self.service.worker.join(timeout=3)
+        self.assertEqual(self.service.job.phase, "done")
+        self.assertEqual(steps, ["lookup", "logout", "store", "login"])
+        self.assertEqual(self.transport.threads, [self.service.worker])
+        self.assertEqual(self.stored_number(), "923456789")
+        self.assertEqual(Config.load(self.root).services, {"flyt": frozenset()})
+        row, _ = self.flyt_row()
+        self.assertEqual(row["municipality"], {"id": "923456789", "name": "Bergli kommune"})
         self.assertEqual(
-            json.loads(body)["error"],
-            "Flyt har en lagret innlogging, så kommunen byttes ikke. "
-            "Logg ut med «familiekilder-mcp auth flyt logout» først.",
-        )
-        login.assert_not_called()
+            set(row), {"id", "label", "description", "state", "enabled", "has_session", "setup", "municipality"})
+
+    def test_a_failed_lookup_on_relogin_keeps_login_and_municipality(self):
+        for failure, municipality, message in (
+            (None, "999999999", "Fant ingen kommune i Flyt som passer «999999999»."),
+            (SourceUnavailable("fictional outage"), "923456789",
+             "Kommunelisten fra Flyt kunne ikke hentes. Kontroller nettforbindelsen og prøv igjen."),
+        ):
+            with self.subTest(municipality=municipality):
+                path, before = self.logged_in_with("912345678")
+                session = flyt_auth.session_path(self.root).read_bytes()
+                if failure is not None:
+                    self.transport.failures.append(failure)
+                with (
+                    patch.object(flyt_auth, "logout") as logout,
+                    patch.object(self.service, "_login") as login,
+                ):
+                    self.assertEqual(self.start_flyt(municipality=municipality, replace=True)[0], 200)
+                    self.service.worker.join(timeout=3)
+                self.assertEqual(self.service.job.phase, "error")
+                self.assertEqual(self.service.job.message, message)
+                self.assertEqual(len(self.transport.calls), 1)
+                logout.assert_not_called()
+                login.assert_not_called()
+                self.assertEqual(path.read_bytes(), before)
+                self.assertEqual(flyt_auth.session_path(self.root).read_bytes(), session)
+
+    def test_a_new_municipality_with_a_session_needs_the_replace_confirmation(self):
+        path, before = self.logged_in_with("912345678")
+        for fields in ({}, {"replace": False}, {"replace": "true"}):
+            with self.subTest(fields=fields), patch.object(flyt_auth, "logout") as logout:
+                status, _, body = self.start_flyt(municipality="923456789", **fields)
+                self.assertEqual(status, 400)
+                self.assertEqual(
+                    json.loads(body)["error"],
+                    "Flyt har en lagret innlogging. Vil du bytte kommune, krysser du av for "
+                    "«Erstatt den eksisterende innloggingen». Da logges du ut av Flyt med en gang.",
+                )
+                logout.assert_not_called()
         self.assertIsNone(self.service.job)
         self.assertEqual(self.transport.calls, [])
         self.assertEqual(path.read_bytes(), before)
+        self.assertTrue(flyt_auth.session_path(self.root).exists())
+
+    def test_the_same_municipality_on_relogin_keeps_the_login_until_the_new_one(self):
+        path, before = self.logged_in_with("912345678")
+        stat = path.stat().st_mtime_ns, path.stat().st_ino
+        session = flyt_auth.session_path(self.root)
+        with (
+            patch.object(flyt_auth, "logout") as logout,
+            patch.object(self.service, "_login") as login,
+        ):
+            login.side_effect = lambda job, **_: self.assertTrue(session.exists())
+            self.assertEqual(self.start_flyt(municipality="912345678", replace=True)[0], 200)
+            self.service.worker.join(timeout=3)
+        self.assertEqual(self.service.job.phase, "done")
+        self.assertEqual(login.call_count, 1)
+        self.assertEqual(login.call_args.kwargs, {"replace": True})
+        logout.assert_not_called()
+        self.assertEqual(self.transport.calls, [])
+        self.assertEqual(path.read_bytes(), before)
+        self.assertEqual((path.stat().st_mtime_ns, path.stat().st_ino), stat)
+        self.assertTrue(session.exists())
+
+    def test_cancelling_during_the_lookup_changes_nothing(self):
+        path, before = self.logged_in_with("912345678")
+        self.transport.on_call = lambda: self.service.job.cancel.set()
+        with (
+            patch.object(flyt_auth, "logout") as logout,
+            patch.object(self.service, "_login") as login,
+        ):
+            self.assertEqual(self.start_flyt(municipality="923456789", replace=True)[0], 200)
+            self.service.worker.join(timeout=3)
+        self.assertEqual(self.service.job.phase, "cancelled")
+        logout.assert_not_called()
+        login.assert_not_called()
+        self.assertEqual(path.read_bytes(), before)
+        self.assertTrue(flyt_auth.session_path(self.root).exists())
+
+    def test_cancelling_the_login_after_the_logout_keeps_the_change(self):
+        self.logged_in_with("912345678")
+
+        def wait(job, **_):
+            job.phase = "waiting"
+            job.cancel.wait(3)
+
+        with patch.object(self.service, "_login", side_effect=wait):
+            self.assertEqual(self.start_flyt(municipality="923456789", replace=True)[0], 200)
+            while self.service.job.phase != "waiting" and self.service.worker.is_alive():
+                self.service.job.cancel.wait(0.01)
+            self.service.signal(self.service.job.id, cancel=True)
+            self.service.worker.join(timeout=4)
+        self.assertEqual(self.service.job.phase, "cancelled")
+        self.assertFalse(flyt_auth.session_path(self.root).exists())
+        self.assertEqual(self.stored_number(), "923456789")
+        self.assertEqual(Config.load(self.root).services, {})
 
     def test_the_same_municipality_needs_no_lookup_and_no_rewrite(self):
         path = self.store_municipality("912345678")

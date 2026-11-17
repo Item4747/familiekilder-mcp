@@ -304,12 +304,33 @@ def _comparable(value: str) -> str:
     return text.removesuffix(" kommune")
 
 
+_LISTED_MUNICIPALITIES = 8
+
+
+def _listed(municipalities: list[Municipality]) -> str:
+    """Names and organization numbers from the public list, capped for messages."""
+
+    names = ", ".join(
+        f"{m.display_name} ({m.organization_number})"
+        for m in municipalities[:_LISTED_MUNICIPALITIES]
+    )
+    more = " med flere" if len(municipalities) > _LISTED_MUNICIPALITIES else ""
+    return f"{names}{more}"
+
+
 def select_municipality(municipalities: list[Municipality], query: str) -> Municipality:
-    """Pick one municipality by organization number or name, or explain why not."""
+    """Pick one municipality by organization number or exact name, or explain why not.
+
+    A name selects only when it equals the display name or customer name after
+    ``_comparable``. Names that merely contain the query are never selected;
+    they are offered as suggestions in the error, so a municipality that is not
+    in Flyt's list cannot be stored as a different one with a similar name.
+    """
 
     if not is_plain_text(query, maximum=200) or not query.strip():
         raise FlytAuthError("Oppgi kommunens navn eller organisasjonsnummer")
     wanted = query.strip()
+    suggestions: list[Municipality] = []
     if _ORGANIZATION_NUMBER.fullmatch(wanted):
         matches = [m for m in municipalities if m.organization_number == wanted]
     else:
@@ -319,15 +340,27 @@ def select_municipality(municipalities: list[Municipality], query: str) -> Munic
             for m in municipalities
             if target in {_comparable(m.display_name), _comparable(m.customer_name)}
         ]
-        if not matches:
-            matches = [m for m in municipalities if target in _comparable(m.display_name)]
+        suggestions = [
+            m
+            for m in municipalities
+            if target in _comparable(m.display_name) or target in _comparable(m.customer_name)
+        ]
     if len(matches) == 1:
         return matches[0]
-    if not matches:
+    if matches:
+        raise FlytAuthError(
+            f"Flere kommuner passer: {_listed(matches)}. Bruk organisasjonsnummeret."
+        )
+    if not suggestions:
         raise FlytAuthError(f"Fant ingen kommune i Flyt som passer «{wanted}»")
-    names = ", ".join(f"{m.display_name} ({m.organization_number})" for m in matches[:8])
-    more = " med flere" if len(matches) > 8 else ""
-    raise FlytAuthError(f"Flere kommuner passer: {names}{more}. Bruk organisasjonsnummeret.")
+    if len(suggestions) == 1:
+        guess = f"Mente du {_listed(suggestions)}?"
+    else:
+        guess = f"Mente du en av disse: {_listed(suggestions)}?"
+    raise FlytAuthError(
+        f"Fant ingen kommune i Flyt som heter «{wanted}». {guess} "
+        "Bruk navnet eller organisasjonsnummeret."
+    )
 
 
 # Client configuration -----------------------------------------------------

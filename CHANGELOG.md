@@ -2,6 +2,10 @@
 
 ## Ikke utgitt
 
+- Flyt velger bare en kommune når navnet er likt navnet i Flyts kommuneliste
+  («kommune» på slutten kan sløyfes) eller organisasjonsnummeret stemmer. Før
+  kunne en del av et navn velge en annen kommune med et lignende navn. Nå får du
+  i stedet forslag med organisasjonsnummer, og ingenting lagres.
 - Forespørsler til tjenestene oppgir ikke lenger pakkens navn i User-Agent.
   Alle kilder sender samme User-Agent som Brave eller Chrome på maskinen, med
   Chromium-versjonen fra den installerte nettleseren.
