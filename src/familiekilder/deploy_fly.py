@@ -123,7 +123,13 @@ def _names(items: Any) -> set[str]:
 
 
 def fly_toml(app: str, region: str, dockerfile: str, build_args: dict[str, str]) -> str:
-    """The app configuration: one volume, HTTPS, stop when idle, health check."""
+    """The app configuration: one volume, HTTPS, stop when idle, health check.
+
+    ``dockerfile`` must be relative to the directory that holds fly.toml.
+    """
+
+    if Path(dockerfile).is_absolute():
+        raise ValueError("dockerfile must be relative to the fly.toml directory")
 
     lines = [
         f'app = "{app}"',
@@ -297,15 +303,17 @@ def deploy(
         context = Path(directory) / "context"
         context.mkdir()
         build_args = build_context(context)
-        dockerfile = str(context / "Dockerfile")
         config = Path(directory) / "fly.toml"
+        # flyctl joins [build] dockerfile onto the directory of fly.toml, even
+        # when the value is absolute, and ignores --dockerfile when fly.toml
+        # names one. So the Dockerfile is named here only, relative to fly.toml.
+        dockerfile = (context / "Dockerfile").relative_to(config.parent).as_posix()
         config.write_text(fly_toml(app, region, dockerfile, build_args), encoding="utf-8")
         out.write("Bygger og ruller ut (dette tar noen minutter) ...\n")
         out.flush()
         fly(
             "deploy", str(context), "--app", app, "--config", str(config),
-            "--dockerfile", dockerfile, "--ha=false", "--remote-only",
-            "--strategy", "immediate",
+            "--ha=false", "--remote-only", "--strategy", "immediate",
             stream=True, timeout=1800,
         )
 

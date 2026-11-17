@@ -21,6 +21,10 @@ Routes:
 from __future__ import annotations
 
 import logging
+import signal
+import threading
+from collections.abc import Iterator
+from contextlib import contextmanager
 from dataclasses import dataclass
 from typing import Any
 
@@ -263,8 +267,49 @@ def build_http_app(
     return HttpApp(app, server, runtime, provider)
 
 
+STOP_SIGNALS = (signal.SIGINT, signal.SIGTERM)
+
+
+class _QuietStop:
+    """Treat SIGINT and SIGTERM as a normal stop of the HTTP server.
+
+    A host such as Fly.io stops an idle server with one of these signals.
+    uvicorn handles them itself while it runs, shuts down gracefully and then
+    raises the same signal again so the previous handler sees it. With the
+    default handlers that is a ``KeyboardInterrupt`` traceback (SIGINT) or an
+    immediate kill that skips closing the runtime (SIGTERM). While installed,
+    this handler is the previous handler: it only asks the server to exit, so
+    the stop ends quietly and the caller's cleanup runs.
+    """
+
+    def __init__(self) -> None:
+        self.server: Any = None
+        self.requested = False
+
+    def __call__(self, signal_number: int, frame: Any) -> None:
+        self.requested = True
+        if self.server is not None:
+            self.server.should_exit = True
+
+    @contextmanager
+    def installed(self) -> Iterator["_QuietStop"]:
+        # Signal handlers can only be set from the main thread.
+        if threading.current_thread() is not threading.main_thread():
+            yield self
+            return
+        previous = {number: signal.signal(number, self) for number in STOP_SIGNALS}
+        try:
+            yield self
+        finally:
+            for number, handler in previous.items():
+                signal.signal(number, handler)
+
+
 def serve_http(config: Config, *, host: str, port: int) -> int:
-    """Run the HTTP server until stopped. Refuses to start without OAuth set up."""
+    """Run the HTTP server until stopped. Refuses to start without OAuth set up.
+
+    Returns 0 after a stop by SIGINT or SIGTERM; other errors propagate.
+    """
 
     import os
 
@@ -273,23 +318,27 @@ def serve_http(config: Config, *, host: str, port: int) -> int:
     from .hosting import host_settings
 
     settings = host_settings()
-    built = build_http_app(
-        config, settings, extra_redirect_hosts=os.environ.get("FAMILIEKILDER_REDIRECT_HOSTS")
-    )
-    server = uvicorn.Server(
-        uvicorn.Config(
-            built.app,
-            host=host,
-            port=port,
-            # Request lines can carry OAuth parameters; never log them.
-            access_log=False,
-            log_level="warning",
-            server_header=False,
-            timeout_graceful_shutdown=5,
+    with _QuietStop().installed() as stop:
+        built = build_http_app(
+            config, settings, extra_redirect_hosts=os.environ.get("FAMILIEKILDER_REDIRECT_HOSTS")
         )
-    )
-    try:
-        server.run()
-    finally:
-        built.runtime.close()
+        try:
+            server = uvicorn.Server(
+                uvicorn.Config(
+                    built.app,
+                    host=host,
+                    port=port,
+                    # Request lines can carry OAuth parameters; never log them.
+                    access_log=False,
+                    log_level="warning",
+                    server_header=False,
+                    timeout_graceful_shutdown=5,
+                )
+            )
+            stop.server = server
+            # A stop that arrived while the app was being built skips the start.
+            if not stop.requested:
+                server.run()
+        finally:
+            built.runtime.close()
     return 0

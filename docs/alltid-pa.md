@@ -186,6 +186,8 @@ verktøyliste, gjenbruk av token etter omstart, UID 10001 og datamodus 0700.
 
 ## Feilsøking og tilbakekalling
 
+- Fly stopper en ubrukt maskin med SIGINT. Serveren avslutter da rolig med
+  status 0, også ved SIGTERM. En traceback i loggen er altså en ekte feil.
 - Mangler `flyctl` eller innlogging? Kommandoen sier hva som må installeres
   eller at `flyctl auth login` må kjøres. Eierkoden er noe annet enn Fly-login.
 - Feil kode fem ganger på 15 minutter eller 20 ganger på ett døgn sperrer nye

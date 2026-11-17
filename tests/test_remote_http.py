@@ -8,9 +8,11 @@ import hashlib
 import json
 import os
 import secrets
+import signal
 import subprocess
 import sys
 import tempfile
+import threading
 import time
 import unittest
 from pathlib import Path
@@ -429,6 +431,124 @@ class StartupTests(unittest.TestCase):
         ):
             self.assertNotIn(secret, text)
         self.assertNotIn("code=", text)
+
+
+def _wait_for_health(base: str, process: subprocess.Popen | None = None) -> None:
+    deadline = time.monotonic() + 30
+    while True:
+        try:
+            if httpx.get(base + "/healthz").status_code == 200:
+                return
+        except httpx.HTTPError:
+            pass
+        if process is not None and process.poll() is not None:
+            raise AssertionError("server exited before it answered")
+        if time.monotonic() > deadline:
+            raise AssertionError("server did not start")
+        time.sleep(0.1)
+
+
+class StopTests(unittest.TestCase):
+    """The host stops an idle server with SIGINT or SIGTERM; that is a normal stop."""
+
+    def _container_command(self, directory: Path) -> tuple[list[str], dict[str, str]]:
+        # The container entry point execs "familiekilder-mcp" from PATH. This
+        # shim is what the installed console script does, with this interpreter.
+        bin_directory = directory / "bin"
+        bin_directory.mkdir()
+        script = bin_directory / "familiekilder-mcp"
+        script.write_text(
+            f"#!{sys.executable}\n"
+            "from familiekilder.source_cli import main\n"
+            "raise SystemExit(main())\n",
+            encoding="utf-8",
+        )
+        script.chmod(0o755)
+        port = fake.free_port()
+        environment = {
+            **os.environ,
+            **fake.host_environment(port),
+            "FAMILIEKILDER_ROOT": str(directory / "data"),
+            "PATH": str(bin_directory) + os.pathsep + os.environ.get("PATH", ""),
+        }
+        command = [
+            sys.executable, "-m", "familiekilder.container",
+            "mcp", "serve", "--http", "--host", "127.0.0.1", "--port", str(port),
+        ]
+        return command, environment
+
+    def _stop_container_server(self, signal_number: int) -> tuple[int, float, str]:
+        with tempfile.TemporaryDirectory() as name:
+            command, environment = self._container_command(Path(name))
+            port = environment["FAMILIEKILDER_PUBLIC_URL"].rsplit(":", 1)[1]
+            process = subprocess.Popen(
+                command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=environment,
+            )
+            try:
+                _wait_for_health(f"http://127.0.0.1:{port}", process)
+                started = time.monotonic()
+                process.send_signal(signal_number)
+                _, error = process.communicate(timeout=20)
+                elapsed = time.monotonic() - started
+            finally:
+                if process.poll() is None:
+                    process.kill()
+                    process.communicate()
+        return process.returncode, elapsed, error.decode("utf-8", "replace")
+
+    def test_container_server_stops_quietly_on_sigint_and_sigterm(self) -> None:
+        for signal_number in (signal.SIGINT, signal.SIGTERM):
+            with self.subTest(signal=signal_number.name):
+                status, elapsed, error = self._stop_container_server(signal_number)
+                self.assertEqual(status, 0, error)
+                self.assertLess(elapsed, 5)
+                self.assertNotIn("Traceback", error)
+                self.assertNotIn("KeyboardInterrupt", error)
+
+    def test_stop_by_signal_closes_the_runtime_and_restores_handlers(self) -> None:
+        from familiekilder import remote_http
+
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        root = Path(directory.name)
+        port = fake.free_port()
+        environment = patch.dict(os.environ, fake.host_environment(port))
+        environment.start()
+        self.addCleanup(environment.stop)
+        Config(root, {"spond": frozenset({"messages"})}).save()
+        config = Config.load(root)
+        closed: list[bool] = []
+        build = remote_http.build_http_app
+
+        def build_and_watch(*args, **kwargs):
+            built = build(*args, **kwargs)
+            close = built.runtime.close
+
+            def close_and_record():
+                closed.append(True)
+                close()
+
+            built.runtime.close = close_and_record
+            return built
+
+        for signal_number in (signal.SIGINT, signal.SIGTERM):
+            with self.subTest(signal=signal_number.name):
+                closed.clear()
+                before = {number: signal.getsignal(number) for number in (signal.SIGINT, signal.SIGTERM)}
+
+                def stop_when_up(number=signal_number):
+                    _wait_for_health(f"http://127.0.0.1:{port}")
+                    os.kill(os.getpid(), number)
+
+                stopper = threading.Thread(target=stop_when_up, daemon=True)
+                stopper.start()
+                with patch.object(remote_http, "build_http_app", build_and_watch):
+                    status = remote_http.serve_http(config, host="127.0.0.1", port=port)
+                stopper.join(timeout=5)
+                self.assertEqual(status, 0)
+                self.assertEqual(closed, [True])
+                after = {number: signal.getsignal(number) for number in (signal.SIGINT, signal.SIGTERM)}
+                self.assertEqual(after, before)
 
 
 if __name__ == "__main__":

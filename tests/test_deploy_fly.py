@@ -4,6 +4,7 @@ import io
 import json
 import subprocess
 import tempfile
+import tomllib
 import unittest
 from pathlib import Path
 from unittest.mock import patch
@@ -19,6 +20,7 @@ class FakeFly:
         self.calls = []
         self.secrets = ''
         self.config = None
+        self.dockerfile = None
 
     def run(self, argv, **kwargs):
         args = argv[1:]
@@ -35,12 +37,29 @@ class FakeFly:
         elif args[:2] == ['secrets', 'import']:
             self.secrets = kwargs['input']
         elif args[0] == 'deploy':
-            self.config = Path(args[args.index('--config') + 1]).read_text()
+            config_path = Path(args[args.index('--config') + 1])
+            self.config = config_path.read_text()
             context = Path(args[1])
             assert (context / 'Dockerfile').is_file()
             assert not list(context.rglob('.private'))
+            self.check_dockerfile(args, config_path, context)
             self.machine_count = 1
         return subprocess.CompletedProcess(argv, 0, result, '')
+
+    def check_dockerfile(self, args, config_path, context):
+        """Resolve the Dockerfile the way flyctl does, while the files exist.
+
+        flyctl joins [build] dockerfile onto the fly.toml directory even when it
+        is absolute, and ignores --dockerfile when fly.toml names one.
+        """
+        dockerfile = tomllib.loads(self.config)['build']['dockerfile']
+        assert not Path(dockerfile).is_absolute(), dockerfile
+        assert not dockerfile.startswith(('/', '\\')), dockerfile
+        resolved = config_path.parent / dockerfile
+        assert resolved.is_file(), resolved
+        assert resolved.resolve() == (context / 'Dockerfile').resolve(), resolved
+        assert not any(arg == '--dockerfile' or arg.startswith('--dockerfile=') for arg in args), args
+        self.dockerfile = dockerfile
 
 
 class DeployTests(unittest.TestCase):
@@ -61,6 +80,7 @@ class DeployTests(unittest.TestCase):
         self.assertIn('min_machines_running = 0', config)
         self.assertIn('destination = "/data"', config)
         self.assertIn('strategy = "immediate"', config)
+        self.assertEqual(fake.dockerfile, 'context/Dockerfile')
         deployment = next(args for args in fake.calls if args[0] == 'deploy')
         self.assertIn('--ha=false', deployment)
         self.assertIn('immediate', deployment)
@@ -111,6 +131,14 @@ class DeployTests(unittest.TestCase):
             paths = list(folder.glob('*-eierkode-*.txt'))
             self.assertEqual(len(paths), 3)
             self.assertEqual(len({path.read_text() for path in paths}), 3)
+
+    def test_config_refuses_an_absolute_dockerfile(self):
+        with self.assertRaises(ValueError):
+            deploy.fly_toml('fictional-app', 'arn', '/fictional/context/Dockerfile', {})
+        config = tomllib.loads(deploy.fly_toml('fictional-app', 'arn', 'context/Dockerfile',
+                                               {'FAMILIEKILDER_PACKAGE': 'familiekilder-mcp==0.0.0'}))
+        self.assertEqual(config['build']['dockerfile'], 'context/Dockerfile')
+        self.assertEqual(config['build']['args'], {'FAMILIEKILDER_PACKAGE': 'familiekilder-mcp==0.0.0'})
 
     def test_secret_cli_errors_do_not_echo_stdin(self):
         def failed(argv, **kwargs):
