@@ -97,11 +97,26 @@ class PersonalProfileTests(PersonalProfileFixture, unittest.TestCase):
         self.assertFalse((self.base / ".private").exists())
 
     def test_standalone_default_root_uses_public_directory(self):
-        home = self.base / "home"
-        with patch.dict(os.environ, {}, clear=True), patch("pathlib.Path.home", return_value=home), contextlib.redirect_stdout(io.StringIO()):
+        for platform, relative in (
+            ("darwin", "Library/Application Support/familiekilder-mcp"),
+            ("linux", ".local/share/familiekilder-mcp"),
+        ):
+            with self.subTest(platform=platform), patch("sys.platform", platform):
+                home = self.base / platform
+                with patch.dict(os.environ, {}, clear=True), patch("pathlib.Path.home", return_value=home), contextlib.redirect_stdout(io.StringIO()):
+                    self.assertEqual(source_cli.main(["configure", "spond"]), 0)
+                self.assertEqual(Config.load(home / relative).services, {"spond": frozenset()})
+        self.assertFalse((self.base / ".private").exists())
+
+    def test_standalone_linux_root_respects_xdg_data_home(self):
+        data = self.base / "xdg-data"
+        with (
+            patch.dict(os.environ, {"XDG_DATA_HOME": str(data)}, clear=True),
+            patch("sys.platform", "linux"),
+            contextlib.redirect_stdout(io.StringIO()),
+        ):
             self.assertEqual(source_cli.main(["configure", "spond"]), 0)
-        root = home / "Library/Application Support/familiekilder-mcp"
-        self.assertEqual(Config.load(root).services, {"spond": frozenset()})
+        self.assertEqual(Config.load(data / "familiekilder-mcp").services, {"spond": frozenset()})
         self.assertFalse((self.base / ".private").exists())
 
     def test_keychain_failure_is_sanitized_and_no_file_fallback(self):
