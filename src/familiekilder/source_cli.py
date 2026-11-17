@@ -121,9 +121,10 @@ def build_parser(
         parser.add_argument("--version", action="version", version=f"%(prog)s {version}")
     parser.set_defaults(create_root=True, program=program)
     default_directory = "familiekilder-mcp" if program.allow_setup else "Familiekilder"
-    parser.add_argument(
-        "--root", help=f"Datarot; standard ~/Library/Application Support/{default_directory}"
-    )
+    root_help = f"Datarot; standard ~/Library/Application Support/{default_directory}"
+    if program.allow_setup:
+        root_help += " på Mac og ~/.local/share/familiekilder-mcp ellers"
+    parser.add_argument("--root", help=root_help)
     parser.add_argument("--profile", help="Separat personlig profil, uten arv fra standardprofilen")
     sub = parser.add_subparsers(dest="command", required=True)
 
@@ -139,6 +140,8 @@ def build_parser(
     mcp_serve = mcp.add_parser("serve")
     mcp_serve.set_defaults(handler=_run_mcp_serve)
     extend("mcp serve", mcp_serve)
+    if program.allow_setup:
+        _add_http_arguments(mcp_serve)
 
     before("connections")
     connections = sub.add_parser("connections")
@@ -187,9 +190,64 @@ def build_parser(
         setup.add_argument("--port", type=int, default=0, help="Lokal port; standard velger en ledig")
         setup.add_argument("--no-open", action="store_true", help="Vis adressen uten å åpne nettleseren")
 
+    if program.allow_setup:
+        _add_remote_commands(sub)
+
     for extension in extensions:
         extension.after_commands(sub)
     return parser
+
+
+def _add_http_arguments(serve: argparse.ArgumentParser) -> None:
+    serve.add_argument(
+        "--http",
+        action="store_true",
+        help="Server over HTTP (streamable HTTP) med innlogging foran, for en alltid-på-vert",
+    )
+    serve.add_argument("--host", default="127.0.0.1", help="Adresse å lytte på med --http")
+    serve.add_argument("--port", type=int, default=8080, help="Port med --http; standard 8080")
+
+
+def _add_remote_commands(sub: Any) -> None:
+    remote = sub.add_parser("remote", help="Alltid-på-vert: oppsett, flytting og tilganger")
+    remote_commands = remote.add_subparsers(dest="remote_command", required=True)
+    init = remote_commands.add_parser(
+        "init", help="Lag eierkode og installasjons-ID for en egen vert (Docker)"
+    )
+    init.add_argument("--env-file", required=True, help="Ny privat miljøfil for docker --env-file")
+    init.add_argument("--public-url", required=True, help="Vertens offentlige HTTPS-adresse")
+    init.set_defaults(handler=_run_remote_init, create_root=False)
+    move = remote_commands.add_parser(
+        "move", help="Flytt innloggingene fra denne Macen til verten (eierkoden leses fra terminalen)"
+    )
+    move.add_argument("url", help="Vertens adresse, for eksempel https://navn.fly.dev")
+    move.add_argument(
+        "--source", action="append", dest="sources", help="Bare denne kilden; kan gjentas"
+    )
+    move.set_defaults(handler=_run_remote_move)
+    clients = remote_commands.add_parser("clients", help="Vis tilkoblede apper på verten")
+    clients.set_defaults(handler=_run_remote_clients)
+    revoke = remote_commands.add_parser("revoke", help="Trekk tilbake tilgang på verten")
+    which = revoke.add_mutually_exclusive_group(required=True)
+    which.add_argument("--all", action="store_true", help="Alle apper må koble til på nytt")
+    which.add_argument("--client", help="Bare denne appen (client_id fra «remote clients»)")
+    revoke.set_defaults(handler=_run_remote_revoke)
+
+    deploy = sub.add_parser("deploy", help="Veiledet oppsett av en alltid-på-vert")
+    deploy_targets = deploy.add_subparsers(dest="deploy_target", required=True)
+    fly = deploy_targets.add_parser("fly", help="Fly.io med flyctl (nøyaktig én maskin)")
+    fly.add_argument("--app", help="Appnavn; standard familiekilder- og tilfeldige tegn")
+    fly.add_argument("--region", default="arn", help="Fly-region; standard arn (Stockholm)")
+    fly.add_argument("--org", default="personal", help="Fly-organisasjon; standard personal")
+    fly.add_argument(
+        "--new-owner-code", action="store_true", help="Lag ny eierkode for en eksisterende app"
+    )
+    choice = fly.add_mutually_exclusive_group()
+    choice.add_argument("--move", dest="move", action="store_true", default=None,
+                        help="Flytt innloggingene etter utrulling uten å spørre")
+    choice.add_argument("--no-move", dest="move", action="store_false",
+                        help="Ikke flytt innloggingene nå")
+    fly.set_defaults(handler=_run_deploy_fly)
 
 
 def _add_auth_arguments(auth: argparse.ArgumentParser) -> None:
@@ -284,8 +342,16 @@ def _add_ist_auth_arguments(ist_auth: argparse.ArgumentParser) -> None:
     )
 
 
+# Commands that log in or store passwords; they belong on the user's Mac.
+_LOGIN_COMMANDS = frozenset({"login", "browser-login", "browser-bootstrap", "import-session"})
+
+
 def _run_password(args: argparse.Namespace, config: Config) -> int:
+    from .hosting import refuse_on_remote_host
     from .login_passwords import run_password_command
+
+    if args.password_command == "set":
+        refuse_on_remote_host("Lagring av passord")
 
     _json(run_password_command(config.root, args.password_kind, args.password_command))
     return 0
@@ -313,12 +379,20 @@ def _run_onboard_bundle(args: argparse.Namespace, config: Config) -> int:
 def _run_ist_auth(args: argparse.Namespace, config: Config) -> int:
     from .auth_cli import run_ist_auth
 
+    if args.ist_auth_command in _LOGIN_COMMANDS:
+        from .hosting import refuse_on_remote_host
+
+        refuse_on_remote_host("Innlogging")
     if args.ist_auth_command != "export-mac-client":
         config.require("ist-home")
     return run_ist_auth(args, config.root)
 
 
 def _run_auth(args: argparse.Namespace, config: Config) -> int:
+    if args.auth_command in _LOGIN_COMMANDS:
+        from .hosting import refuse_on_remote_host
+
+        refuse_on_remote_host("Innlogging")
     if args.auth_command != "configure" or not args.program.allow_setup:
         config.require(args.source)
     if args.source == "gmail":
@@ -343,17 +417,114 @@ def _run_connections(args: argparse.Namespace, config: Config) -> int:
 def _run_mcp_serve(args: argparse.Namespace, config: Config) -> int:
     from .client_defaults import refresh_stored_defaults
 
+    if getattr(args, "http", False):
+        from .hosting import host_settings
+
+        # Refuse before anything else when the login in front is not set up.
+        host_settings()
     # A newer built-in setup replaces one the setup wizard stored, so a package
     # update reaches the user at the next start. Never raises; logs to stderr.
     refresh_stored_defaults(config.root)
+    if getattr(args, "http", False):
+        from .remote_http import serve_http
+
+        return serve_http(config, host=args.host, port=args.port)
     build_server, _ = source_server_api()
     server, runtime = build_server(config, read_only=True)
     return serve_stdio(server, runtime)
 
 
+def _read_owner_code() -> str:
+    """From the terminal without echo, or one line on stdin for an agent."""
+
+    if sys.stdin.isatty():
+        from getpass import getpass
+
+        return getpass("Eierkode: ")
+    return sys.stdin.readline().strip()
+
+
+def _run_remote_init(args: argparse.Namespace, config: Config) -> int:
+    from .deploy_fly import show_owner_code
+    from .hosting import (
+        INSTALLATION_ID_ENV,
+        OWNER_CODE_HASH_ENV,
+        PUBLIC_URL_ENV,
+        hash_owner_code,
+        new_installation_id,
+        new_owner_code,
+        normalize_public_url,
+    )
+
+    url = normalize_public_url(args.public_url)
+    target = Path(args.env_file).expanduser()
+    code = new_owner_code()
+    lines = (
+        f"{PUBLIC_URL_ENV}={url}\n"
+        f"{OWNER_CODE_HASH_ENV}={hash_owner_code(code)}\n"
+        f"{INSTALLATION_ID_ENV}={new_installation_id()}\n"
+    )
+    try:
+        descriptor = os.open(target, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    except FileExistsError:
+        raise FamiliekilderError("Miljøfilen finnes allerede; ingenting er overskrevet") from None
+    with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
+        handle.write(lines)
+    sys.stdout.write(f"Miljøfilen er laget: {target}\n")
+    show_owner_code(
+        code,
+        out=sys.stdout,
+        interactive=sys.stdout.isatty(),
+        fallback=target.with_name(target.name + ".eierkode"),
+    )
+    return 0
+
+
+def _run_remote_move(args: argparse.Namespace, config: Config) -> int:
+    from .hosting import refuse_on_remote_host
+    from .session_move import move_to
+
+    refuse_on_remote_host("Flytting av innlogginger")
+    _json(move_to(config.root, args.url, _read_owner_code(), sources=args.sources))
+    return 0
+
+
+def _run_remote_clients(args: argparse.Namespace, config: Config) -> int:
+    from .remote_auth import clients_command
+
+    _json(clients_command(config.root))
+    return 0
+
+
+def _run_remote_revoke(args: argparse.Namespace, config: Config) -> int:
+    from .remote_auth import revoke_command
+
+    _json(revoke_command(config.root, client_id=None if args.all else args.client))
+    return 0
+
+
+def _run_deploy_fly(args: argparse.Namespace, config: Config) -> int:
+    from .deploy_fly import deploy
+    from .hosting import refuse_on_remote_host
+
+    refuse_on_remote_host("Utrulling")
+    result = deploy(
+        root=config.root,
+        app=args.app,
+        region=args.region,
+        org=args.org,
+        move=args.move,
+        new_code=args.new_owner_code,
+    )
+    _json(result)
+    return 0
+
+
 def _run_setup(args: argparse.Namespace, config: Config) -> int:
+    from .hosting import refuse_on_remote_host
     from .setup_web import serve
 
+    refuse_on_remote_host("Oppsett og innlogging")
     return serve(config.root, port=args.port, open_browser=not args.no_open)
 
 
@@ -362,10 +533,9 @@ def run(args: argparse.Namespace) -> Any:
 
     options = {"profile": getattr(args, "profile", None)}
     if args.program.allow_setup:
-        options["default_root"] = Path(
-            os.environ.get("FAMILIEKILDER_ROOT")
-            or Path.home() / "Library/Application Support/familiekilder-mcp"
-        )
+        from .hosting import default_data_root
+
+        options["default_root"] = Path(os.environ.get("FAMILIEKILDER_ROOT") or default_data_root())
     config = Config.load(args.root, **options)
     if args.create_root:
         config.root.mkdir(parents=True, exist_ok=True)

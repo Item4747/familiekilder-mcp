@@ -314,11 +314,15 @@ class Runtime:
         at lesing feiler. Test et autorisert leseoppslag før du konkluderer med
         manglende tilgang. refresh_blocked krever vurdering av den konkrete
         feilen; det betyr ikke alltid at brukeren må logge inn på nytt.
+        status moved_to_host betyr at innloggingen er flyttet til en alltid-på-vert
+        og leses gjennom koblingen dit.
         """
         from .source_adapter import get_adapter
         from .live_actions import capabilities
+        from .session_move import moved_sources
 
         result = []
+        moved = moved_sources(self.config.root)
         for source in self.config.services:
             try:
                 status = dict(get_adapter(source).auth_status(self.config.root))
@@ -326,6 +330,14 @@ class Runtime:
                 status = {
                     "status": "unavailable",
                     "detail": "Lokal innloggingsstatus kunne ikke leses",
+                }
+            if source in moved:
+                # Read from the host instead; this installation no longer renews it.
+                status = {
+                    **status,
+                    "status": "moved_to_host",
+                    "detail": "Innloggingen er flyttet til verten og brukes derfra",
+                    **moved[source],
                 }
             result.append(
                 {

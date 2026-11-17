@@ -1,0 +1,145 @@
+"""Fly orchestration against a fake CLI, without any account or live request."""
+
+import io
+import json
+import subprocess
+import tempfile
+import unittest
+from pathlib import Path
+from unittest.mock import patch
+
+from familiekilder import deploy_fly as deploy
+from familiekilder.hosting import INSTALLATION_ID_ENV, OWNER_CODE_HASH_ENV, OwnerCodeHash
+
+
+class FakeFly:
+    def __init__(self, *, existing=False, machine_count=0):
+        self.existing = existing
+        self.machine_count = machine_count
+        self.calls = []
+        self.secrets = ''
+        self.config = None
+
+    def run(self, argv, **kwargs):
+        args = argv[1:]
+        self.calls.append(args)
+        result = ''
+        if args[:2] == ['apps', 'list']:
+            result = json.dumps([{'Name': 'fictional-app'}] if self.existing else [])
+        elif args[:2] == ['volumes', 'list']:
+            result = '[]'
+        elif args[:2] == ['secrets', 'list']:
+            result = json.dumps([{'Name': n} for n in (INSTALLATION_ID_ENV, OWNER_CODE_HASH_ENV)] if self.existing else [])
+        elif args[:2] == ['machines', 'list']:
+            result = json.dumps([{'id': str(i)} for i in range(self.machine_count)])
+        elif args[:2] == ['secrets', 'import']:
+            self.secrets = kwargs['input']
+        elif args[0] == 'deploy':
+            self.config = Path(args[args.index('--config') + 1]).read_text()
+            context = Path(args[1])
+            assert (context / 'Dockerfile').is_file()
+            assert not list(context.rglob('.private'))
+            self.machine_count = 1
+        return subprocess.CompletedProcess(argv, 0, result, '')
+
+
+class DeployTests(unittest.TestCase):
+    def deploy(self, fake, directory, output, **kwargs):
+        new_code = kwargs.pop('new_code', False)
+        return deploy.deploy(root=Path(directory), app='fictional-app', region='arn', org='personal',
+                             move=False, new_code=new_code, out=output,
+                             flyctl=deploy.Flyctl('fake-flyctl', run=fake.run), **kwargs)
+
+    def test_one_machine_mounted_disk_autostop_and_owner_code_shown_once(self):
+        fake = FakeFly()
+        output = io.StringIO()
+        with tempfile.TemporaryDirectory() as directory:
+            self.deploy(fake, directory, output, interactive=True)
+        config = fake.config
+        self.assertIn('auto_stop_machines = "stop"', config)
+        self.assertIn('auto_start_machines = true', config)
+        self.assertIn('min_machines_running = 0', config)
+        self.assertIn('destination = "/data"', config)
+        self.assertIn('strategy = "immediate"', config)
+        deployment = next(args for args in fake.calls if args[0] == 'deploy')
+        self.assertIn('--ha=false', deployment)
+        self.assertIn('immediate', deployment)
+        self.assertEqual(fake.machine_count, 1)
+        self.assertEqual(sum(args[:2] == ['volumes', 'create'] for args in fake.calls), 1)
+        code = output.getvalue().split('Eierkode (vises bare nå): ')[1].splitlines()[0]
+        self.assertEqual(output.getvalue().count(code), 1)
+        self.assertNotIn(code, json.dumps(fake.calls))
+        self.assertNotIn(code, fake.secrets)
+        values = dict(line.split('=', 1) for line in fake.secrets.splitlines())
+        self.assertTrue(OwnerCodeHash.parse(values[OWNER_CODE_HASH_ENV]).matches(code))
+        self.assertNotIn(values[INSTALLATION_ID_ENV], output.getvalue())
+
+    def test_agent_receives_a_private_file_and_no_code_on_stdout(self):
+        fake = FakeFly()
+        output = io.StringIO()
+        with tempfile.TemporaryDirectory() as directory:
+            self.deploy(fake, directory, output, interactive=False)
+            path = next((Path(directory) / '.private/remote').glob('fictional-app-eierkode-*.txt'))
+            code = path.read_text().strip()
+            self.assertEqual(path.stat().st_mode & 0o777, 0o600)
+            self.assertNotIn(code, output.getvalue())
+            self.assertNotIn(code, json.dumps(fake.calls))
+
+    def test_code_is_delivered_before_secrets_even_if_deploy_fails_and_can_rotate(self):
+        fake = FakeFly()
+        original = fake.run
+        with tempfile.TemporaryDirectory() as directory:
+            folder = Path(directory) / '.private/remote'
+            def failure(argv, **kwargs):
+                if argv[1:3] == ['secrets', 'import']:
+                    self.assertEqual(len(list(folder.glob('*-eierkode-*.txt'))), 1)
+                if argv[1] == 'deploy':
+                    return subprocess.CompletedProcess(argv, 1, '', kwargs.get('input') or 'failed')
+                return original(argv, **kwargs)
+            fake.run = failure
+            with self.assertRaises(deploy.DeployError):
+                self.deploy(fake, directory, io.StringIO(), interactive=False)
+            first = next(folder.glob('*-eierkode-*.txt')).read_text().strip()
+            values = dict(line.split('=', 1) for line in fake.secrets.splitlines())
+            self.assertTrue(OwnerCodeHash.parse(values[OWNER_CODE_HASH_ENV]).matches(first))
+            # A retry discovers the staged secrets and keeps the delivered code.
+            retry = FakeFly(existing=True)
+            self.deploy(retry, directory, io.StringIO(), interactive=False)
+            self.assertFalse(retry.secrets)
+            for _ in range(2):
+                self.deploy(retry, directory, io.StringIO(), interactive=False, new_code=True)
+            paths = list(folder.glob('*-eierkode-*.txt'))
+            self.assertEqual(len(paths), 3)
+            self.assertEqual(len({path.read_text() for path in paths}), 3)
+
+    def test_secret_cli_errors_do_not_echo_stdin(self):
+        def failed(argv, **kwargs):
+            return subprocess.CompletedProcess(argv, 1, '', kwargs['input'])
+        with self.assertRaises(deploy.DeployError) as error:
+            deploy.Flyctl('fake', run=failed)('secrets', 'import', stdin='fictional-private-value')
+        self.assertNotIn('fictional-private-value', str(error.exception))
+
+    def test_existing_id_is_preserved_and_multiple_machines_refused_before_deploy(self):
+        fake = FakeFly(existing=True, machine_count=1)
+        with tempfile.TemporaryDirectory() as directory:
+            self.deploy(fake, directory, io.StringIO(), interactive=False)
+        self.assertFalse(fake.secrets)
+        fake = FakeFly(existing=True, machine_count=2)
+        with tempfile.TemporaryDirectory() as directory, self.assertRaises(deploy.DeployError):
+            self.deploy(fake, directory, io.StringIO(), interactive=False)
+        self.assertFalse(any(args[0] == 'deploy' for args in fake.calls))
+        self.assertFalse(fake.secrets)
+
+    def test_missing_cli_and_login_have_actionable_errors(self):
+        with patch.object(deploy.shutil, 'which', return_value=None):
+            with self.assertRaisesRegex(deploy.DeployError, 'brew install flyctl'):
+                deploy.find_flyctl()
+        def logged_out(argv, **kwargs):
+            return subprocess.CompletedProcess(argv, 1 if 'whoami' in argv else 0, '', '')
+        with tempfile.TemporaryDirectory() as directory, self.assertRaisesRegex(deploy.DeployError, 'auth login'):
+            deploy.deploy(root=Path(directory), app='fictional-app', region='arn', org='personal',
+                          move=False, new_code=False, flyctl=deploy.Flyctl('fake', run=logged_out))
+
+
+if __name__ == '__main__':
+    unittest.main()

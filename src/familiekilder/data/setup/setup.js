@@ -190,6 +190,13 @@ function serviceAction(source) {
       action: () => perform('/api/service', { source: source.id, enabled: true }),
     };
   }
+  if (source.state === 'moved') {
+    return {
+      status: 'Flyttet til verten',
+      label: 'Logg inn',
+      action: () => openLogin(source),
+    };
+  }
   if (source.state === 'setup_required' && source.setup === 'file') {
     return {
       status: 'Trenger Google-fil',

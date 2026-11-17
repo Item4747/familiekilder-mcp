@@ -21,6 +21,7 @@ from .client_defaults import (
     store_default,
 )
 from .connection_status import auth_module, connection_state, has_local_session
+from .session_move import moved_sources
 from .live_config import Config
 from .setup_clients import check_connection, client_state, install_client
 from .sources import REGISTRY
@@ -80,6 +81,7 @@ class SetupService:
         with self.lock:
             rows = []
             config = Config.load(self.root)
+            moved = moved_sources(self.root)
             for source in REGISTRY.values():
                 try:
                     status = auth_module(source.name).auth_status(self.root)
@@ -87,10 +89,13 @@ class SetupService:
                     existing = bool(status.get("session_present"))
                 except Exception:
                     state, existing = "unavailable", False
+                if source.name in moved:
+                    state = "moved"
                 row = {
                     "id": source.name, "label": source.label, "description": source.description,
                     "state": state, "enabled": source.name in config.services,
                     "has_session": existing,
+                    **({"moved_to": moved[source.name].get("moved_to")} if source.name in moved else {}),
                     "setup": self._setup_kind(source.name),
                     # A newer built-in setup the source refuses while logged in.
                     "renewal_pending": self._renewal_pending(source.name),

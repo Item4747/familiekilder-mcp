@@ -21,6 +21,8 @@ SOURCE_COMMANDS = [
     "onboard",
     "ist-auth",
     "setup",
+    "remote",
+    "deploy",
 ]
 
 

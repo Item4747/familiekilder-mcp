@@ -75,7 +75,8 @@ Lærdommer fra to lokale feil som så ut som utlogging:
 - Eierbinding kan ikke bygge på vertsnavn på Mac, fordi `socket.gethostname()`
   følger nettverket. På macOS bindes eierfilen til `IOPlatformUUID`; eldre
   eierfiler oppgraderes første gang `LocalHostName` stemmer, og en oppgradert
-  fil godtas bare med samme maskin-ID. Andre plattformer bruker vertsnavn.
+  fil godtas bare med samme maskin-ID. Andre plattformer bruker vertsnavn ved lokal bruk. HTTP-verter bruker en
+  installasjons-ID fra miljøet som ligger utenfor datadisken.
   Eldre kode avviser en oppgradert eierfil.
 
 ### Lagring og eierskap
@@ -189,3 +190,14 @@ refresh-tokenene.
 `family_connections` leser kun lokal status. Verktøybeskrivelsen sier
 at `access_expired` alene ikke betyr tapt tilgang, og at faktisk
 lesetilgang kontrolleres med et autorisert leseoppslag før en slik konklusjon.
+
+## Flytting til egen vert
+
+[Øktflytting](alltid-pa.md#når-en-innlogging-må-fornyes) sperrer lokal
+fornyelse før pakken sendes. Gmail omfattes også: både eierbinding og
+flyttemerke kontrolleres under kildelås før token brukes eller fornyes.
+Verten lagrer eierbindingen atomisk før importerte øktfiler skrives. En
+vertsøkt uten eierbinding avvises, også når installasjonshemmeligheten mangler
+på en kopiert disk med vertens tilstand. En ny vellykket
+innlogging på Macen fjerner flyttemerket. Ikke fjern det manuelt etter et
+avbrudd; kontroller verten eller logg inn på nytt.

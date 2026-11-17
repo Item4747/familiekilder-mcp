@@ -7,7 +7,7 @@ assistenten lese fra tjenestene du bruker, med din egen innlogging.
 ![Illustrasjon: Beskjeder fra barnehage i Vigilo, skole i Skolemelding og fotball i Spond går til assistenten. Hver kveld kl. 19 legger den oppgaver og aktiviteter i familiekalenderen, og telefonen varsler kvelden før.](docs/bilder/fra-beskjeder-til-paminnelser.webp)
 
 *Illustrasjon med oppdiktede data. Assistenten må ha en planlagt oppgave og en
-egen kalenderkobling. Macen må være på når oppgaven kjører.*
+egen kalenderkobling. Ved lokal kjøring må Macen være på. Se også [prøveordningen med egen vert](docs/alltid-pa.md).*
 
 <!-- Tjenestelisten er hentet fra sources.REGISTRY. -->
 Støtter Vigilo, Skolemelding, Spond, Hoopit, IST Home, Flyt (barnehage) og Gmail.
@@ -27,7 +27,8 @@ Få kodeagenten til å installere for deg. Åpne Codex i ChatGPT-appen eller Cla
 
 Eller installer selv ved å følge [oppsettsveiledningen](docs/kom-i-gang.md).
 
-MCP-serveren tilbyr bare lesing. Innloggingene lagres lokalt. Innhold
+MCP-serveren tilbyr bare lesing. Innloggingene lagres på Macen ved lokal bruk,
+eller på din egen vert når du uttrykkelig flytter dem dit. Innhold
 assistenten leser, kan sendes til AI-leverandøren du bruker. Gmail bruker
 Googles offisielle API. De øvrige koblingene er uoffisielle.
 
@@ -51,7 +52,9 @@ Codex og Claude Desktop kan kjøre en oppgave fast hver dag. Lag en planlagt
 oppgave med prompten over, og legg til teksten under. Da holder assistenten
 kalenderen oppdatert uten at du må be om det. Kjøring om kvelden gir tid til å
 vaske gymtøy eller kjøpe gave før neste dag. Macen må være på når oppgaven
-kjører.
+kjører. For betalt Claude Cowork finnes også planlagt skykjøring med
+[egen vert](docs/alltid-pa.md#en-kveldsoppgave-i-skyen); dette må prøves med
+den ekte koblingen før du stoler på rutinen.
 
 > Gjør dette hver kveld kl. 19. Oppdater oppføringer når tid eller sted er
 > endret, og slett bare noe når en beskjed sier at det er avlyst. Legg inn en
@@ -77,7 +80,13 @@ Du installerer MCP-serveren på Macen din og bruker den fra
 [ChatGPT-appen for Mac](https://chatgpt.com/download/) på samme maskin.
 I ChatGPT velger du **Codex** og **This computer**. Lokal Codex-kjøring i CLI
 eller IDE kan også koble til. Vanlig chat i nettleseren eller på mobilen kan
-ikke koble seg direkte til MCP-serveren.
+ikke koble seg direkte til den lokale stdio-serveren.
+
+Som [prøveordning](docs/alltid-pa.md) kan du kjøre serveren på en liten
+Linux-vert med HTTPS og OAuth. Da kan eksterne klienter nå den uten at Macen
+er på. Innlogging skjer fortsatt på Macen. Claude dokumenterer nett- og
+mobilstøtte; ChatGPT krever en egnet plan og oppsett på nett. Ekte klientbruk,
+Fly-drift og flytting av ekte økter er ennå ikke bekreftet for dette oppsettet.
 
 
 

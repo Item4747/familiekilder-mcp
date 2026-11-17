@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import shutil
 import tempfile
 import time
@@ -152,6 +153,111 @@ class LifecycleTests(unittest.TestCase):
         ):
             with self.assertRaisesRegex(FamiliekilderError, 'annen installasjon'):
                 life.require_owner(self.root, 'vigilo')
+
+    def test_host_owner_follows_installation_id_not_hostname(self):
+        environment = {'FAMILIEKILDER_INSTALLATION_ID': 'i' * 43}
+        with (
+            patch.object(life.sys, 'platform', 'linux'),
+            patch.dict(os.environ, environment),
+            patch.object(life.socket, 'gethostname', return_value='container-1'),
+        ):
+            life.require_owner(self.root, 'vigilo')
+        owner = life._read(life._path(self.root, 'vigilo', 'auth-owner'))
+        self.assertEqual(owner['installation'], life._owner_digest('i' * 43))
+        self.assertNotIn('machine', owner)
+        # A new container gets a new hostname; the installation ID still holds.
+        with (
+            patch.object(life.sys, 'platform', 'linux'),
+            patch.dict(os.environ, environment),
+            patch.object(life.socket, 'gethostname', return_value='container-2'),
+        ):
+            life.require_owner(self.root, 'vigilo')
+
+    def test_copied_host_disk_with_another_installation_id_is_refused(self):
+        with (
+            patch.object(life.sys, 'platform', 'linux'),
+            patch.dict(os.environ, {'FAMILIEKILDER_INSTALLATION_ID': 'a' * 43}),
+            patch.object(life.socket, 'gethostname', return_value='same'),
+        ):
+            life.require_owner(self.root, 'vigilo')
+        # The copy is mounted at the same path with the same hostname.
+        without_id = {k: v for k, v in os.environ.items() if k != 'FAMILIEKILDER_INSTALLATION_ID'}
+        for environment in (
+            {**without_id, 'FAMILIEKILDER_INSTALLATION_ID': 'b' * 43},
+            without_id,
+        ):
+            with (
+                self.subTest(installation='FAMILIEKILDER_INSTALLATION_ID' in environment),
+                patch.object(life.sys, 'platform', 'linux'),
+                patch.dict(os.environ, environment, clear=True),
+                patch.object(life, '_hostnames', return_value={'same'}),
+                patch.object(life.socket, 'gethostname', return_value='same'),
+            ):
+                with self.assertRaisesRegex(FamiliekilderError, 'annen installasjon'):
+                    life.require_owner(self.root, 'vigilo')
+
+    def test_installation_id_is_ignored_on_macos(self):
+        with (
+            patch.object(life.sys, 'platform', 'darwin'),
+            patch.object(life, '_machine_identity', return_value='mac-1'),
+            patch.dict(os.environ, {'FAMILIEKILDER_INSTALLATION_ID': 'i' * 43}),
+            patch.object(life.socket, 'gethostname', return_value='home.lan'),
+        ):
+            life.require_owner(self.root, 'vigilo')
+        owner = life._read(life._path(self.root, 'vigilo', 'auth-owner'))
+        self.assertEqual(set(owner), {'root', 'host', 'machine'})
+
+    def test_legacy_hostname_owner_on_a_host_gains_the_installation_id(self):
+        with (
+            patch.object(life.sys, 'platform', 'linux'),
+            patch.object(life.socket, 'gethostname', return_value='vps'),
+        ):
+            life.require_owner(self.root, 'vigilo')
+        with (
+            patch.object(life.sys, 'platform', 'linux'),
+            patch.dict(os.environ, {'FAMILIEKILDER_INSTALLATION_ID': 'i' * 43}),
+            patch.object(life, '_hostnames', return_value={'vps'}),
+            patch.object(life.socket, 'gethostname', return_value='vps'),
+        ):
+            life.require_owner(self.root, 'vigilo')
+        owner = life._read(life._path(self.root, 'vigilo', 'auth-owner'))
+        self.assertEqual(owner['installation'], life._owner_digest('i' * 43))
+
+    def test_mac_owner_file_is_refused_on_a_host(self):
+        with (
+            patch.object(life, '_machine_identity', return_value='mac-1'),
+            patch.object(life.socket, 'gethostname', return_value='same'),
+        ):
+            life.require_owner(self.root, 'vigilo')
+        with (
+            patch.object(life.sys, 'platform', 'linux'),
+            patch.object(life, '_machine_identity', return_value=None),
+            patch.dict(os.environ, {'FAMILIEKILDER_INSTALLATION_ID': 'i' * 43}),
+            patch.object(life, '_hostnames', return_value={'same'}),
+            patch.object(life.socket, 'gethostname', return_value='same'),
+        ):
+            with self.assertRaisesRegex(FamiliekilderError, 'annen installasjon'):
+                life.require_owner(self.root, 'vigilo')
+
+    def test_moved_session_is_never_renewed_here_until_a_new_login(self):
+        calls = []
+
+        @life.operation('vigilo')
+        def refresh(root):
+            calls.append('refresh')
+
+        @life.operation('vigilo', 'login')
+        def login(root):
+            calls.append('login')
+
+        atomic_write_private_json(life.moved_marker_path(self.root, 'vigilo'), {'version': 1})
+        with self.assertRaisesRegex(FamiliekilderError, 'flyttet'):
+            refresh(self.root)
+        self.assertEqual(calls, [])
+        login(self.root)
+        self.assertFalse(life.moved_marker_path(self.root, 'vigilo').exists())
+        refresh(self.root)
+        self.assertEqual(calls, ['login', 'refresh'])
 
     def test_journal_is_bound_to_both_session_and_transaction(self):
         session = {'refresh_token': 'old'}

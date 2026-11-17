@@ -24,6 +24,10 @@ dependencies = [
   "keyring==25.7.0",
   "httpx==0.28.1",
   "tomlkit==0.13.3",
+  "anyio==4.16.0",
+  "httpx2==2.16.2",
+  "starlette==1.7.0",
+  "uvicorn==0.34.2",
 ]
 
 [project.scripts]
@@ -38,7 +42,7 @@ where = ["src"]
 namespaces = false
 
 [tool.setuptools.package-data]
-familiekilder = ["data/*.json", "data/setup/*.html", "data/setup/*.css", "data/setup/*.js", "data/setup/*.txt"]
+familiekilder = ["data/*.json", "data/setup/*.html", "data/setup/*.css", "data/setup/*.js", "data/setup/*.txt", "data/container/*"]
 
 [tool.ruff]
 line-length = 100

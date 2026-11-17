@@ -2,6 +2,11 @@
 
 ## Ikke utgitt
 
+- Prøveordning for egen Linux-vert: lesende MCP over streamable HTTP med
+  OAuth, eierkode, roterende refresh-token, kryptert flytting av innlogginger
+  fra Mac og veiledet Fly.io-oppsett. Lokal stdio er fortsatt standard.
+  Se [alltid-på-oppsettet](docs/alltid-pa.md); ekte vert og klienter gjenstår.
+
 - Et klientoppsett som veiviseren har lagt inn fra pakkens innebygde oppsett,
   byttes nå ut av seg selv når en nyere pakke har et nyere. Det skjer når
   veiviseren åpnes og når MCP-serveren starter. Oppsett du har importert eller

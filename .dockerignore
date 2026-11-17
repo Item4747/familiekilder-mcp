@@ -1,0 +1,12 @@
+# Build context for the container image. Never send private state or tokens.
+**/.private
+**/__pycache__
+**/*.pyc
+**/*.egg-info
+.git
+.github
+build
+dist
+tests
+docs
+scripts

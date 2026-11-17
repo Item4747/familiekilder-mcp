@@ -24,7 +24,7 @@ ROOT = Path(__file__).resolve().parents[1]
 EXCLUDED = {".git", ".private", ".venv", "__pycache__", "build", "dist"}
 SOURCE_ENTRIES = (
     "AGENTS.md", "CHANGELOG.md", "LICENSE", "MANIFEST.in", "README.md",
-    "pyproject.toml", "src", "tests", "scripts", "docs", ".github",
+    "pyproject.toml", "src", "tests", "scripts", "docs", ".github", ".dockerignore",
 )
 
 
@@ -75,6 +75,8 @@ def check_artifacts(wheel: Path, sdist: Path, version: str) -> None:
         for field in ("Author", "Author-email", "Maintainer", "Maintainer-email"):
             if metadata[field]:
                 raise ValueError(f"Wheel har identifiserende felt: {field}")
+        if "familiekilder/data/container/Dockerfile" not in archive.namelist():
+            raise ValueError("Wheel mangler Dockerfile for alltid-på-oppsettet")
     with tarfile.open(sdist) as archive:
         members = archive.getmembers()
         for member in members:

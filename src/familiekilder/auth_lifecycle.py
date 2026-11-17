@@ -68,7 +68,7 @@ EVENTS = {
 
 
 def _path(root, source, suffix):
-    if source not in SOURCES:
+    if source not in SOURCES and not (source == 'gmail' and suffix in {'auth-owner', 'moved'}):
         raise FamiliekilderError('Ukjent auth-kilde')
     return credential_path(root, f'{source}-{suffix}.json')
 
@@ -105,6 +105,19 @@ def _machine_identity():
     return found.group(1) if found else None
 
 
+def _installation_identity():
+    """Outside macOS: the host's installation ID, a secret kept off the data disk.
+
+    A container's hostname changes with every start, so a host binds ownership
+    to this ID instead. macOS keeps its hardware binding and ignores it.
+    """
+    if sys.platform == 'darwin':
+        return None
+    from .hosting import installation_id
+
+    return installation_id()
+
+
 def _hostnames():
     names = {socket.gethostname()}
     if sys.platform == 'darwin':
@@ -118,20 +131,38 @@ def _owner_digest(value):
     return hashlib.sha256(value.encode()).hexdigest()
 
 
-def require_owner(root, source):
-    path = _path(root, source, 'auth-owner')
+def _expected_owner(root):
     machine = _machine_identity()
+    installation = _installation_identity()
     expected = {
         'root': str(project_paths(root).root.resolve()),
         'host': _owner_digest(socket.gethostname()),
     }
     if machine:
         expected['machine'] = _owner_digest(machine)
+    if installation:
+        expected['installation'] = _owner_digest(installation)
+    return expected
+
+
+def require_owner(root, source):
+    path = _path(root, source, 'auth-owner')
+    expected = _expected_owner(root)
+    machine = expected.get('machine')
+    installation = expected.get('installation')
     old = _read(path)
     if not old:
+        hosted = installation or (project_paths(root).private / 'remote').exists()
+        session = 'gmail.json' if source == 'gmail' else f'{source}-session.json'
+        if sys.platform != 'darwin' and hosted and credential_path(root, session).exists():
+            raise FamiliekilderError(
+                'Innloggingen på verten mangler eierbinding; flytt den på nytt fra Macen'
+            )
         atomic_write_private_json(path, expected)
         return
-    if 'machine' in old:
+    if 'installation' in old:
+        same_machine = old['installation'] == expected.get('installation')
+    elif 'machine' in old:
         same_machine = old['machine'] == expected.get('machine')
     else:
         same_machine = old.get('host') in {_owner_digest(name) for name in _hostnames()}
@@ -141,6 +172,29 @@ def require_owner(root, source):
         )
     if machine and 'machine' not in old:
         atomic_write_private_json(path, {**old, 'machine': expected['machine']})
+    if installation and 'installation' not in old:
+        atomic_write_private_json(path, {**old, 'installation': expected['installation']})
+
+
+def bind_owner(root, source):
+    """Make this installation the owner of `source`, replacing any earlier owner.
+
+    Only for a session that was just moved here; the sender has given it up.
+    """
+    atomic_write_private_json(_path(root, source, 'auth-owner'), _expected_owner(root))
+
+
+def moved_marker_path(root, source):
+    return _path(root, source, 'moved')
+
+
+def require_not_moved(root, source):
+    """Refuse to renew a session that was moved to a host."""
+    if moved_marker_path(root, source).exists():
+        raise FamiliekilderError(
+            'Innloggingen er flyttet til verten og fornyes bare der. '
+            'Logg inn på nytt her og flytt den igjen om du vil bytte.'
+        )
 
 
 def _number(value):
@@ -324,6 +378,8 @@ def operation(source, kind='refresh'):
             with private_source_lock(root, source) if kind != 'login' else nullcontext():
                 with private_source_lock(root, source, wait=True):
                     require_owner(root, source)
+                    if kind == 'refresh':
+                        require_not_moved(root, source)
                 instant = kwargs.get('at', kwargs.get('wall_time'))
                 try:
                     before = _read(_path(root, source, 'session'))
@@ -338,6 +394,10 @@ def operation(source, kind='refresh'):
                     raise
                 if kind in ('login', 'import', 'logout'):
                     clear_response(root, source)
+                if kind in ('login', 'import'):
+                    # A new login here starts a new token chain owned by this
+                    # installation, so an earlier move no longer applies.
+                    remove_private_file(moved_marker_path(root, source))
                 try:
                     after = _read(_path(root, source, 'session'))
                 except (PrivateStateError, RecursionError):

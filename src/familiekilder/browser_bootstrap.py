@@ -609,6 +609,9 @@ def _codesign_value(output: str, label: str) -> str | None:
 def _official_brave_path(
     explicit: Path | str | None = None, *, allow_chrome: bool = False
 ) -> Path:
+    from .hosting import refuse_on_remote_host
+
+    refuse_on_remote_host("Innlogging i nettleser")
     if sys.platform.startswith("linux"):
         # APT verifies the repository signature at installation. Do not accept
         # a caller-selected executable, user-writable wrapper or symlink here.

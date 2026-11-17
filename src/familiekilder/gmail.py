@@ -136,6 +136,13 @@ class Client:
         self.http.close()
 
     def grant(self, tokens):
+        with private_source_lock(self.root, 'gmail', wait=True, timeout=READ_LOCK_TIMEOUT):
+            return self._grant(tokens)
+
+    def _grant(self, tokens):
+        from . import auth_lifecycle
+        from .private_state import remove_private_file
+
         if SCOPE not in tokens.get("scope", "").split() or not tokens.get("refresh_token"):
             raise FamiliekilderError("Google ga ikke varig Gmail-lesetilgang")
         allowed = {SCOPE, "openid", "email", "profile", "https://www.googleapis.com/auth/userinfo.email", "https://www.googleapis.com/auth/userinfo.profile"}
@@ -149,9 +156,19 @@ class Client:
         if response.status_code != 200 or not response.json().get("emailAddress"):
             raise SourceLoginRequired("Gmail-lesetilgangen kunne ikke verifiseres")
         atomic_write_private_json(self.path, value)
+        auth_lifecycle.bind_owner(self.root, 'gmail')
+        remove_private_file(auth_lifecycle.moved_marker_path(self.root, 'gmail'))
         return {"authenticated": True}
 
     def token(self, *, force=False):
+        from . import auth_lifecycle
+
+        with private_source_lock(self.root, 'gmail', wait=True, timeout=READ_LOCK_TIMEOUT):
+            auth_lifecycle.require_not_moved(self.root, 'gmail')
+            auth_lifecycle.require_owner(self.root, 'gmail')
+            return self._token(force=force)
+
+    def _token(self, *, force=False):
         if not self.path.exists():
             raise SourceLoginRequired("Koble Gmail til med Google-innlogging")
         value = dict(read_private_json(self.path))

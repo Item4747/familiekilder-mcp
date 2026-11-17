@@ -20,6 +20,12 @@ bibliotekskode, men kan ikke aktiveres gjennom den selvstendige kommandolinjen e
 Oversettelse og forklaring gjøres av brukerens AI-assistent. Denne pakken gir
 assistenten tilgang til kildene; den inneholder ingen egen språkmodell.
 
+## Prøveordning utenfor 1.0
+
+[HTTP og egen vert](alltid-pa.md) inngår ikke i løftet for 1.0 og blokkerer
+ikke lokal 1.0. Ekte Fly-utrulling, klientkobling, øktflytting og planlagt
+skykjøring må fortsatt bekreftes særskilt.
+
 ## Før stabil utgivelse
 
 - Den selvstendige CLI-en og MCP-serveren avviser skriving, også fra eldre

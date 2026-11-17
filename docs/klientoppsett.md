@@ -174,3 +174,9 @@ er en formatoversikt, ikke en fil med verdier som kan brukes til innlogging.
 | IST Home (`ist-home`) | `authority`, `client_id`, `client_secret`, `redirect_uri`, `scope` |
 | Flyt (`flyt`) | `municipality` (kommunens navn slik det står i Flyts åpne kommuneliste, eller organisasjonsnummeret), eller én oppføring fra listen: `organizationNumber`, `customerName`, `displayName`, `vismaConnectClientContext` |
 | Gmail (`gmail`) | Google-filen for en egen OAuth-klient av typen Desktop app; se [Gmail](gmail.md#oppsett). |
+
+## Egen vert som prøveordning
+
+Lokal stdio er standard. For HTTP, OAuth, Fly.io og flytting av innlogginger,
+se [alltid-på-oppsettet](alltid-pa.md). Innloggingen gjøres fortsatt på Macen;
+ikke kopier øktfiler for hånd.
