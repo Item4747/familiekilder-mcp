@@ -2,10 +2,10 @@
 
 Dette er en prøveordning utenfor løftet for 1.0. Lokal bruk på Mac over stdio
 er fortsatt standard. Funksjonen er med fra 1.0.0rc3. En første ekte prøve på
-Fly.io 17. november 2026 bekreftet utrulling, stopp og start ved kall, flytting
-av innloggingene for Spond og Hoopit, lesing på verten og tilkobling fra
-Claude på nett og Codex CLI. ChatGPT, Claude på mobil, planlagt skykjøring,
-de andre kildene og drift over tid er ennå ikke prøvd. Se
+Fly.io 17. og 18. november 2026 bekreftet utrulling, stopp og start ved kall,
+flytting av innloggingene for Spond og Hoopit, lesing på verten og tilkobling
+fra Claude og ChatGPT på nett og fra Codex CLI. Mobilklientene, planlagt
+skykjøring, de andre kildene og drift over tid er ennå ikke prøvd. Se
 [Prøvd på ekte vert](#prøvd-på-ekte-vert).
 
 Verten kjører samme lesende MCP-server i en Linux-container. Den henter bare
@@ -100,9 +100,8 @@ Etter godkjenningen kan Codex bruke verktøyene, også i en kjøring med
 ## Claude og ChatGPT
 
 Faktaene her er kontrollert mot originalkilder 17. november 2026. Menyer,
-abonnementer og utrulling kan endres. Claude på nett er prøvd med denne
-serveren; se [Prøvd på ekte vert](#prøvd-på-ekte-vert). ChatGPT er ennå ikke
-prøvd; prøvene med de andre klientene erstatter ikke det.
+abonnementer og utrulling kan endres. Claude og ChatGPT på nett er prøvd med
+denne serveren; se [Prøvd på ekte vert](#prøvd-på-ekte-vert).
 
 **Claude:** [egne koblinger](https://support.claude.com/en/articles/11175166-get-started-with-custom-connectors-using-remote-mcp)
 finnes også på Free, begrenset til én. Legg til under **Customize > Connectors
@@ -121,9 +120,10 @@ koblingen i en ny samtale. [MCP-veiledningen](https://help.openai.com/en/article
 dokumenterer full MCP for Business og Enterprise/Edu og lesende MCP for Pro.
 [Plugins-veiledningen](https://help.openai.com/en/articles/20001256-plugins-in-chatgpt)
 og kontoreglene må kontrolleres før kjøp: en synlig katalog beviser ikke at
-din plan kan legge til en egen MCP-server. Plus, Free og Go loves ikke her.
-MCP-siden sier at tilkobling opprettes på nett, ikke mobil. Mobilbruk og
-planlagt ChatGPT-kjøring med denne serveren er ikke bekreftet.
+din plan kan legge til en egen MCP-server. Koblingen er prøvd på en
+Pro-konto; Plus, Free og Go loves ikke her. MCP-siden sier at tilkobling
+opprettes på nett, ikke mobil. Mobilbruk og planlagt ChatGPT-kjøring med
+denne serveren er ikke bekreftet.
 
 Begge klientene kan registrere OAuth-klienter automatisk. Registrering gir
 ingen tilgang før eierkoden godkjennes. Serveren annonserer `offline_access`
@@ -150,7 +150,7 @@ prøves særskilt; det gis ikke et løfte om denne oppgaven på mobil eller i sk
 
 ## Prøvd på ekte vert
 
-Den første ekte prøven ble gjort 17. november 2026 på Fly.io i region `arn`,
+Den første ekte prøven ble gjort 17. og 18. november 2026 på Fly.io i region `arn`,
 med én shared-cpu-1x-maskin med 256 MB, én disk på 1 GB og `flyctl` v0.5.11.
 Utrullingen ble gjort fra kildeutsjekkingen med
 `familiekilder-mcp deploy fly --no-move`.
@@ -196,6 +196,13 @@ Dette virket:
   kalt gjennom Claude-koblingen fra Claude Code, som bruker koblingene
   kontoen har på nett. En samtale i nettgrensesnittet ble ikke fullført, fordi
   kontoens bruksgrense var nådd.
+- **ChatGPT på nett.** På en Pro-konto ble verten lagt til med **Plugins >
+  Add > Add custom MCP server**, med OAuth og uten utviklermodus.
+  Risikovarselet «Custom MCP servers introduce risk» måtte godtas. Vertens
+  godkjenningsside viste appen som «ChatGPT». Etter eierkoden og «Godkjenn»
+  gikk nettleseren tilbake til chatgpt.com, og koblingen viste 20
+  leseverktøy. En ny samtale kalte `family_connections` og
+  `spond_list_items` uten spørsmål om tillatelse og svarte riktig.
 - **Fornyelse av OAuth-token.** Etter én time var klientens access-token
   utløpt. MCP SDK-klienten fornyet det med refresh-tokenet, og lesingen
   virket videre. Verten fornyet da Hoopit-økten en gang til.
@@ -208,8 +215,7 @@ Dette virket:
 
 Dette er ennå ikke prøvd:
 
-- Tilkobling fra ChatGPT på nett og fra Claude på mobil, og en hel samtale i
-  Claudes nettgrensesnitt.
+- Claude og ChatGPT på mobil, og en hel samtale i Claudes nettgrensesnitt.
 - En planlagt skyoppgave som kjører mens Macen er av.
 - Kilder som logger inn med BankID (Vigilo, Skolemelding, IST Home og Flyt),
   og Gmail, på verten. Bare Spond og Hoopit ble flyttet.
@@ -308,6 +314,10 @@ verktøyliste, gjenbruk av token etter omstart, UID 10001 og datamodus 0700.
   På Fly, kjør samme kommando i eksisterende maskin, ikke med `fly console`
   som oppretter en ny: `flyctl ssh console --app APP -C 'python -m familiekilder.container remote clients'`
   og `flyctl ssh console --app APP -C 'python -m familiekilder.container remote revoke --all'`.
+  Kommandoen trenger en maskin som er i gang. Har Fly stoppet den, svarer
+  `flyctl` «has no started VMs». Åpne da `https://APP.fly.dev/healthz` i
+  nettleseren for å starte den, og kjør kommandoen på nytt innen noen
+  minutter.
   `--client ID` trekker bare tilbake én klient. Endringen gjelder neste kall.
   Ny eierkode lages med `deploy fly --app APP --new-owner-code`; tilbakekall
   også eksisterende tokens ved mistanke om misbruk. Ikke mist koden før ny

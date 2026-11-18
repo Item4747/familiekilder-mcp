@@ -86,9 +86,9 @@ Som [prøveordning](docs/alltid-pa.md) kan du kjøre serveren på en liten
 Linux-vert med HTTPS og OAuth. Da kan eksterne klienter nå den uten at Macen
 er på. Innlogging skjer fortsatt på Macen. En første prøve på Fly.io
 bekreftet utrulling, flytting av innloggingene for Spond og Hoopit og
-tilkobling fra Claude på nett og Codex CLI. Claude dokumenterer også
-mobilstøtte, og ChatGPT krever en egnet plan og oppsett på nett; ingen av de
-to er ennå prøvd med denne serveren. Drift over tid er heller ikke bekreftet.
+tilkobling fra Claude og ChatGPT på nett og fra Codex CLI. ChatGPT krever en
+egnet plan; koblingen er prøvd på Pro. Mobilklientene og drift over tid er
+ennå ikke prøvd.
 
 
 

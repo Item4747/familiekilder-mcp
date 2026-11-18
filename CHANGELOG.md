@@ -1,5 +1,12 @@
 # Endringer
 
+## Ikke utgitt
+
+- Veiledningen for [alltid-på-oppsettet](docs/alltid-pa.md) sier nå at
+  ChatGPT på nett er prøvd mot en ekte vert (Pro-konto, 18. november 2026),
+  og at kommandoene for tilbakekalling på Fly trenger en maskin som er i
+  gang. Ingen kode er endret.
+
 ## 1.0.0rc3
 
 - Prøveordning for egen Linux-vert, utenfor løftet for 1.0: lesende MCP over

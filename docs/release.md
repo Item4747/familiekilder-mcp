@@ -24,9 +24,9 @@ assistenten tilgang til kildene; den inneholder ingen egen språkmodell.
 
 [HTTP og egen vert](alltid-pa.md) inngår ikke i løftet for 1.0 og blokkerer
 ikke lokal 1.0. Den første prøven på en ekte Fly-vert bekreftet utrulling,
-flytting av innloggingene for Spond og Hoopit og tilkobling fra Claude på nett
-og Codex CLI. ChatGPT, Claude på mobil, planlagt skykjøring, de andre kildene
-og drift over tid må
+flytting av innloggingene for Spond og Hoopit og tilkobling fra Claude og
+ChatGPT på nett og fra Codex CLI. Mobilklientene, planlagt skykjøring, de
+andre kildene og drift over tid må
 fortsatt bekreftes særskilt; se [Prøvd på ekte vert](alltid-pa.md#prøvd-på-ekte-vert).
 
 ## Før stabil utgivelse
