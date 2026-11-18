@@ -121,6 +121,27 @@ seg hva som skjer, følge opp frister og svare på beskjeder.
 
 *Illustrasjon med oppdiktede data. Svaret er et forslag du selv kan sende.*
 
+## Flere prompter
+
+[Prompter som virker](docs/oppskrifter.md) samler promptene over og noen
+flere. Del dine egne under **Discussions** på reposiden, i kategorien
+**Show and tell**, eller send en pull request.
+
+## Leter du etter et Spond API eller Vigilo API?
+
+Så vidt vi vet, har verken Spond, Vigilo, Hoopit, Skolemelding, IST Home eller
+Flyt et åpent API for foreldre. Søker du etter Spond API, Vigilo API, Hoopit
+API, Skolemelding API, IST Home API eller Flyt API, er dette en uoffisiell
+kobling i stedet. Den logger inn med din egen konto og leser beskjeder,
+aktiviteter og vedlegg du selv har tilgang til. Den kan ikke sende, svare eller
+melde på.
+
+Du bruker den som MCP-server fra Claude, ChatGPT eller Codex. Python-modulene
+er interne og ikke et stabilt bibliotek. Oppsettet krever macOS og Brave, som
+beskrevet over. Endrer en tjeneste appen sin, kan koblingen slutte å virke til
+den er rettet.
+
 [Hva tjenestene støtter](docs/service-capabilities.md) ·
+[Prompter](docs/oppskrifter.md) ·
 [Feilsøking og bidrag](docs/kom-i-gang.md#hjelp-og-bidrag) ·
 [Apache-2.0](LICENSE)

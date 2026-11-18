@@ -2,6 +2,14 @@
 
 ## Ikke utgitt
 
+- Ny side med [prompter som virker](docs/oppskrifter.md), med promptene fra
+  README-en og noen flere. Del egne prompter under Discussions eller med en
+  pull request.
+- README-en forklarer at Spond, Vigilo, Hoopit, Skolemelding, IST Home og
+  Flyt ikke har et åpent API for foreldre, og at koblingene her er uoffisielle.
+  Pakken har fått søkeord (`keywords`) for MCP og hver tjeneste. En test
+  stopper en ny tjeneste i `sources.REGISTRY` som mangler i README-en, søkeordene
+  eller promptsiden.
 - README-en forklarer nå de to måtene å kjøre serveren på, på Macen eller på
   din egen konto hos Fly.io, med en tabell over forskjellene og oppsett for
   begge. Prisavsnittet i veiledningen er kontrollert på nytt.

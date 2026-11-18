@@ -185,7 +185,9 @@ def web_script() -> str:
         "kinds": {s.name: s.kind for s in services},
         "readOnly": [s.name for s in services if not s.writes],
     }
-    return ("'use strict';\n// Generated from REGISTRY in familiekilder/sources.py.\n"
+    # Built from REGISTRY above. The served script names no source file, because
+    # the host's web pages may be public.
+    return ("'use strict';\n"
             f"globalThis.Services = {json.dumps(catalog, ensure_ascii=False, indent=2)};\n")
 
 

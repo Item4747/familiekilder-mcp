@@ -29,6 +29,12 @@ class WebScriptTests(unittest.TestCase):
             'readOnly': ['flyt', 'gmail'],
         })
 
+    def test_generated_script_names_no_source_file(self):
+        script = web_script()
+        for word in ('familiekilder', 'REGISTRY', 'sources.py'):
+            with self.subTest(word=word):
+                self.assertNotIn(word.lower(), script.lower())
+
 
 if __name__ == '__main__':
     unittest.main()
