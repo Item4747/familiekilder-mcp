@@ -58,14 +58,14 @@ def read_only_tool_names() -> set[str]:
 
 class DiscoveryTextTests(unittest.TestCase):
     def test_readme_service_line_names_every_service(self):
-        lines = README.read_text().splitlines()
+        lines = README.read_text(encoding="utf-8").splitlines()
         service_line = lines[lines.index(SERVICE_LINE_MARKER) + 1]
         for source in REGISTRY.values():
             with self.subTest(source=source.name):
                 self.assertIn(source.label, service_line)
 
     def test_readme_search_words_name_every_unofficial_service(self):
-        readme = flat(README.read_text())
+        readme = flat(README.read_text(encoding="utf-8"))
         self.assertIn("uoffisiell", readme)
         for platform in ("macOS", "Windows", "Linux"):
             with self.subTest(platform=platform):
@@ -78,7 +78,7 @@ class DiscoveryTextTests(unittest.TestCase):
                 self.assertIn(f"{source.label} API", readme)
 
     def test_package_keywords_name_mcp_and_every_service(self):
-        project = tomllib.loads((PROJECT / "pyproject.toml").read_text())["project"]
+        project = tomllib.loads((PROJECT / "pyproject.toml").read_text(encoding="utf-8"))["project"]
         keywords = project["keywords"]
         self.assertIn("mcp", keywords)
         for source in REGISTRY.values():
@@ -86,9 +86,9 @@ class DiscoveryTextTests(unittest.TestCase):
                 self.assertIn(source.label.casefold(), keywords)
 
     def test_prompt_page_keeps_every_readme_prompt(self):
-        readme = README.read_text()
+        readme = README.read_text(encoding="utf-8")
         self.assertIn("](docs/oppskrifter.md)", readme)
-        page = quoted_prompts(PROMPTS.read_text())
+        page = quoted_prompts(PROMPTS.read_text(encoding="utf-8"))
         prompts = quoted_prompts(readme)
         self.assertGreaterEqual(len(prompts), 4)
         for prompt in prompts:
@@ -96,7 +96,7 @@ class DiscoveryTextTests(unittest.TestCase):
                 self.assertIn(prompt, page)
 
     def test_prompt_page_names_only_tools_the_server_offers(self):
-        named = set(TOOL_NAME.findall(PROMPTS.read_text()))
+        named = set(TOOL_NAME.findall(PROMPTS.read_text(encoding="utf-8")))
         self.assertIn("family_connections", named)
         self.assertEqual(named - read_only_tool_names(), set())
 

@@ -569,8 +569,8 @@ class WizardReloginTests(RenewalCase):
         self.assertIs(rows["vigilo"]["renewal_pending"], True)
         self.assertIs(rows["spond"]["renewal_pending"], False)
         page = Path(client_defaults.__file__).parent / "data/setup"
-        self.assertIn('id="renewal-warning"', (page / "index.html").read_text())
-        self.assertIn("renewal_pending", (page / "setup.js").read_text())
+        self.assertIn('id="renewal-warning"', (page / "index.html").read_text(encoding="utf-8"))
+        self.assertIn("renewal_pending", (page / "setup.js").read_text(encoding="utf-8"))
 
     def test_cancel_after_the_logout_says_the_user_is_logged_out(self):
         def cancelled(job, **_):

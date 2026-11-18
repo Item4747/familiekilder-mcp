@@ -2,6 +2,10 @@
 
 ## Ikke utgitt
 
+- Den offentlige kontrollen (`Kontroller pakken`) kjører nå på Linux og
+  Windows ved hver push og pull request. macOS kjøres når workflowen startes
+  for hånd, fordi GitHub ofte ikke har ledige macOS-maskiner. Testene leser
+  tekstfiler som UTF-8 også på Windows, der de feilet før.
 - Innlogging kan nå også gjøres på Windows og Linux, og i Google Chrome og
   Microsoft Edge i tillegg til Brave. Uten valg brukes den første installerte
   av Brave, Chrome og Edge. Velg med `familiekilder-mcp browser`, med

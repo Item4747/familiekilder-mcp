@@ -124,6 +124,11 @@ def interrupted(signum, frame):
 
 
 def main(arguments=None):
+    # A Windows console or pipe can use a code page without every character a
+    # test prints; show those as escapes instead of stopping the whole run.
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, 'reconfigure'):
+            stream.reconfigure(errors='backslashreplace')
     parser = argparse.ArgumentParser(description=__doc__.split('\n')[0])
     parser.add_argument('files', nargs='+', type=Path)
     parser.add_argument('--jobs', type=int, default=default_jobs())

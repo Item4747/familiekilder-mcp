@@ -20,7 +20,7 @@ class WebScriptTests(unittest.TestCase):
             ['node', '-e', "const vm=require('node:vm'),c=vm.createContext({});"
              "vm.runInContext(process.argv[1],c);process.stdout.write(JSON.stringify(c.Services));",
              web_script()],
-            capture_output=True, text=True, check=True)
+            capture_output=True, encoding='utf-8', check=True)
         self.assertEqual(json.loads(result.stdout), {
             'labels': {s.name: s.label for s in REGISTRY.values()},
             'letters': {s.name: s.letter for s in REGISTRY.values()},
