@@ -53,7 +53,7 @@ nyere og [Brave](https://brave.com/) for å logge inn på tjenestene.
 
 Få kodeagenten til å installere for deg. Åpne Codex i ChatGPT-appen eller Claude og lim inn prompten under.
 
-> Installer familiekilder-mcp fra https://github.com/Item4747/familiekilder-mcp i ~/familiekilder-mcp. Prosjektet krever macOS, Python 3.11+ og Brave. Kjør scripts/setup i bakgrunnen. Veiviseren åpnes automatisk. Innlogging og resten av oppsettet gjør jeg selv der.
+> Installer familiekilder-mcp fra https://github.com/familiekilder/familiekilder-mcp i ~/familiekilder-mcp. Prosjektet krever macOS, Python 3.11+ og Brave. Kjør scripts/setup i bakgrunnen. Veiviseren åpnes automatisk. Innlogging og resten av oppsettet gjør jeg selv der.
 
 Eller installer selv ved å følge [oppsettsveiledningen](docs/kom-i-gang.md).
 

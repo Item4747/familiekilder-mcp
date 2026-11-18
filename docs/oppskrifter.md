@@ -22,7 +22,7 @@ personopplysninger. Skriv om eksemplene først.
 Installer på Macen. Prosjektet krever macOS, Python 3.11 eller nyere og
 [Brave](https://brave.com/).
 
-> Installer familiekilder-mcp fra https://github.com/Item4747/familiekilder-mcp i ~/familiekilder-mcp. Prosjektet krever macOS, Python 3.11+ og Brave. Kjør scripts/setup i bakgrunnen. Veiviseren åpnes automatisk. Innlogging og resten av oppsettet gjør jeg selv der.
+> Installer familiekilder-mcp fra https://github.com/familiekilder/familiekilder-mcp i ~/familiekilder-mcp. Prosjektet krever macOS, Python 3.11+ og Brave. Kjør scripts/setup i bakgrunnen. Veiviseren åpnes automatisk. Innlogging og resten av oppsettet gjør jeg selv der.
 
 Egen server på Fly.io, etter at oppsettet på Macen er ferdig. Se
 [veiledningen for egen server](alltid-pa.md).
