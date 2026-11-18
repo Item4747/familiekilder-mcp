@@ -7,7 +7,7 @@ assistenten lese fra tjenestene du bruker, med din egen innlogging.
 ![Illustrasjon: Beskjeder fra barnehage i Vigilo, skole i Skolemelding og fotball i Spond går til assistenten. Hver kveld kl. 19 legger den oppgaver og aktiviteter i familiekalenderen, og telefonen varsler kvelden før.](docs/bilder/fra-beskjeder-til-paminnelser.webp)
 
 *Illustrasjon med oppdiktede data. Assistenten må ha en planlagt oppgave og en
-egen kalenderkobling. Ved lokal kjøring må Macen være på. Se også [prøveordningen med egen vert](docs/alltid-pa.md).*
+egen kalenderkobling.*
 
 <!-- Tjenestelisten er hentet fra sources.REGISTRY. -->
 Støtter Vigilo, Skolemelding, Spond, Hoopit, IST Home, Flyt (barnehage) og Gmail.
@@ -16,7 +16,37 @@ Vi jobber med støtte for MyKid og for skole og SFO i Flyt.
 Savner du en tjeneste? Opprett en sak på GitHub med navnet på tjenesten,
 eller send en pull request hvis du vil bidra med en kobling.
 
-## Kom i gang
+## Serveren er din
+
+Du kjører serveren selv: på Macen din, eller på din egen konto hos
+[Fly.io](https://fly.io/). Ingen data går gjennom eller lagres hos oss som
+lager programmet. Vi har ingen server, og programmet sender oss ingenting.
+
+| | På Macen | Din server på Fly.io |
+| --- | :---: | :---: |
+| Claude og ChatGPT installert på Macen | ✅ | ✅ |
+| Claude og ChatGPT i nettleseren | ❌ | ✅ |
+| Claude og ChatGPT på mobilen | ❌ | ✅ |
+| Virker når Macen er av | ❌ | ✅ |
+| Gratis | ✅ | ❌ |
+| Innloggingene blir på Macen | ✅ | ❌ |
+| Prøvd med alle tjenestene | ✅ | ❌ |
+
+- **Pris.** Fly.io gir nye kontoer 1 dollar å prøve for i sju dager, uten
+  betalingskort. Etterpå må du legge inn kort. Serveren sover når ingen bruker
+  den, og koster under 30 kr i måneden. Fly sletter i dag regninger under
+  5 dollar, men det kan de endre.
+- **Innlogginger.** På Fly.io ligger innloggingene på serveren din der.
+- **Prøveordning.** Oppsettet på Fly.io er nytt. Spond og Hoopit er prøvd
+  der. Tjenestene med BankID-innlogging og Gmail er ikke prøvd ennå.
+- **ChatGPT.** I nettleseren og på mobilen trenger du et abonnement som
+  tillater egne MCP-servere. Det er prøvd med Pro.
+
+Uansett hvor serveren kjører, kan den bare lese. Det assistenten leser, sendes
+til AI-leverandøren du bruker. Gmail bruker Googles offisielle API. De øvrige
+koblingene er uoffisielle.
+
+## Kom i gang på Macen
 
 Dette er en lanseringskandidat for versjon 1.0. Du trenger Python 3.11 eller
 nyere og [Brave](https://brave.com/) for å logge inn på tjenestene.
@@ -27,10 +57,28 @@ Få kodeagenten til å installere for deg. Åpne Codex i ChatGPT-appen eller Cla
 
 Eller installer selv ved å følge [oppsettsveiledningen](docs/kom-i-gang.md).
 
-MCP-serveren tilbyr bare lesing. Innloggingene lagres på Macen ved lokal bruk,
-eller på din egen vert når du uttrykkelig flytter dem dit. Innhold
-assistenten leser, kan sendes til AI-leverandøren du bruker. Gmail bruker
-Googles offisielle API. De øvrige koblingene er uoffisielle.
+Bruk serveren fra [Claude Desktop](https://claude.com/download) eller
+[ChatGPT-appen for Mac](https://chatgpt.com/download/) på samme maskin. I
+ChatGPT velger du **Codex** og **This computer**. Codex i CLI eller IDE kan
+også koble til.
+
+## Kom i gang på Fly.io
+
+Gjør først oppsettet på Macen, og logg inn på tjenestene der. Lim så inn
+denne prompten i kodeagenten:
+
+> Sett opp min egen familiekilder-server på Fly.io. Følg docs/alltid-pa.md i ~/familiekilder-mcp. Installer flyctl, og la meg logge inn hos Fly selv. Kjør så `familiekilder-mcp deploy fly --move`. Gi meg adressen til serveren og stien til filen med eierkoden. Ikke les eller vis eierkoden.
+
+Når agenten er ferdig:
+
+1. Åpne filen med eierkoden. Lagre koden i passordbehandleren, og slett filen.
+2. Legg til adressen i Claude på nett (**Customize > Connectors > Add custom
+   connector**) eller i ChatGPT på nett (**Plugins > + > Add custom MCP
+   server**).
+3. Skriv eierkoden når serveren ber om den. Da virker koblingen også i
+   mobilappen.
+
+Eller sett opp selv ved å følge [veiledningen for egen server](docs/alltid-pa.md).
 
 ## Slipp å huske alt selv
 
@@ -52,9 +100,9 @@ Codex og Claude Desktop kan kjøre en oppgave fast hver dag. Lag en planlagt
 oppgave med prompten over, og legg til teksten under. Da holder assistenten
 kalenderen oppdatert uten at du må be om det. Kjøring om kvelden gir tid til å
 vaske gymtøy eller kjøpe gave før neste dag. Macen må være på når oppgaven
-kjører. For betalt Claude Cowork finnes også planlagt skykjøring med
-[egen vert](docs/alltid-pa.md#en-kveldsoppgave-i-skyen); dette må prøves med
-den ekte koblingen før du stoler på rutinen.
+kjører. Med egen server på Fly.io kan oppgaven
+[kjøre i skyen](docs/alltid-pa.md#en-kveldsoppgave-i-skyen) i stedet, også når
+Macen er av.
 
 > Gjør dette hver kveld kl. 19. Oppdater oppføringer når tid eller sted er
 > endret, og slett bare noe når en beskjed sier at det er avlyst. Legg inn en
@@ -72,25 +120,6 @@ seg hva som skjer, følge opp frister og svare på beskjeder.
 ![Illustrasjon: En skolebeskjed ber om signert samtykke til turen innen fredag. Assistenten forklarer beskjeden på polsk og foreslår et kort svar på norsk.](docs/bilder/beskjeder-pa-polsk.webp)
 
 *Illustrasjon med oppdiktede data. Svaret er et forslag du selv kan sende.*
-
-## Hvor fungerer det?
-
-Du installerer MCP-serveren på Macen din og bruker den fra
-[Claude Desktop](https://claude.com/download) eller
-[ChatGPT-appen for Mac](https://chatgpt.com/download/) på samme maskin.
-I ChatGPT velger du **Codex** og **This computer**. Lokal Codex-kjøring i CLI
-eller IDE kan også koble til. Vanlig chat i nettleseren eller på mobilen kan
-ikke koble seg direkte til den lokale stdio-serveren.
-
-Som [prøveordning](docs/alltid-pa.md) kan du kjøre serveren på en liten
-Linux-vert med HTTPS og OAuth. Da kan eksterne klienter nå den uten at Macen
-er på. Innlogging skjer fortsatt på Macen. En første prøve på Fly.io
-bekreftet utrulling, flytting av innloggingene for Spond og Hoopit og
-tilkobling fra Claude og ChatGPT på nett og iPhone og fra Codex CLI. ChatGPT
-krever en egnet plan; koblingen er prøvd på Pro. Kildene med BankID-innlogging
-og drift over tid er ennå ikke prøvd på en slik vert.
-
-
 
 [Hva tjenestene støtter](docs/service-capabilities.md) ·
 [Feilsøking og bidrag](docs/kom-i-gang.md#hjelp-og-bidrag) ·

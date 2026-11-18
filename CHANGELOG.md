@@ -2,6 +2,9 @@
 
 ## Ikke utgitt
 
+- README-en forklarer nå de to måtene å kjøre serveren på, på Macen eller på
+  din egen konto hos Fly.io, med en tabell over forskjellene og oppsett for
+  begge. Prisavsnittet i veiledningen er kontrollert på nytt.
 - `familiekilder-mcp deploy fly --word` bygger verten med LibreOffice, så den
   kan lese Word-vedlegg, og gir maskinen 512 MB vekselminne (swap). Uten det
   drepte Linux LibreOffice på en ekte 256 MB-maskin. Bildet blir omtrent 2,5

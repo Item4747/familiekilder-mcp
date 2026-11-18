@@ -23,13 +23,19 @@ stoppet Fly maskinen etter omtrent fem minutter uten kall. Neste kall startet
 den igjen: maskinen var i gang etter omtrent 0,65 sekunder og svarte etter
 omtrent 2,4 sekunder, og kallet lyktes uten feil i klienten.
 
-Kontrollert 17. november 2026: [Fly-prisene](https://fly.io/pricing/) viser
-2,19 USD per måned for kontinuerlig kjøring med 256 MB i billigste region,
-0,15 USD per GB disk og måned og 0,15 USD per GB rotfilsystem for en stoppet
-maskin. Stockholm kan koste mer. Nettverk, sikkerhetskopier, valutakurs og
-avgifter kommer eventuelt i tillegg; 20–30 kr er et anslag, ingen prisgaranti.
-Fly tilbyr startkreditt, men dette oppsettet forutsetter betalt bruk. Ikke
-baser driften på en varig gratisplan. Se også
+Kontrollert 18. november 2026: [Fly-prisene](https://fly.io/pricing/) viser
+2,19 USD per måned for kontinuerlig kjøring med 256 MB i billigste region og
+2,28 USD i Stockholm. Disk koster 0,15 USD per GB og måned, og en stoppet
+maskin koster 0,15 USD per GB rotfilsystem. Maskinen stopper når den er
+ubrukt, så regningen blir normalt lavere. Nettverk, sikkerhetskopier,
+valutakurs og avgifter kommer eventuelt i tillegg. Under 30 kr i måneden er et
+anslag, ingen prisgaranti.
+
+Nye kontoer får 1 USD i [prøvekreditt](https://fly.io/docs/about/free-trial/)
+i sju dager, uten betalingskort. Når kreditten er brukt eller dagene er gått,
+stopper maskinene til du legger inn kort. Fly skriver at regninger under 5 USD
+i måneden frafalles for personlige kontoer. Det kan gjøre verten gratis i
+praksis, men Fly kan endre det. Ikke baser driften på det. Se også
 [prisdetaljene](https://fly.io/docs/about/pricing/).
 
 Dette er en større risiko enn lokal bruk: en uoffisiell kobling med en
