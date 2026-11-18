@@ -123,13 +123,21 @@ def build_parser(
     default_directory = "familiekilder-mcp" if program.allow_setup else "Familiekilder"
     root_help = f"Datarot; standard ~/Library/Application Support/{default_directory}"
     if program.allow_setup:
-        root_help += " på Mac og ~/.local/share/familiekilder-mcp ellers"
+        root_help += (
+            " på Mac, %%LOCALAPPDATA%%\\familiekilder-mcp på Windows og "
+            "~/.local/share/familiekilder-mcp på Linux"
+        )
     parser.add_argument("--root", help=root_help)
     parser.add_argument("--profile", help="Separat personlig profil, uten arv fra standardprofilen")
     sub = parser.add_subparsers(dest="command", required=True)
 
     before("password")
-    passwords = sub.add_parser("password", help="Profilens passord i macOS-nøkkelringen")
+    password_help = (
+        "Profilens passord i systemets nøkkelring"
+        if program.allow_setup
+        else "Profilens passord i macOS-nøkkelringen"
+    )
+    passwords = sub.add_parser("password", help=password_help)
     passwords.set_defaults(handler=_run_password)
     extend("password", passwords)
     passwords.add_argument("password_command", choices=("set", "status", "delete"))
@@ -163,7 +171,7 @@ def build_parser(
     auth = sub.add_parser("auth", help="Administrer en lokal, fornybar API-økt")
     auth.set_defaults(handler=_run_auth)
     extend("auth", auth)
-    _add_auth_arguments(auth)
+    _add_auth_arguments(auth, browser_choice=program.allow_setup)
 
     before("onboard")
     onboard = sub.add_parser(
@@ -183,6 +191,19 @@ def build_parser(
     ist_auth.set_defaults(handler=_run_ist_auth)
     extend("ist-auth", ist_auth)
     _add_ist_auth_arguments(ist_auth)
+
+    if program.allow_setup:
+        browser = sub.add_parser(
+            "browser",
+            help="Vis eller velg nettleseren innloggingene åpnes i",
+        )
+        browser.set_defaults(handler=_run_browser)
+        browser.add_argument(
+            "browser_choice",
+            nargs="?",
+            choices=("brave", "chrome", "edge", "auto"),
+            help="auto bruker den første installerte av Brave, Chrome og Edge",
+        )
 
     if program.allow_setup:
         setup = sub.add_parser("setup", help="Åpne lokalt oppsett i nettleseren")
@@ -218,7 +239,7 @@ def _add_remote_commands(sub: Any) -> None:
     init.add_argument("--public-url", required=True, help="Vertens offentlige HTTPS-adresse")
     init.set_defaults(handler=_run_remote_init, create_root=False)
     move = remote_commands.add_parser(
-        "move", help="Flytt innloggingene fra denne Macen til verten (eierkoden leses fra terminalen)"
+        "move", help="Flytt innloggingene fra denne maskinen til verten (eierkoden leses fra terminalen)"
     )
     move.add_argument("url", help="Vertens adresse, for eksempel https://navn.fly.dev")
     move.add_argument(
@@ -258,7 +279,17 @@ def _add_remote_commands(sub: Any) -> None:
     fly.set_defaults(handler=_run_deploy_fly)
 
 
-def _add_auth_arguments(auth: argparse.ArgumentParser) -> None:
+def _add_browser_argument(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument(
+        "--browser",
+        choices=("brave", "chrome", "edge"),
+        help="Nettleser for denne innloggingen; standard er valget fra «browser»",
+    )
+
+
+def _add_auth_arguments(
+    auth: argparse.ArgumentParser, *, browser_choice: bool = False
+) -> None:
     auth.add_argument("source", choices=API_AUTH_SOURCES, metavar="SOURCE")
     auth_commands = auth.add_subparsers(dest="auth_command", required=True)
     auth_configure = auth_commands.add_parser(
@@ -267,10 +298,12 @@ def _add_auth_arguments(auth: argparse.ArgumentParser) -> None:
     )
     auth_configure.add_argument("--client-file", required=True)
     auth_commands.add_parser("login", help="Start manuell leverandørinnlogging der dette støttes")
-    auth_commands.add_parser(
+    browser_login = auth_commands.add_parser(
         "browser-login",
-        help="Fang custom-scheme callback lokalt i en isolert Brave-profil",
+        help="Fang custom-scheme callback lokalt i en isolert nettleserprofil",
     )
+    if browser_choice:
+        _add_browser_argument(browser_login)
     refresh_parser = auth_commands.add_parser("refresh", help="Forny og valider API-økten nå")
     refresh_parser.add_argument("--if-needed", action="store_true", help="Forny bare ved behov")
     auth_commands.add_parser("health", help="Vis hemmelighetsfri levetidshistorikk uten nettverk")
@@ -302,8 +335,10 @@ def _add_auth_arguments(auth: argparse.ArgumentParser) -> None:
     )
     auth_browser = auth_commands.add_parser(
         "browser-bootstrap",
-        help="Importer økten direkte fra en isolert, midlertidig Brave-profil",
+        help="Importer økten direkte fra en isolert, midlertidig nettleserprofil",
     )
+    if browser_choice:
+        _add_browser_argument(auth_browser)
     auth_browser.add_argument(
         "--replace-existing",
         action="store_true",
@@ -350,7 +385,7 @@ def _add_ist_auth_arguments(ist_auth: argparse.ArgumentParser) -> None:
     )
 
 
-# Commands that log in or store passwords; they belong on the user's Mac.
+# Commands that log in or store passwords; they belong on the user's computer.
 _LOGIN_COMMANDS = frozenset({"login", "browser-login", "browser-bootstrap", "import-session"})
 
 
@@ -526,6 +561,21 @@ def _run_deploy_fly(args: argparse.Namespace, config: Config) -> int:
         word=args.word,
     )
     _json(result)
+    return 0
+
+
+def _run_browser(args: argparse.Namespace, config: Config) -> int:
+    from .browsers import installed, save_browser, saved_browser
+
+    if args.browser_choice is not None:
+        save_browser(config.root, None if args.browser_choice == "auto" else args.browser_choice)
+    found = [app.id for app in installed()]
+    chosen = saved_browser(config.root)
+    _json({
+        "chosen": chosen or "auto",
+        "installed": found,
+        "used": chosen if chosen else (found[0] if found else None),
+    })
     return 0
 
 

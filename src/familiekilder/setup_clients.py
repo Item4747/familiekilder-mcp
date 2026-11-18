@@ -27,9 +27,21 @@ def server_entry(root: Path) -> dict:
             "args": ["-I", "-m", "familiekilder", "--root", str(root), "mcp", "serve"]}
 
 
-def config_path(client: str, home: Path) -> Path:
+def config_path(client: str, home: Path, platform: str | None = None) -> Path:
+    """Where each client reads local MCP servers.
+
+    Claude Desktop: the paths in the MCP documentation for macOS, Windows and
+    Linux. ChatGPT, Codex CLI and the Codex IDE extension share
+    ~/.codex/config.toml on every platform.
+    """
+
+    platform = sys.platform if platform is None else platform
     if client == "claude":
-        return home / "Library/Application Support/Claude/claude_desktop_config.json"
+        if platform == "darwin":
+            return home / "Library/Application Support/Claude/claude_desktop_config.json"
+        if platform == "win32":
+            return home / "AppData/Roaming/Claude/claude_desktop_config.json"
+        return home / ".config/Claude/claude_desktop_config.json"
     if client == "codex":
         return home / ".codex/config.toml"
     raise ClientSetupError("Velg Claude Desktop eller lokal ChatGPT / Codex.")
@@ -49,8 +61,10 @@ def _read(path: Path, home: Path) -> str:
         return ""
     try:
         metadata = os.fstat(descriptor)
+        # Windows has no owner ID or group bits here; its profile folder is private.
+        posix = hasattr(os, "geteuid")
         if (not stat.S_ISREG(metadata.st_mode) or metadata.st_size > 1024 * 1024
-                or metadata.st_uid != os.geteuid() or metadata.st_mode & 0o022):
+                or (posix and (metadata.st_uid != os.geteuid() or metadata.st_mode & 0o022))):
             raise ClientSetupError("Konfigurasjonsfilen har utrygg type, eier eller tilgang.")
         with os.fdopen(descriptor, "r", encoding="utf-8") as stream:
             descriptor = -1
@@ -108,7 +122,8 @@ def install_client(client: str, root: Path, home: Path) -> None:
         raise ClientSetupError("Konfigurasjonen ble endret av et annet program. Prøv igjen.")
     descriptor, temporary = tempfile.mkstemp(prefix=".mcp-setup-", dir=path.parent)
     try:
-        os.fchmod(descriptor, 0o600)
+        if hasattr(os, "fchmod"):
+            os.fchmod(descriptor, 0o600)
         with os.fdopen(descriptor, "w", encoding="utf-8") as stream:
             stream.write(content)
             stream.flush()

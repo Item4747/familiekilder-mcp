@@ -20,6 +20,7 @@ SOURCE_COMMANDS = [
     "auth",
     "onboard",
     "ist-auth",
+    "browser",
     "setup",
     "remote",
     "deploy",
@@ -52,6 +53,20 @@ class SourceCliParserTests(unittest.TestCase):
             source_cli.main(["--version"])
         self.assertEqual(exit_status.exception.code, 0)
         self.assertEqual(output.getvalue(), f"familiekilder-mcp {__version__}\n")
+
+    def test_login_commands_take_a_browser_and_browser_saves_the_choice(self) -> None:
+        parser = source_cli.build_parser()
+        for command in ("browser-login", "browser-bootstrap"):
+            args = parser.parse_args(["auth", "spond", command, "--browser", "edge"])
+            self.assertEqual(args.browser, "edge")
+            with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+                parser.parse_args(["auth", "spond", command, "--browser", "/tmp/chrome"])
+        with tempfile.TemporaryDirectory() as directory:
+            for choice, expected in (("chrome", "chrome"), ("auto", "auto")):
+                output = io.StringIO()
+                with contextlib.redirect_stdout(output):
+                    source_cli.main(["--root", directory, "browser", choice])
+                self.assertEqual(json.loads(output.getvalue())["chosen"], expected)
 
     def test_offers_only_source_commands(self) -> None:
         parser = source_cli.build_parser()

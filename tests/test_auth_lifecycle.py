@@ -22,6 +22,7 @@ from familiekilder.api_transport import ApiRequestNotSent, ApiTransportError
 from familiekilder.core import FamiliekilderError
 from familiekilder.private_state import atomic_write_private_json, PrivateStateError
 from familiekilder_testing import ist_oauth as inf, vigilo_auth as vf
+from familiekilder_testing.private import protect
 
 
 class LifecycleTests(unittest.TestCase):
@@ -70,9 +71,10 @@ class LifecycleTests(unittest.TestCase):
         ):
             self.assertNotIn(secret, log)
             self.assertNotIn(secret, json.dumps(result))
-        self.assertEqual(
-            life._path(self.root, 'vigilo', 'auth-history').stat().st_mode & 0o777, 0o600
-        )
+        if os.name != 'nt':
+            self.assertEqual(
+                life._path(self.root, 'vigilo', 'auth-history').stat().st_mode & 0o777, 0o600
+            )
 
     def test_copied_installation_cannot_refresh_same_grant(self):
         original = self.root / 'original'
@@ -80,6 +82,8 @@ class LifecycleTests(unittest.TestCase):
         original.mkdir()
         life.require_owner(original, 'vigilo')
         shutil.copytree(original, copy)
+        # copytree does not copy a Windows access list; a copy that kept it is the case here.
+        protect(copy / '.private')
         with self.assertRaisesRegex(FamiliekilderError, 'annen installasjon'):
             life.require_owner(copy, 'vigilo')
 

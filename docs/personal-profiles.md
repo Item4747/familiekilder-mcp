@@ -2,8 +2,11 @@
 
 Koden er felles. Hver bruker har sin egen datarot med tjenestekonfigurasjon,
 API-økter og mellomlager. Standardroten ligger utenfor koden:
-`~/Library/Application Support/familiekilder-mcp` for kommandolinjen. En ny OS-bruker eller en
-ren installasjon på en annen maskin starter uten dine data.
+`~/Library/Application Support/familiekilder-mcp` på macOS,
+`%LOCALAPPDATA%\familiekilder-mcp` på Windows og
+`~/.local/share/familiekilder-mcp` (eller `$XDG_DATA_HOME/familiekilder-mcp`)
+på Linux. En ny OS-bruker eller en ren installasjon på en annen maskin starter
+uten dine data.
 
 På samme maskin velges en separat profil med `--profile nabo`. Profilen ligger under `profiles/nabo` i dataroten.
 Den arver aldri standardprofilens tjenester, passord eller økter. `--root` velger
@@ -21,20 +24,31 @@ familiekilder-mcp --profile nabo mcp serve
 Den andre profilen trenger sitt eget klientoppsett og sin egen innlogging.
 `familiekilder-mcp --profile nabo setup` legger inn det innebygde oppsettet ved første innlogging
 i veiviseren; se [klientoppsett](klientoppsett.md). Del en ren utsjekking eller
-bygget pakke; ikke kopier `.private`, Application Support-katalogen eller
-nettleserprofiler. Profiler i samme OS-konto beskytter mot sammenblanding;
+bygget pakke; ikke kopier `.private`, dataroten eller nettleserprofiler. Profiler i samme OS-konto beskytter mot sammenblanding;
 for adskilte personer er egne OS-kontoer eller maskiner også nødvendig for å
 ha separate filrettigheter og nøkkelringer.
 
 ## Passordhjelperen
 
-Passord lagres i macOS-nøkkelringen gjennom den eksplisitte
-[Keyring macOS-backenden](https://keyring.readthedocs.io/en/latest/).
-Det finnes ingen filbasert reserve. Nøkkelringoppføringen er bundet til kanonisk
-datarot og passordtype. `.private/login-passwords.json` inneholder bare referanser,
-aldri passord. En kopiert referanse kan ikke brukes fra en annen datarot.
-Tokenfiler ligger i den private lagringen med 0700/0600-rettigheter, ikke i
-nøkkelringen.
+Passord lagres bare i systemets egen nøkkelring, gjennom en
+[Keyring-backend](https://keyring.readthedocs.io/en/latest/) som programmet
+velger selv, aldri keyring-innstillinger eller miljøvariabler:
+
+| System | Nøkkelring | `storage` i `password status` |
+|---|---|---|
+| macOS | macOS-nøkkelringen | `macos-keychain` |
+| Windows | Legitimasjonsbehandling (Credential Manager) | `windows-credential-manager` |
+| Linux | Secret Service, for eksempel GNOME Keyring eller KWallet | `secret-service` |
+
+Det finnes ingen filbasert reserve. Finnes ingen nøkkelring, for eksempel på
+Linux uten Secret Service, er passordhjelperen av. Du skriver da passordet selv
+i nettleservinduet, og innloggingen virker ellers som vanlig.
+
+Nøkkelringoppføringen er bundet til kanonisk datarot og passordtype.
+`.private/login-passwords.json` inneholder bare referanser, aldri passord. En
+kopiert referanse kan ikke brukes fra en annen datarot. Tokenfiler ligger i
+den private lagringen, ikke i nøkkelringen: med 0700/0600-rettigheter på macOS
+og Linux, og med en tilgangsliste bare for brukeren din på Windows.
 
 ```sh
 familiekilder-mcp password set bankid
@@ -73,8 +87,10 @@ automatisk passordutfylling.
 ## Verifisert og gjenstående
 
 Enhetstester dekker profilskille, manglende passord, kopierte referanser,
-domeneavgrensning og at usikre forsøk ikke gjentas. Nativ nøkkelringlagring er
-prøvd med et midlertidig testpassord.
+domeneavgrensning og at usikre forsøk ikke gjentas. Nøkkelringlagring på macOS
+er prøvd med et midlertidig testpassord. Legitimasjonsbehandling på Windows og
+Secret Service på Linux er nytt og bare dekket av enhetstester; det er ikke
+prøvd med ekte innlogging ennå.
 
 Testene er ikke en full produksjonsinnlogging. Passordutfylling og videreføring
 må fortsatt bekreftes mot hver leverandørs faktiske skjermbilde og den manuelle

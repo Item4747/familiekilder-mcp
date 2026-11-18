@@ -288,6 +288,25 @@ summary {
   color: var(--muted);
   font-size: 13px;
 }
+.login-browser {
+  margin: 0 0 18px;
+}
+.login-browser label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+.login-browser select {
+  font: inherit;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--paper);
+  max-width: 100%;
+}
+.login-browser p {
+  margin: 6px 0 0;
+}
 .requirements {
   margin-top: 22px;
   color: var(--muted);

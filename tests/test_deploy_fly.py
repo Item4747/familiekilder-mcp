@@ -2,6 +2,7 @@
 
 import io
 import json
+import os
 import subprocess
 import tempfile
 import tomllib
@@ -101,7 +102,8 @@ class DeployTests(unittest.TestCase):
             self.deploy(fake, directory, output, interactive=False)
             path = next((Path(directory) / '.private/remote').glob('fictional-app-eierkode-*.txt'))
             code = path.read_text().strip()
-            self.assertEqual(path.stat().st_mode & 0o777, 0o600)
+            if os.name != "nt":
+                self.assertEqual(path.stat().st_mode & 0o777, 0o600)
             self.assertNotIn(code, output.getvalue())
             self.assertNotIn(code, json.dumps(fake.calls))
 

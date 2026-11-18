@@ -81,12 +81,19 @@ def _read_bounded_session_stdin() -> str:
     return payload
 
 
+def _browser_option(args: argparse.Namespace) -> dict[str, str]:
+    """``--browser`` when given; without it the saved choice applies."""
+
+    browser = getattr(args, "browser", None)
+    return {} if browser is None else {"login_browser": browser}
+
+
 def _run_generic_auth(args: argparse.Namespace, root: Path | None) -> int:
     label = _SOURCE_LABELS[args.source]
     if args.auth_command not in _AUTH_CAPABILITIES[args.source]:
         if (args.auth_command == "login"
                 and "browser-bootstrap" in _AUTH_CAPABILITIES[args.source]):
-            detail = "bruk browser-bootstrap med en isolert, midlertidig Brave-profil"
+            detail = "bruk browser-bootstrap med en isolert, midlertidig nettleserprofil"
         else:
             detail = "kommandoen støttes ikke for denne kilden"
         raise FamiliekilderError(f"{label}: {detail}")
@@ -113,6 +120,7 @@ def _run_generic_auth(args: argparse.Namespace, root: Path | None) -> int:
                 root,
                 args.source,
                 replace_existing=existing and args.replace_existing,
+                **_browser_option(args),
             )
         )
         return 0
@@ -214,7 +222,7 @@ def _run_generic_auth(args: argparse.Namespace, root: Path | None) -> int:
 
         config = auth_module.load_client_config(root)
         print(
-            f"Start {label}-innloggingen i det isolerte Brave-vinduet og godkjenn på telefonen. "
+            f"Start {label}-innloggingen i det isolerte nettleservinduet og godkjenn på telefonen. "
             f"{args.program.name} fanger callbacken lokalt uten å vise den."
         )
         if args.source == "ist-home":
@@ -225,6 +233,7 @@ def _run_generic_auth(args: argparse.Namespace, root: Path | None) -> int:
             root,
             authorization_url=authorization_url,
             expected_redirect_uri=config.redirect_uri,
+            **_browser_option(args),
         )
     else:
         if args.source == "ist-home":
@@ -236,7 +245,7 @@ def _run_generic_auth(args: argparse.Namespace, root: Path | None) -> int:
                 "Når callback-helperen åpnes, kopierer du callbacken og limer den inn under."
             )
         else:
-            print(f"Åpne denne lenken i Brave og fullfør {label}-innloggingen manuelt:")
+            print(f"Åpne denne lenken i nettleseren og fullfør {label}-innloggingen manuelt:")
             print(authorization_url)
             print(
                 "Når app-callbacken åpnes eller vises, kopierer du hele URL-en "

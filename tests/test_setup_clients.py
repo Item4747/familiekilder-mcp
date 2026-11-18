@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 import stat
 import tempfile
@@ -49,7 +50,8 @@ class ClientRegistrationTests(unittest.TestCase):
         self.assertEqual(result["mcpServers"]["other"], original["mcpServers"]["other"])
         self.assertEqual(result["preferences"], original["preferences"])
         self.assertTrue(client_state("claude", self.root, self.home)["configured"])
-        self.assertEqual(stat.S_IMODE(path.stat().st_mode), 0o600)
+        if os.name != "nt":
+            self.assertEqual(stat.S_IMODE(path.stat().st_mode), 0o600)
         once = path.read_bytes()
         install_client("claude", self.root, self.home)
         self.assertEqual(path.read_bytes(), once)
@@ -76,6 +78,23 @@ class ClientRegistrationTests(unittest.TestCase):
                 with self.assertRaises(ClientSetupError):
                     install_client(client, self.root, self.home)
                 self.assertEqual(path.read_text(), text)
+
+    def test_claude_desktop_path_per_platform(self):
+        home = Path("/home/oppdiktet")
+        self.assertEqual(
+            config_path("claude", home, "darwin"),
+            home / "Library/Application Support/Claude/claude_desktop_config.json",
+        )
+        self.assertEqual(
+            config_path("claude", home, "win32"),
+            home / "AppData/Roaming/Claude/claude_desktop_config.json",
+        )
+        self.assertEqual(
+            config_path("claude", home, "linux"),
+            home / ".config/Claude/claude_desktop_config.json",
+        )
+        for platform in ("darwin", "win32", "linux"):
+            self.assertEqual(config_path("codex", home, platform), home / ".codex/config.toml")
 
     def test_symlink_is_rejected(self):
         path = config_path("codex", self.home)

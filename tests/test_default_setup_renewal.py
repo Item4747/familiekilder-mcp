@@ -19,6 +19,8 @@ import unittest
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
+from familiekilder_testing.private import private_again, readable_by_others
+
 from familiekilder import client_defaults, hoopit_auth, skolemelding_auth, spond_auth, vigilo_auth
 from familiekilder.client_defaults import (
     MARK_SCHEMA,
@@ -222,10 +224,10 @@ class RenewalTests(RenewalCase):
         self.store_from_wizard("skolemelding")
         path = self.setup_path("skolemelding")
         before = path.read_bytes()
-        path.chmod(0o644)
+        readable_by_others(path)
         with shipping(new_defaults()):
             self.assertEqual(refresh_stored_defaults(self.root), [])
-        path.chmod(0o600)
+        private_again(path)
         self.assertEqual(path.read_bytes(), before)
 
     def test_a_missing_setup_is_not_recreated(self):
@@ -489,7 +491,8 @@ class WizardTests(RenewalCase):
                     )
                     for value in secret_strings():
                         self.assertNotIn(value.encode(), mark_bytes)
-                    self.assertEqual(mark_path(self.root, source).stat().st_mode & 0o777, 0o600)
+                    if os.name != "nt":
+                        self.assertEqual(mark_path(self.root, source).stat().st_mode & 0o777, 0o600)
 
     def test_relogin_with_a_session_logs_out_and_takes_the_refused_setup(self):
         self.store_from_wizard("vigilo")

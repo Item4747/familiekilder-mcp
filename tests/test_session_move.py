@@ -5,13 +5,14 @@ import base64
 import json
 import os
 import tempfile
+import traceback
 import unittest
 from pathlib import Path
 from unittest.mock import patch
 
 import httpx
 
-from familiekilder import auth_lifecycle as life, gmail, session_move as move
+from familiekilder import auth_lifecycle as life, gmail, session_move as move, source_server
 from familiekilder.core import FamiliekilderError
 from familiekilder.hosting import host_settings
 from familiekilder.live_config import Config
@@ -19,6 +20,16 @@ from familiekilder.private_state import atomic_write_private_json, credential_pa
 from familiekilder.remote_http import build_http_app
 from familiekilder.source_server import ReadOnlyRuntime
 from familiekilder_testing import remote as fake
+
+
+class RecordingToolError(source_server.ToolError):
+    """A tool error that keeps the traceback of the exception it replaces."""
+
+    causes: list[str] = []
+
+    def __init__(self, *args):
+        RecordingToolError.causes.append(traceback.format_exc())
+        super().__init__(*args)
 
 
 class MoveTests(unittest.TestCase):
@@ -63,8 +74,12 @@ class MoveTests(unittest.TestCase):
                 names = [t.name for t in (await session.list_tools()).tools]
                 self.assertIn('spond_list_items', names)
                 self.assertIn('gmail_search', names)
-                answer = await session.call_tool('spond_list_items', {})
-                self.assertEqual(json.loads(answer.content[0].text)['items'][0]['title'], 'Oppdiktet')
+                with patch.object(source_server, 'ToolError', RecordingToolError):
+                    answer = await session.call_tool('spond_list_items', {})
+                text = answer.content[0].text
+                # The tool hides the cause of an error; show what it caught.
+                self.assertTrue(text.startswith('{'), text + '\n' + ''.join(RecordingToolError.causes))
+                self.assertEqual(json.loads(text)['items'][0]['title'], 'Oppdiktet')
         asyncio.run(catalog())
         for source in ('spond', 'gmail'):
             self.assertFalse(credential_path(self.mac, move.session_filename(source)).exists())

@@ -58,7 +58,11 @@ class Run:
 
 def kill_group(process):
     try:
-        os.killpg(process.pid, signal.SIGKILL)
+        if hasattr(os, 'killpg'):
+            os.killpg(process.pid, signal.SIGKILL)
+        else:
+            # Windows has no process groups to signal; stop the test process itself.
+            process.kill()
     except (ProcessLookupError, PermissionError):
         pass
 
@@ -136,8 +140,9 @@ def main(arguments=None):
     run = Run()
     results = []
     # Test processes have their own sessions, so a stopped runner must stop them itself.
-    for stop_signal in (signal.SIGTERM, signal.SIGHUP):
-        signal.signal(stop_signal, interrupted)
+    for name in ('SIGTERM', 'SIGHUP'):
+        if hasattr(signal, name):
+            signal.signal(getattr(signal, name), interrupted)
     pool = ThreadPoolExecutor(max_workers=options.jobs)
     completed = False
     try:

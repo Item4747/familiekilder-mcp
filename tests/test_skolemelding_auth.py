@@ -33,6 +33,7 @@ from familiekilder.skolemelding_auth import (
     refresh_block_path,
     refresh_session,
 )
+from familiekilder_testing.private import protect
 
 
 AUTHORIZATION_ENDPOINT = "https://login.idporten.no/authorize"
@@ -118,6 +119,7 @@ def _configure(root: Path) -> None:
     private = root / ".private"
     private.mkdir(mode=0o700, exist_ok=True)
     private.chmod(0o700)
+    protect(private)
     bootstrap = private / "bootstrap"
     bootstrap.mkdir(mode=0o700, parents=True, exist_ok=True)
     bootstrap.chmod(0o700)

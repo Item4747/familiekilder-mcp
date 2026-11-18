@@ -12,7 +12,7 @@ with one command:
    for Word attachments; every deploy states whether Word is on, since the
    choice is not remembered between deploys.
 5. Show the address and, on first run, the owner code once.
-6. Offer to move the logins from this Mac.
+6. Offer to move the logins from this computer.
 
 Nothing here touches the user's Fly account except through ``flyctl``.
 """
@@ -139,7 +139,9 @@ def fly_toml(
     ``swap_mb`` above zero gives the machine that much swap space.
     """
 
-    if Path(dockerfile).is_absolute():
+    # An anchor marks an absolute path. On Windows it also catches /name and
+    # C:name, which are not absolute there but are not relative either.
+    if Path(dockerfile).anchor:
         raise ValueError("dockerfile must be relative to the fly.toml directory")
 
     lines = [
@@ -226,6 +228,11 @@ def show_owner_code(code: str, *, out: TextIO, interactive: bool, fallback: Path
         )
         return
     fallback.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+    if os.name == "nt":
+        # Windows ignores the mode; give .private its user-only access list.
+        from .private_state import ensure_private_directory
+
+        ensure_private_directory(fallback.parent)
     descriptor = os.open(fallback, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
     with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
         handle.write(code + "\n")
@@ -363,7 +370,7 @@ def deploy(
         out.write("Eierkoden er uendret. Bruk --new-owner-code for å lage en ny.\n")
 
     if move is None and interactive:
-        answer = ask("Flytte innloggingene fra denne Macen til verten nå? [j/N] ")
+        answer = ask("Flytte innloggingene fra denne maskinen til verten nå? [j/N] ")
         move = answer.strip().lower() in {"j", "ja", "y", "yes"}
     moved = None
     if move:

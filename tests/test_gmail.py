@@ -1,4 +1,5 @@
 import base64
+import os
 import unittest
 from unittest.mock import patch
 
@@ -185,7 +186,8 @@ class GmailAuthTests(unittest.TestCase):
         self.assertTrue(result["authenticated"])
         self.assertIn(b"code_verifier=verifier", calls[0].content)
         path = self.root/".private/credentials/gmail.json"
-        self.assertEqual(path.stat().st_mode & 0o777, 0o600)
+        if os.name != "nt":
+            self.assertEqual(path.stat().st_mode & 0o777, 0o600)
         self.assertTrue(gmail_auth.auth_status(self.root)["authenticated"])
 
     def test_desktop_client_required_and_offline_status_does_not_create_state(self):

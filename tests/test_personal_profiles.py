@@ -36,9 +36,10 @@ class PersonalProfileTests(PersonalProfileFixture, unittest.TestCase):
         self.assertNotIn(
             "owner-password", (owner.private / "login-passwords.json").read_text()
         )
-        self.assertEqual(
-            (owner.private / "login-passwords.json").stat().st_mode & 0o777, 0o600
-        )
+        if os.name != "nt":
+            self.assertEqual(
+                (owner.private / "login-passwords.json").stat().st_mode & 0o777, 0o600
+            )
 
     def test_copy_does_not_reuse_password_identity(self):
         owner = resolve_root(profile="owner")

@@ -20,6 +20,14 @@ bibliotekskode, men kan ikke aktiveres gjennom den selvstendige kommandolinjen e
 Oversettelse og forklaring gjøres av brukerens AI-assistent. Denne pakken gir
 assistenten tilgang til kildene; den inneholder ingen egen språkmodell.
 
+## Windows, Linux, Chrome og Edge
+
+Innlogging kan nå også gjøres på Windows og Linux, og i Google Chrome og Microsoft
+Edge i tillegg til Brave. Det er nytt, maskinelt testet og ikke prøvd med ekte
+innlogging ennå. Løftet over gjelder Mac til innlogging, liste, meldingsdetalj
+og vedlegg er bekreftet på de andre systemene og nettleserne, slik punktene
+under krever per tjeneste.
+
 ## Prøveordning utenfor 1.0
 
 [HTTP og egen vert](alltid-pa.md) inngår ikke i løftet for 1.0 og blokkerer

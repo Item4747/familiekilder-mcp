@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import http.client
 import stat
 import tempfile
@@ -446,8 +447,9 @@ class ApiTransportTests(unittest.TestCase):
             self.assertEqual(result.byte_size, len(b"attachment-bytes"))
             self.assertEqual(len(result.sha256), 64)
             self.assertEqual(result.content_type, "text/plain")
-            self.assertEqual(stat.S_IMODE(target.stat().st_mode), 0o600)
-            self.assertEqual(stat.S_IMODE(target.parent.stat().st_mode), 0o700)
+            if os.name != "nt":
+                self.assertEqual(stat.S_IMODE(target.stat().st_mode), 0o600)
+                self.assertEqual(stat.S_IMODE(target.parent.stat().st_mode), 0o700)
 
             denied = private / "incoming" / "run" / "denied.bin"
             with self.assertRaisesRegex(ApiTransportError, "overskred"):

@@ -59,24 +59,26 @@ class HostingError(FamiliekilderError):
 def default_data_root() -> Path:
     """The data root when neither ``--root`` nor ``FAMILIEKILDER_ROOT`` is set."""
 
-    if sys.platform == "darwin":
-        return Path.home() / "Library/Application Support/familiekilder-mcp"
-    base = os.environ.get("XDG_DATA_HOME") or str(Path.home() / ".local/share")
-    return Path(base) / "familiekilder-mcp"
+    from .desktop_platform import default_data_root as platform_data_root
+
+    return platform_data_root()
 
 
 def is_remote_host() -> bool:
-    """True on a host set up for HTTP mode (outside macOS, with an installation ID)."""
+    """True on a host set up for HTTP mode (outside macOS, with an installation ID).
+
+    Windows and Linux desktops have no installation ID, so they are not hosts.
+    """
 
     return sys.platform != "darwin" and bool(os.environ.get(INSTALLATION_ID_ENV))
 
 
 def refuse_on_remote_host(what: str) -> None:
-    """Stop login steps that only work on the user's own Mac."""
+    """Stop login steps that only work on the user's own computer."""
 
     if is_remote_host():
         raise HostingError(
-            f"{what} gjøres på Macen, ikke på verten. Logg inn i veiviseren på Macen "
+            f"{what} gjøres på datamaskinen din, ikke på verten. Logg inn i veiviseren der "
             "og flytt innloggingen med «familiekilder-mcp remote move ADRESSE»."
         )
 

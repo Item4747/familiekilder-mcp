@@ -12,6 +12,7 @@ import threading
 import time
 
 from . import __version__
+from .browsers import installed as installed_browsers, save_browser, saved_browser
 from .client_defaults import (
     RenewalRefused,
     default_client_config,
@@ -110,10 +111,30 @@ class SetupService:
             return {
                 "version": __version__, "services": rows, "job": job, "tested": self.tested,
                 "clients": [client_state(client, self.root, self.home) for client in ("claude", "codex")],
-                "dependencies": {"brave": Path("/Applications/Brave Browser.app").exists(),
+                "browsers": self._browsers(),
+                "dependencies": {"browser": bool(installed_browsers()),
                                  "pdf": bool(shutil.which("pdftotext") and shutil.which("pdftoppm")),
                                  "word": bool(shutil.which("soffice") or Path("/Applications/LibreOffice.app").exists())},
             }
+
+    def _browsers(self) -> dict:
+        """The browsers found on this machine and the one logins open in."""
+
+        found = installed_browsers()
+        chosen = saved_browser(self.root)
+        used = chosen if chosen else (found[0].id if found else None)
+        return {
+            "installed": [{"id": app.id, "name": app.name} for app in found],
+            "chosen": chosen or "auto",
+            "used": used,
+        }
+
+    def set_browser(self, browser):
+        if browser not in {"auto", "brave", "chrome", "edge"}:
+            raise SetupError("Velg Brave, Google Chrome, Microsoft Edge eller automatisk.")
+        with self.lock:
+            self._idle()
+            save_browser(self.root, None if browser == "auto" else browser)
 
     def _stored_municipality(self) -> dict[str, str] | None:
         """The stored Flyt municipality as id and name; nothing else from the setup."""

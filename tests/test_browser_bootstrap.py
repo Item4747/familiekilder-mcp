@@ -184,7 +184,8 @@ class BrowserBootstrapTests(unittest.TestCase):
         base = self.root / ".private" / "browser-bootstrap"
         self.assertTrue(base.is_dir())
         self.assertEqual(list(base.iterdir()), [])
-        self.assertEqual(stat.S_IMODE(base.stat().st_mode), 0o700)
+        if os.name != "nt":
+            self.assertEqual(stat.S_IMODE(base.stat().st_mode), 0o700)
 
     def test_cdp_framer_handles_partial_and_multiple_nul_frames(self) -> None:
         framer = browser_bootstrap._CdpFramer()
@@ -204,14 +205,15 @@ class BrowserBootstrapTests(unittest.TestCase):
 
     def test_pipe_client_reads_thousands_of_fragments_without_recursion(self):
         message = browser_bootstrap._CdpFramer.encode({'id': 1, 'result': {'value': 'x' * 2000}})
-        client = browser_bootstrap._PipeCdpClient(10, 11)
+        # The end of the pipe comes last. Windows reads in a thread from the
+        # start, so the client is made with os.read already replaced.
+        fragments = [bytes([byte]) for byte in message] + [b'']
         with (
             patch.object(browser_bootstrap.select, 'select', return_value=([11], [], [])),
-            patch.object(
-                browser_bootstrap.os, 'read', side_effect=[bytes([byte]) for byte in message]
-            ),
+            patch.object(browser_bootstrap.os, 'read', side_effect=fragments),
             patch.object(browser_bootstrap.time, 'monotonic', return_value=1),
         ):
+            client = browser_bootstrap._PipeCdpClient(10, 11)
             result = client._next_message(2)
         self.assertEqual(result['result']['value'], 'x' * 2000)
 
@@ -475,10 +477,21 @@ class BrowserBootstrapTests(unittest.TestCase):
         child = r"""
 import json
 import os
+import sys
+
+if os.name == "nt":
+    # Windows passes the two pipe handles in the last argument.
+    import msvcrt
+
+    handles = sys.argv[-1].split("=", 1)[1].split(",")
+    read_fd = msvcrt.open_osfhandle(int(handles[0]), os.O_RDONLY)
+    write_fd = msvcrt.open_osfhandle(int(handles[1]), 0)
+else:
+    read_fd, write_fd = 3, 4
 
 pending = bytearray()
 while True:
-    chunk = os.read(3, 4096)
+    chunk = os.read(read_fd, 4096)
     if not chunk:
         break
     pending.extend(chunk)
@@ -487,7 +500,7 @@ while True:
         pending = bytearray(remainder)
         request = json.loads(raw)
         response = {'id': request['id'], 'result': {'pipe_ok': True}}
-        os.write(4, json.dumps(response, separators=(',', ':')).encode() + b'\0')
+        os.write(write_fd, json.dumps(response, separators=(',', ':')).encode() + b'\0')
         if request['method'] == 'Browser.close':
             raise SystemExit(0)
 """
@@ -502,6 +515,7 @@ while True:
                 "_brave_arguments",
                 return_value=[sys.executable, "-c", child],
             ),
+            patch.object(browser_bootstrap, "_require_display"),
         ):
             handle = browser_bootstrap._launch_brave(profile, SPOND_LOGIN_URL, None)
             try:
@@ -544,7 +558,8 @@ while True:
                 profile.parent,
                 (self.root / ".private" / "browser-bootstrap").resolve(),
             )
-            self.assertEqual(stat.S_IMODE(profile.stat().st_mode), 0o700)
+            if os.name != "nt":
+                self.assertEqual(stat.S_IMODE(profile.stat().st_mode), 0o700)
             browser = FakeBrowser(cdp, profile, external)
             holder["browser"] = browser
             return browser
@@ -559,7 +574,8 @@ while True:
             self.assertTrue(browser.closed)
             self.assertEqual(root, self.root)
             self.assertTrue(replace_existing)
-            self.assertEqual(stat.S_IMODE(session_file.stat().st_mode), 0o600)
+            if os.name != "nt":
+                self.assertEqual(stat.S_IMODE(session_file.stat().st_mode), 0o600)
             imported = json.loads(session_file.read_text(encoding="utf-8"))
             self.assertEqual(
                 imported,
@@ -725,7 +741,8 @@ while True:
         ) -> Mapping[str, Any]:
             self.assertTrue(holder["browser"].closed)
             self.assertFalse(replace_existing)
-            self.assertEqual(stat.S_IMODE(session_file.stat().st_mode), 0o600)
+            if os.name != "nt":
+                self.assertEqual(stat.S_IMODE(session_file.stat().st_mode), 0o600)
             self.assertEqual(
                 json.loads(session_file.read_text(encoding="utf-8")),
                 {"id_token": id_token, "refresh_token": HOOPIT_REFRESH},

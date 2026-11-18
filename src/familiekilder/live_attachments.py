@@ -1,6 +1,6 @@
 """Disposable document rendering for MCP attachment requests."""
 
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 import os
 import re
 import time
@@ -94,9 +94,11 @@ def archive_text_pages(source):
                 raise ValueError()
             pages, total = [], 0
             for member in files:
-                path = Path(member.filename)
+                # Zip names always use /. On Windows zipfile turns a backslash into /,
+                # so the original name is checked for it.
+                path = PurePosixPath(member.filename)
                 mode = member.external_attr >> 16
-                if (path.is_absolute() or '..' in path.parts or '\\' in member.filename
+                if (path.is_absolute() or '..' in path.parts or '\\' in member.orig_filename
                         or stat.S_ISLNK(mode) or member.flag_bits & 1
                         or path.suffix.lower() not in {'.xml', '.txt', '.csv', '.json'}):
                     raise ValueError()

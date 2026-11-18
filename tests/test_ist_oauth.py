@@ -63,8 +63,9 @@ class IstOAuthTests(IstOAuthFixture, unittest.TestCase):
         self.assertTrue(result["configured"])
         self.assertNotIn("secret", json.dumps(result))
         path = client_config_path(self.root)
-        self.assertEqual(stat.S_IMODE(path.stat().st_mode), 0o600)
-        self.assertEqual(stat.S_IMODE(path.parent.stat().st_mode), 0o700)
+        if os.name != "nt":
+            self.assertEqual(stat.S_IMODE(path.stat().st_mode), 0o600)
+            self.assertEqual(stat.S_IMODE(path.parent.stat().st_mode), 0o700)
 
         for field_name, wrong in (
             ("authority", "https://attacker.invalid"),
@@ -277,7 +278,8 @@ class IstOAuthTests(IstOAuthFixture, unittest.TestCase):
             },
         )
         self.assertNotIn("id_token", stored)
-        self.assertEqual(stat.S_IMODE(stored_path.stat().st_mode), 0o600)
+        if os.name != "nt":
+            self.assertEqual(stat.S_IMODE(stored_path.stat().st_mode), 0o600)
 
     def context_login(self, transport: FakeTransport):
         url, transaction = self.login_start()
@@ -531,7 +533,8 @@ class IstOAuthTests(IstOAuthFixture, unittest.TestCase):
         older = self.import_synthetic(_session(issued_at=1_900_000_000))
         self.assertEqual(older["reason"], "newer-local-session")
         self.assertEqual(session_path(self.root).read_bytes(), before)
-        self.assertEqual(stat.S_IMODE(session_path(self.root).stat().st_mode), 0o600)
+        if os.name != "nt":
+            self.assertEqual(stat.S_IMODE(session_path(self.root).stat().st_mode), 0o600)
 
         invalid = _session(issued_at=2_100_000_000)
         invalid["redirect_uri"] = "https://attacker.invalid/callback"
@@ -859,6 +862,7 @@ class IstOAuthTests(IstOAuthFixture, unittest.TestCase):
                 logout(self.root)
         self.assertFalse(session_path(self.root).exists())
 
+    @unittest.skipIf(os.name == "nt", "Windows cannot fsync a directory, so there is no failure to report")
     def test_logout_continues_revocation_if_directory_fsync_cannot_confirm_unlink(self) -> None:
         self.import_synthetic(_session())
         transport = FakeTransport()
@@ -961,7 +965,8 @@ class IstOAuthTests(IstOAuthFixture, unittest.TestCase):
         self.assertNotIn("access_token", raw)
         self.assertNotIn("refresh_token", raw)
         self.assertNotIn("private-user-token", raw)
-        self.assertEqual(stat.S_IMODE(destination.stat().st_mode), 0o600)
+        if os.name != "nt":
+            self.assertEqual(stat.S_IMODE(destination.stat().st_mode), 0o600)
         with self.assertRaisesRegex(OAuthError, "finnes allerede"):
             export_mac_client_config(destination, async_storage=storage)
         self.assertEqual(json.loads(destination.read_text()), exported)

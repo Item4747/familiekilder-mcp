@@ -1,7 +1,7 @@
 # En vert som assistenten kan nå
 
-Dette er en prøveordning utenfor løftet for 1.0. Lokal bruk på Mac over stdio
-er fortsatt standard. Funksjonen er med fra 1.0.0rc3. En første ekte prøve på
+Dette er en prøveordning utenfor løftet for 1.0. Lokal bruk på datamaskinen
+over stdio er fortsatt standard. Funksjonen er med fra 1.0.0rc3. En første ekte prøve på
 Fly.io 17. og 18. november 2026 bekreftet utrulling, stopp og start ved kall,
 flytting av innloggingene for Spond og Hoopit, lesing på verten og tilkobling
 fra Claude og ChatGPT på nett og mobil og fra Codex CLI, en planlagt
@@ -11,8 +11,11 @@ innlogging og drift over tid er ennå ikke prøvd på ekte vert. Se
 
 Verten kjører samme lesende MCP-server i en Linux-container. Den henter bare
 når assistenten spør; den har ingen egen modell, kalenderkobling eller
-planlegger. Du logger fortsatt inn i veiviseren på Macen, og flytter så
-innloggingene til verten. Macen skal deretter ikke fornye dem.
+planlegger. Du logger fortsatt inn i veiviseren på datamaskinen din, og
+flytter så innloggingene til verten. Datamaskinen skal deretter ikke fornye
+dem. Den kan være en Mac, en Windows-PC eller en Linux-maskin med skrivebord.
+Prøven over ble gjort fra en Mac; utrulling og flytting fra Windows og Linux er
+ikke prøvd ennå.
 
 ## Kostnad og personvern
 
@@ -51,9 +54,10 @@ Kjør kommandoene under fra kildeutsjekkingen, med 1.0.0rc3 eller nyere.
 Installer først etter [oppsettsveiledningen](kom-i-gang.md), og logg inn i den
 lokale veiviseren. Google-klienten for Gmail følger samme flytting som økten.
 
-1. Installer `flyctl`, for eksempel med `brew install flyctl`.
+1. Installer `flyctl` etter [Flys veiledning](https://fly.io/docs/flyctl/install/),
+   på Mac for eksempel med `brew install flyctl`.
 2. Opprett selv Fly-kontoen og godkjenn kostnaden. Kjør `flyctl auth login`.
-3. Kjør på Macen:
+3. Kjør på datamaskinen der du logget inn:
 
    ```sh
    familiekilder-mcp deploy fly --app DITT-UNIKE-APPNAVN
@@ -159,7 +163,7 @@ fornyelse. Dette forlenger ikke økten hos skolen eller barnehagen.
 
 [Claude Cowork](https://support.claude.com/en/articles/13854387-schedule-recurring-tasks-in-claude-cowork)
 dokumenterer planlagte skyoppgaver med koblinger på betalte planer, også når
-Macen sover. Free-kobling betyr altså ikke gratis planlagt kjøring. Velg en
+datamaskinen sover. Free-kobling betyr altså ikke gratis planlagt kjøring. Velg en
 skyoppgave uten lokal mappe eller «Require this computer». Koble til verten og
 eventuelt kalenderen separat, og prøv først oppgaven manuelt:
 
@@ -168,7 +172,8 @@ eventuelt kalenderen separat, og prøv først oppgaven manuelt:
 > kilde ikke kunne leses. Ikke regn access_expired alene som tapt tilgang.
 
 Kalenderendringer krever en egen kalenderkobling og en uttrykkelig bestilling.
-Kontroller én planlagt kjøring med Macen avslått før du stoler på rutinen.
+Kontroller én planlagt kjøring med datamaskinen avslått før du stoler på
+rutinen.
 En planlagt skykjøring fra Claude Code og en planlagt oppgave i ChatGPT er
 prøvd mot en ekte vert; se [Prøvd på ekte vert](#prøvd-på-ekte-vert).
 Planlagte oppgaver i Claude Cowork er ikke prøvd; det gis ikke et løfte om
@@ -254,8 +259,8 @@ Dette virket:
   `remote move ADRESSE --source gmail`. Google-innloggingen viste seg å være
   utløpt hos Google. Verten svarte da «Gmail-tilgangen må fornyes med
   Google-innlogging» på `gmail_search`, og de andre kildene virket som før.
-  Flyttingen tar også med Google-klienten. Ny innlogging på Macen krever
-  derfor Google-filen på nytt; ta vare på den.
+  Flyttingen tar også med Google-klienten. Ny innlogging på datamaskinen
+  krever derfor Google-filen på nytt; ta vare på den.
 - **Word-vedlegg.** Se [Word-vedlegg på verten](#word-vedlegg-på-verten).
   Uten vekselminne gikk maskinen tom for minne. `deploy fly --word` gir den
   derfor vekselminne.
@@ -281,7 +286,8 @@ Dette er ennå ikke prøvd:
 
 ## Når en innlogging må fornyes
 
-Logg inn på nytt i veiviseren på Macen, og kjør `remote move ADRESSE` igjen.
+Logg inn på nytt i veiviseren på datamaskinen, og kjør `remote move ADRESSE`
+igjen.
 Det erstatter de flyttede øktene på verten. Et lokalt flyttemerke fjernes først
 ved vellykket ny innlogging. `family_connections` og veiviseren viser at den
 forrige økten er flyttet, også etter avbrudd før lokal sletting.
@@ -294,7 +300,7 @@ Klientoppsett, økt og tokenjournal følger med; lesebufferen gjør det ikke.
 
 Under kildelåsene sperres lokal fornyelse før pakken sendes. Ved et klart
 avslag før import beholdes innloggingene lokalt. Ved tapt svar eller avbrudd
-beholdes sperren. **Verste utfall er ny innlogging på Macen.** Ikke fjern
+beholdes sperren. **Verste utfall er ny innlogging på datamaskinen.** Ikke fjern
 flyttemerker eller gjenopprett gamle økter fra backup. Det kan skape to
 installasjoner som fornyer samme tokenrekke.
 

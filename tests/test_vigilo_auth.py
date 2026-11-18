@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import os
 import unittest
 import urllib.parse
 from typing import Any, Mapping
@@ -35,6 +36,7 @@ from familiekilder_testing.vigilo_auth import (
     _validator,
     FakeAuthTransport,
 )
+from familiekilder_testing.private import protect, readable_by_others
 
 
 class VigiloAuthTests(VigiloAuthFixture, unittest.TestCase):
@@ -82,8 +84,9 @@ class VigiloAuthTests(VigiloAuthFixture, unittest.TestCase):
         )
         self.assertNotIn("client_secret", token_call[1])
         self.assertTrue(token_call[2]["Authorization"].startswith("Basic "))
-        self.assertEqual(session_path(self.root).stat().st_mode & 0o777, 0o600)
-        self.assertEqual(session_path(self.root).parent.stat().st_mode & 0o777, 0o700)
+        if os.name != "nt":
+            self.assertEqual(session_path(self.root).stat().st_mode & 0o777, 0o600)
+            self.assertEqual(session_path(self.root).parent.stat().st_mode & 0o777, 0o700)
         status = auth_status(self.root, at=1_800_000_100)
         self.assertTrue(status["session_present"])
         self.assertEqual(status["expires_at"], status["access_expires_at"])
@@ -93,6 +96,7 @@ class VigiloAuthTests(VigiloAuthFixture, unittest.TestCase):
         private = self.root / ".private"
         private.mkdir(mode=0o700, exist_ok=True)
         private.chmod(0o700)
+        protect(private)
         bootstrap = private / "bootstrap"
         bootstrap.mkdir(mode=0o700, parents=True, exist_ok=True)
         bootstrap.chmod(0o700)
@@ -106,7 +110,7 @@ class VigiloAuthTests(VigiloAuthFixture, unittest.TestCase):
 
         broad = bootstrap / "broad.json"
         broad.write_text(json.dumps(_config()), encoding="utf-8")
-        broad.chmod(0o644)
+        readable_by_others(broad)
         with self.assertRaises(VigiloOAuthError):
             configure_client(self.root, broad)
 

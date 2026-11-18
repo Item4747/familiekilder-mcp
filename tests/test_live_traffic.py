@@ -75,7 +75,8 @@ class TrafficTests(unittest.TestCase):
             set(json.loads(later.path.read_text())),
             {"version", "last_request_at", "cooldown_until"},
         )
-        self.assertEqual(later.path.stat().st_mode & 0o777, 0o600)
+        if os.name != "nt":
+            self.assertEqual(later.path.stat().st_mode & 0o777, 0o600)
 
     def test_429_blocks_next_process_without_network_or_sleep(self):
         with self.scope(), traffic.traffic_scope(self.root, "ist-home"):

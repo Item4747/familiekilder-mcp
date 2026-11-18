@@ -24,6 +24,18 @@ def digest(value):
                                      ensure_ascii=False).encode()).hexdigest()
 
 
+def _set_times(path, stamp):
+    """Set a cache file's times without following a link where the platform can.
+
+    Windows cannot set times on a link itself; there the file was just written
+    by atomic_write_private_json inside the user-only .private folder.
+    """
+    if os.utime in os.supports_follow_symlinks:
+        os.utime(path, (stamp, stamp), follow_symlinks=False)
+    else:
+        os.utime(path, (stamp, stamp))
+
+
 def account_scope(root, source):
     """Hash local account/client identity; never persist tokens in the cache.
 
@@ -180,7 +192,7 @@ class ReadCache:
                         and len(json.dumps(record, ensure_ascii=False).encode()) <= MAX_ENTRY_BYTES):
                     atomic_write_private_json(filename, record)
                     # A test clock and wall time must use the same expiry origin.
-                    os.utime(filename, (stamp, stamp), follow_symlinks=False)
+                    _set_times(filename, stamp)
                     self._cleanup(stamp)
                 else:
                     filename.unlink(missing_ok=True)
@@ -221,7 +233,7 @@ class ReadCache:
             if len(json.dumps(record, ensure_ascii=False).encode()) > MAX_ENTRY_BYTES:
                 return False
             atomic_write_private_json(filename, record)
-            os.utime(filename, (stamp, stamp), follow_symlinks=False)
+            _set_times(filename, stamp)
             self._cleanup(stamp)
             return True
 

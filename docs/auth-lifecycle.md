@@ -75,7 +75,9 @@ Lærdommer fra to lokale feil som så ut som utlogging:
 - Eierbinding kan ikke bygge på vertsnavn på Mac, fordi `socket.gethostname()`
   følger nettverket. På macOS bindes eierfilen til `IOPlatformUUID`; eldre
   eierfiler oppgraderes første gang `LocalHostName` stemmer, og en oppgradert
-  fil godtas bare med samme maskin-ID. Andre plattformer bruker vertsnavn ved lokal bruk. HTTP-verter bruker en
+  fil godtas bare med samme maskin-ID. På Windows bindes den til
+  installasjonens `MachineGuid`; det er nytt og bare dekket av enhetstester.
+  Linux bruker vertsnavn ved lokal bruk, som før. HTTP-verter bruker en
   installasjons-ID fra miljøet som ligger utenfor datadisken.
   Eldre kode avviser en oppgradert eierfil.
 
@@ -199,5 +201,5 @@ flyttemerke kontrolleres under kildelås før token brukes eller fornyes.
 Verten lagrer eierbindingen atomisk før importerte øktfiler skrives. En
 vertsøkt uten eierbinding avvises, også når installasjonshemmeligheten mangler
 på en kopiert disk med vertens tilstand. En ny vellykket
-innlogging på Macen fjerner flyttemerket. Ikke fjern det manuelt etter et
+innlogging på datamaskinen fjerner flyttemerket. Ikke fjern det manuelt etter et
 avbrudd; kontroller verten eller logg inn på nytt.

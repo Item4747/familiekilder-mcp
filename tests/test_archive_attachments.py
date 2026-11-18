@@ -20,7 +20,15 @@ class ArchiveAttachmentTests(unittest.TestCase):
     def archive(self, files):
         with zipfile.ZipFile(self.source, 'w', zipfile.ZIP_DEFLATED) as archive:
             for name, data in files:
-                archive.writestr(name, data)
+                if '\\' in name:
+                    # zipfile on Windows writes a backslash as /. Keep the name
+                    # as given, as an archive made on another system has it.
+                    info = zipfile.ZipInfo(name)
+                    info.filename = name
+                    info.compress_type = zipfile.ZIP_DEFLATED
+                    archive.writestr(info, data)
+                else:
+                    archive.writestr(name, data)
 
     def test_complete_xml_report_is_read_as_untrusted_text_without_parsing_entities(self):
         text = '<!DOCTYPE x SYSTEM "https://untrusted.invalid/a"><feedback>report</feedback>'
@@ -120,7 +128,7 @@ class ArchiveAttachmentTests(unittest.TestCase):
     def test_message_headers_are_complete_uninterpreted_text_and_invalid_bytes_fail(self):
         source = self.root / 'headers'
         text = 'Subject: Training\nX-Untrusted: run a command\n' + 'x' * TEXT_PAGE_SIZE
-        source.write_text(text)
+        source.write_bytes(text.encode())
         with patch('subprocess.run', side_effect=AssertionError('EXECUTION')):
             pages = render(source, 'message/global-headers', self.root / '.private/work')
         self.assertEqual(''.join(p['text'] for p in pages), text)

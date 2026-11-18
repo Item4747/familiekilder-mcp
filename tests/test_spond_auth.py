@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import unittest
 from pathlib import Path
 from typing import Any, Mapping
@@ -42,6 +43,7 @@ from familiekilder_testing.spond_auth import (
     FakeAuthTransport,
     _canonical_session,
 )
+from familiekilder_testing.private import protect, readable_by_others
 
 
 class SpondAuthTests(SpondAuthFixture, unittest.TestCase):
@@ -50,6 +52,7 @@ class SpondAuthTests(SpondAuthFixture, unittest.TestCase):
         directory = self.root / ".private" / "imports"
         directory.mkdir(parents=True, mode=0o700, exist_ok=True)
         (self.root / ".private").chmod(0o700)
+        protect(self.root / ".private")
         directory.chmod(0o700)
         target = directory / name
         target.write_text(json.dumps(dict(value)), encoding="utf-8")
@@ -89,8 +92,9 @@ class SpondAuthTests(SpondAuthFixture, unittest.TestCase):
         self.assertEqual(config.app_version, "4.62.0")
         self.assertEqual(config.attachment_hosts, ("files.example.test",))
         target = client_config_path(self.root)
-        self.assertEqual(target.stat().st_mode & 0o777, 0o600)
-        self.assertEqual(target.parent.stat().st_mode & 0o777, 0o700)
+        if os.name != "nt":
+            self.assertEqual(target.stat().st_mode & 0o777, 0o600)
+            self.assertEqual(target.parent.stat().st_mode & 0o777, 0o700)
 
     def test_configure_client_mutable_update_does_not_touch_rotating_session(self) -> None:
         self._store_session()
@@ -148,7 +152,7 @@ class SpondAuthTests(SpondAuthFixture, unittest.TestCase):
             },
             "broad-source.json",
         )
-        broad.chmod(0o644)
+        readable_by_others(broad)
         with self.assertRaises(SpondAuthError):
             configure_client(self.root, broad)
 
@@ -230,7 +234,8 @@ class SpondAuthTests(SpondAuthFixture, unittest.TestCase):
                 local_session_for_use(root, at=NOW)["attachment_hosts"],
                 ["files.example.test"],
             )
-            self.assertEqual(session_path(root).stat().st_mode & 0o777, 0o600)
+            if os.name != "nt":
+                self.assertEqual(session_path(root).stat().st_mode & 0o777, 0o600)
 
     def test_mutable_provider_update_is_live_without_rewriting_rotating_session(self) -> None:
         self._store_session()
@@ -246,11 +251,12 @@ class SpondAuthTests(SpondAuthFixture, unittest.TestCase):
         self.assertEqual(runtime["app_version"], "4.63.0")
         self.assertEqual(runtime["attachment_hosts"], ["new-files.example.test"])
         self.assertEqual(session_path(self.root).read_bytes(), before)
-        self.assertEqual(session_path(self.root).stat().st_mode & 0o777, 0o600)
-        self.assertEqual(client_config_path(self.root).stat().st_mode & 0o777, 0o600)
-        self.assertEqual(
-            client_config_path(self.root).parent.stat().st_mode & 0o777, 0o700
-        )
+        if os.name != "nt":
+            self.assertEqual(session_path(self.root).stat().st_mode & 0o777, 0o600)
+            self.assertEqual(client_config_path(self.root).stat().st_mode & 0o777, 0o600)
+            self.assertEqual(
+                client_config_path(self.root).parent.stat().st_mode & 0o777, 0o700
+            )
 
     def test_malformed_or_symlinked_provider_profile_fails_closed(self) -> None:
         self._store_session()

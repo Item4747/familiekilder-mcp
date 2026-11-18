@@ -67,8 +67,12 @@ class DiscoveryTextTests(unittest.TestCase):
     def test_readme_search_words_name_every_unofficial_service(self):
         readme = flat(README.read_text())
         self.assertIn("uoffisiell", readme)
-        self.assertIn("macOS", readme)
-        self.assertIn("Brave", readme)
+        for platform in ("macOS", "Windows", "Linux"):
+            with self.subTest(platform=platform):
+                self.assertIn(platform, readme)
+        for browser in ("Brave", "Chrome", "Edge"):
+            with self.subTest(browser=browser):
+                self.assertIn(browser, readme)
         for source in unofficial_sources():
             with self.subTest(source=source.name):
                 self.assertIn(f"{source.label} API", readme)

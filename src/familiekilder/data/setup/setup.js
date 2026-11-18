@@ -298,8 +298,9 @@ function render(state) {
   }
   const dependencies = byId('dependencies');
   dependencies.replaceChildren();
+  renderBrowsers(state.browsers);
   [
-    ['brave', 'Brave'],
+    ['browser', 'Nettleser for innlogging'],
     ['pdf', 'PDF-lesing'],
     ['word', 'Word-lesing'],
   ].forEach(([key, name]) => {
@@ -323,6 +324,33 @@ function render(state) {
   }
   byId('test').disabled = busy;
   byId('test-result').hidden = !state.tested;
+}
+
+function renderBrowsers(browsers) {
+  const select = byId('login-browser');
+  const wanted = [['auto', 'Automatisk: den første av Brave, Chrome og Edge']].concat(
+    browsers.installed.map((browser) => [browser.id, browser.name]),
+  );
+  if (browsers.chosen !== 'auto' && !browsers.installed.some((b) => b.id === browsers.chosen)) {
+    wanted.push([browsers.chosen, `${browsers.chosen} (ikke funnet)`]);
+  }
+  const current = [...select.options].map((option) => `${option.value}:${option.text}`).join('|');
+  if (current !== wanted.map(([id, name]) => `${id}:${name}`).join('|')) {
+    select.replaceChildren(
+      ...wanted.map(([id, name]) => {
+        const option = document.createElement('option');
+        option.value = id;
+        option.text = name;
+        return option;
+      }),
+    );
+  }
+  select.value = browsers.chosen;
+  select.disabled = busy;
+  const used = browsers.installed.find((browser) => browser.id === browsers.used);
+  byId('login-browser-status').textContent = used
+    ? `Innloggingen åpnes i ${used.name}.`
+    : 'Fant ingen av nettleserne. Installer Brave, Google Chrome eller Microsoft Edge.';
 }
 
 async function refresh() {
@@ -368,6 +396,9 @@ document
     node.addEventListener('click', () => perform('/api/connect', { client: node.dataset.client })),
   );
 byId('test').addEventListener('click', () => perform('/api/start', { action: 'check' }));
+byId('login-browser').addEventListener('change', (event) =>
+  perform('/api/browser', { browser: event.target.value }),
+);
 byId('close').addEventListener('click', closeSetup);
 byId('finish').addEventListener('click', closeSetup);
 byId('dismiss-login').addEventListener('click', () => byId('login-dialog').close());

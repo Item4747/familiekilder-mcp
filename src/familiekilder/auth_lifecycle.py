@@ -13,7 +13,6 @@ import functools
 import hashlib
 import json
 import math
-import re
 import socket
 import subprocess
 import sys
@@ -95,14 +94,10 @@ def _mac_query(*command):
 
 
 def _machine_identity():
-    """macOS only: its hostname follows the network, unlike this hardware ID."""
-    if sys.platform != 'darwin':
-        return None
-    found = re.search(
-        r'"IOPlatformUUID"\s*=\s*"([^"]+)"',
-        _mac_query('/usr/sbin/ioreg', '-rd1', '-c', 'IOPlatformExpertDevice'),
-    )
-    return found.group(1) if found else None
+    """An ID that survives a new hostname; see `desktop_platform.machine_identity`."""
+    from .desktop_platform import machine_identity
+
+    return machine_identity(query=_mac_query)
 
 
 def _installation_identity():
@@ -156,7 +151,7 @@ def require_owner(root, source):
         session = 'gmail.json' if source == 'gmail' else f'{source}-session.json'
         if sys.platform != 'darwin' and hosted and credential_path(root, session).exists():
             raise FamiliekilderError(
-                'Innloggingen på verten mangler eierbinding; flytt den på nytt fra Macen'
+                'Innloggingen på verten mangler eierbinding; flytt den på nytt fra datamaskinen'
             )
         atomic_write_private_json(path, expected)
         return

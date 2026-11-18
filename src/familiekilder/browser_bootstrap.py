@@ -1,10 +1,11 @@
-"""One-shot, isolated Brave bootstrap for Spond and Hoopit API sessions.
+"""One-shot, isolated browser bootstrap for Spond and Hoopit API sessions.
 
-The user signs in in a visible, disposable Brave profile, optionally assisted
-by the profile-bound Keychain password helper. Phone approval stays manual. This
-module then reads only the provider's exact allowlisted authentication fields
-over a private DevTools pipe.  It never reads cookies, passwords, arbitrary
-storage keys, or the user's normal Brave profile.
+The user signs in in a visible, disposable profile of Brave, Chrome or Edge
+(see `browsers`), optionally assisted by the profile-bound password helper.
+Phone approval stays manual. This module then reads only the provider's exact
+allowlisted authentication fields over a private DevTools pipe, never a TCP
+port. It never reads cookies, passwords, arbitrary storage keys, or the user's
+normal browser profile.
 
 Secret-bearing values live only in local variables and one short-lived 0600
 import file.  Public return values are restricted to validated, non-secret
@@ -15,17 +16,19 @@ data.
 from __future__ import annotations
 
 import base64
-import fcntl
 import json
 import logging
 import math
 import os
+import queue
 import re
 import select
 import secrets
+import shutil
 import stat
 import subprocess
 import sys
+import threading
 import time
 from collections.abc import Callable, Mapping
 from datetime import datetime
@@ -33,6 +36,16 @@ from pathlib import Path
 from typing import Any, Protocol
 from urllib.parse import urlsplit
 
+from .browsers import (
+    BrowserBootstrapError,
+    MACOS,
+    _codesign_value,  # noqa: F401 - kept for callers of the old name
+    _reparse_point,
+    catalog,
+    saved_browser,
+    select_browser,
+    System,
+)
 from .core import FamiliekilderError, project_paths
 from .private_state import (
     PrivateStateError,
@@ -63,19 +76,12 @@ _SPOND_STORAGE_KEYS = (
     "refreshTokenExpiration",
 )
 
-_BRAVE_PATHS = (
-    Path("/Applications/Brave Browser.app/Contents/MacOS/Brave Browser"),
-    Path.home()
-    / "Applications/Brave Browser.app/Contents/MacOS/Brave Browser",
+# The macOS app paths, for callers of the old names. `browsers` owns them.
+_BRAVE_PATHS, _CHROME_PATHS = (
+    tuple(Path(path) for path in app.executables)
+    for app in catalog(System(MACOS))[:2]
 )
-_BRAVE_IDENTIFIER = "com.brave.Browser"
-_BRAVE_TEAM_ID = "KL8N8XSYF4"
-_CHROME_PATHS = (
-    Path("/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"),
-    Path.home() / "Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
-)
-_CHROME_IDENTIFIER = "com.google.Chrome"
-_CHROME_TEAM_ID = "EQHXZ8M8AV"
+_TIMEOUT_MESSAGE = "Nettleseren svarte ikke innen tidsgrensen"
 _PIPE_EXEC_WRAPPER = """\
 import os
 import sys
@@ -92,10 +98,6 @@ if write_descriptor not in {3, 4}:
     os.close(write_descriptor)
 os.execv(executable, arguments)
 """
-
-
-class BrowserBootstrapError(FamiliekilderError):
-    """A sanitized isolated-browser bootstrap failure."""
 
 
 class CdpClient(Protocol):
@@ -168,6 +170,93 @@ def _open_directory(path: Path) -> int:
         ) from None
 
 
+def _plain_directory(path: Path) -> bool:
+    """Windows: a real directory, not a junction or other reparse point."""
+
+    try:
+        metadata = path.lstat()
+    except OSError:
+        return False
+    return stat.S_ISDIR(metadata.st_mode) and not _reparse_point(metadata)
+
+
+def _create_run_directory_windows(base: Path) -> Path:
+    """Windows has no dir_fd; `.private` is the user's alone, so paths are checked."""
+
+    for _ in range(20):
+        run_path = base / f"run-{secrets.token_hex(16)}"
+        try:
+            os.mkdir(run_path)
+        except FileExistsError:
+            continue
+        except OSError:
+            raise BrowserBootstrapError(
+                "En isolert nettleserprofil kunne ikke opprettes sikkert"
+            ) from None
+        break
+    else:
+        raise BrowserBootstrapError("En unik isolert nettleserprofil kunne ikke opprettes")
+    try:
+        if not _plain_directory(run_path):
+            raise BrowserBootstrapError(
+                "Den isolerte nettleserprofilen har utrygge rettigheter"
+            )
+        flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_BINARY", 0)
+        marker = os.open(run_path / _OWNER_MARKER, flags, 0o600)
+        try:
+            os.write(marker, _OWNER_MARKER_CONTENT)
+            os.fsync(marker)
+        finally:
+            os.close(marker)
+        return run_path
+    except BaseException as error:
+        try:
+            if _plain_directory(run_path):
+                shutil.rmtree(run_path)
+        except OSError:
+            pass
+        if isinstance(error, BrowserBootstrapError):
+            raise
+        if isinstance(error, OSError):
+            raise BrowserBootstrapError(
+                "Den isolerte nettleserprofilen kunne ikke markeres sikkert"
+            ) from None
+        raise
+
+
+def _cleanup_run_directory_windows(run_path: Path) -> None:
+    if not _plain_directory(run_path):
+        raise BrowserBootstrapError("Nettleserprofilen har utrygg type")
+    marker = run_path / _OWNER_MARKER
+    try:
+        metadata = marker.lstat()
+        if not stat.S_ISREG(metadata.st_mode) or _reparse_point(metadata):
+            raise BrowserBootstrapError("Nettleserprofilens eierskapsmarkør er ikke sikker")
+        with open(marker, "rb") as stream:
+            content = stream.read(len(_OWNER_MARKER_CONTENT) + 1)
+    except OSError:
+        raise BrowserBootstrapError(
+            "Den isolerte nettleserprofilen kunne ikke ryddes sikkert"
+        ) from None
+    if content != _OWNER_MARKER_CONTENT:
+        raise BrowserBootstrapError("Nettleserprofilens eierskapsmarkør er ugyldig")
+    # The browser can hold files for a moment after it exits. rmtree does not
+    # follow junctions on Windows.
+    deadline = time.monotonic() + 10
+    while True:
+        try:
+            shutil.rmtree(run_path)
+            return
+        except FileNotFoundError:
+            return
+        except OSError:
+            if time.monotonic() >= deadline:
+                raise BrowserBootstrapError(
+                    "Den isolerte nettleserprofilen kunne ikke ryddes sikkert"
+                ) from None
+            time.sleep(0.2)
+
+
 def _create_run_directory(root: Path | str | None) -> Path:
     """Create and mark one helper-owned directory below literal ``.private``."""
 
@@ -182,6 +271,8 @@ def _create_run_directory(root: Path | str | None) -> Path:
         raise BrowserBootstrapError(
             "Den private nettleserkatalogen kunne ikke sikres"
         ) from None
+    if os.name == "nt":
+        return _create_run_directory_windows(base)
     base_descriptor = _open_directory(base)
     created_name: str | None = None
 
@@ -344,6 +435,9 @@ def _cleanup_run_directory(root: Path | str | None, run_path: Path) -> None:
         raise BrowserBootstrapError(
             "Foreldretreet til nettleserprofilen er ikke sikkert"
         ) from None
+    if os.name == "nt":
+        _cleanup_run_directory_windows(run_path)
+        return
 
     base_descriptor = _open_directory(base)
     run_descriptor: int | None = None
@@ -475,6 +569,43 @@ class _PipeCdpClient:
         self._events: list[Mapping[str, Any]] = []
         self._next_id = 1
         self._closed = False
+        self._chunks: queue.Queue[bytes | None] | None = None
+        self._reader: threading.Thread | None = None
+        if os.name == "nt":
+            # Windows cannot select() on a pipe, so a thread reads it.
+            self._chunks = queue.Queue()
+            self._reader = threading.Thread(target=self._read_chunks, daemon=True)
+            self._reader.start()
+
+    def _read_chunks(self) -> None:
+        assert self._chunks is not None
+        while True:
+            try:
+                chunk: bytes | None = os.read(self._read_descriptor, 64 * 1024)
+            except OSError:
+                chunk = None
+            self._chunks.put(chunk)
+            if not chunk:
+                return
+
+    def _read_chunk(self, remaining: float) -> bytes:
+        if self._chunks is not None:
+            try:
+                chunk = self._chunks.get(timeout=remaining)
+            except queue.Empty:
+                raise BrowserBootstrapError(_TIMEOUT_MESSAGE) from None
+            if chunk is None:
+                raise BrowserBootstrapError("DevTools-røret kunne ikke lese responsen")
+            return chunk
+        try:
+            ready, _, _ = select.select([self._read_descriptor], [], [], remaining)
+            if not ready:
+                raise BrowserBootstrapError(_TIMEOUT_MESSAGE)
+            return os.read(self._read_descriptor, 64 * 1024)
+        except OSError:
+            raise BrowserBootstrapError(
+                "DevTools-røret kunne ikke lese responsen"
+            ) from None
 
     def _write(self, payload: bytes) -> None:
         offset = 0
@@ -493,16 +624,8 @@ class _PipeCdpClient:
         while not self._pending:
             remaining = deadline - time.monotonic()
             if remaining <= 0:
-                raise BrowserBootstrapError("Brave svarte ikke innen tidsgrensen")
-            try:
-                ready, _, _ = select.select([self._read_descriptor], [], [], remaining)
-                if not ready:
-                    raise BrowserBootstrapError("Brave svarte ikke innen tidsgrensen")
-                chunk = os.read(self._read_descriptor, 64 * 1024)
-            except OSError:
-                raise BrowserBootstrapError(
-                    "DevTools-røret kunne ikke lese responsen"
-                ) from None
+                raise BrowserBootstrapError(_TIMEOUT_MESSAGE)
+            chunk = self._read_chunk(remaining)
             self._pending.extend(self._framer.feed(chunk))
         return self._pending.pop(0)
 
@@ -540,7 +663,7 @@ class _PipeCdpClient:
                 if len(self._events) > 1024:
                     self._events.clear()
                     raise BrowserBootstrapError(
-                        "Brave returnerte for mange DevTools-hendelser"
+                        "Nettleseren returnerte for mange DevTools-hendelser"
                     )
                 continue
             if response.get("id") != request_id:
@@ -549,7 +672,7 @@ class _PipeCdpClient:
                 )
             if "error" in response:
                 raise BrowserBootstrapError(
-                    f"Brave avviste DevTools-forespørselen {method}"
+                    f"Nettleseren avviste DevTools-forespørselen {method}"
                 )
             result = response.get("result")
             if not isinstance(result, Mapping):
@@ -580,7 +703,7 @@ class _PipeCdpClient:
                 try:
                     event = self._next_message(deadline)
                 except BrowserBootstrapError as exc:
-                    if str(exc) == "Brave svarte ikke innen tidsgrensen":
+                    if str(exc) == _TIMEOUT_MESSAGE:
                         return None
                     raise
             if "id" in event:
@@ -594,106 +717,51 @@ class _PipeCdpClient:
         if self._closed:
             return
         self._closed = True
-        for descriptor in (self._write_descriptor, self._read_descriptor):
-            try:
-                os.close(descriptor)
-            except OSError:
-                pass
-
-
-def _codesign_value(output: str, label: str) -> str | None:
-    match = re.search(rf"(?m)^{re.escape(label)}=([^\r\n]+)$", output)
-    return match.group(1).strip() if match else None
+        try:
+            os.close(self._write_descriptor)
+        except OSError:
+            pass
+        if self._reader is not None:
+            # The browser has closed its end; let the reader see the end first.
+            self._reader.join(timeout=2)
+        try:
+            os.close(self._read_descriptor)
+        except OSError:
+            pass
 
 
 def _official_brave_path(
-    explicit: Path | str | None = None, *, allow_chrome: bool = False
+    explicit: Path | str | None = None,
+    *,
+    browser: str | None = None,
+    oauth_callback: bool = False,
 ) -> Path:
+    """The checked browser executable for a login; see `browsers.select_browser`."""
+
     from .hosting import refuse_on_remote_host
 
     refuse_on_remote_host("Innlogging i nettleser")
-    if sys.platform.startswith("linux"):
-        # APT verifies the repository signature at installation. Do not accept
-        # a caller-selected executable, user-writable wrapper or symlink here.
-        candidate = Path("/opt/brave.com/brave/brave")
-        if explicit is not None and Path(explicit) != candidate:
-            raise BrowserBootstrapError("Brave-stien er ikke en godkjent appsti")
-        try:
-            for entry in (candidate, *candidate.parents[:-1]):
-                info = entry.lstat()
-                if info.st_uid != 0 or info.st_mode & 0o022 or entry.is_symlink():
-                    raise OSError
-            if not candidate.is_file() or not os.access(candidate, os.X_OK):
-                raise OSError
-        except OSError:
-            raise BrowserBootstrapError("Fant ikke en administrert Brave-installasjon") from None
-        return candidate
-    if sys.platform != "darwin":
+    return Path(select_browser(browser, explicit, oauth_callback=oauth_callback).executable)
+
+
+def _login_browser(root: Path | str | None, login_browser: str | None) -> str | None:
+    """The browser asked for, else the saved choice. A login server has no choice."""
+
+    if login_browser is not None or os.environ.get("FAMILIEKILDER_HOSTED") == "1":
+        return login_browser
+    return saved_browser(root)
+
+
+def _require_display() -> None:
+    """A Linux desktop login needs a screen; say so instead of failing later."""
+
+    if not sys.platform.startswith("linux") or os.environ.get("FAMILIEKILDER_HOSTED") == "1":
+        return
+    if not (os.environ.get("DISPLAY") or os.environ.get("WAYLAND_DISPLAY")):
         raise BrowserBootstrapError(
-            "Isolert Brave-bootstrap støttes bare på en verifisert macOS-installasjon"
+            "Fant ingen skjerm for innloggingsvinduet. Logg inn fra skrivebordet på "
+            "maskinen, ikke over SSH eller fra en server uten skjerm."
         )
-    candidates = _BRAVE_PATHS + _CHROME_PATHS if allow_chrome else _BRAVE_PATHS
-    if explicit is not None:
-        requested = Path(explicit).expanduser()
-        if requested not in candidates:
-            raise BrowserBootstrapError("Brave-stien er ikke en godkjent appsti")
-        candidates = (requested,)
-    selected: Path | None = None
-    for candidate in candidates:
-        try:
-            metadata = candidate.lstat()
-        except OSError:
-            continue
-        if (
-            stat.S_ISREG(metadata.st_mode)
-            and not stat.S_ISLNK(metadata.st_mode)
-            and os.access(candidate, os.X_OK)
-        ):
-            selected = candidate
-            break
-    if selected is None:
-        raise BrowserBootstrapError("Fant ikke den offisielle Brave-installasjonen")
-    try:
-        assessment = subprocess.run(
-            [
-                "/usr/sbin/spctl",
-                "--assess",
-                "--type",
-                "execute",
-                str(selected.parents[2]),
-            ],
-            stdin=subprocess.DEVNULL,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-            timeout=15,
-            check=False,
-        )
-        details = subprocess.run(
-            ["/usr/bin/codesign", "-dv", "--verbose=4", str(selected)],
-            stdin=subprocess.DEVNULL,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            timeout=15,
-            check=False,
-            text=True,
-        )
-    except (OSError, subprocess.SubprocessError):
-        raise BrowserBootstrapError(
-            "Brave-signaturen kunne ikke verifiseres lokalt"
-        ) from None
-    expected_identity = (
-        (_CHROME_IDENTIFIER, _CHROME_TEAM_ID)
-        if selected in _CHROME_PATHS
-        else (_BRAVE_IDENTIFIER, _BRAVE_TEAM_ID)
-    )
-    if (
-        assessment.returncode != 0
-        or details.returncode != 0
-        or _codesign_value(details.stdout, "Identifier") != expected_identity[0]
-        or _codesign_value(details.stdout, "TeamIdentifier") != expected_identity[1]
-    ):
-        raise BrowserBootstrapError("Brave-installasjonen har ukjent signatur")
-    return selected
 
 
 class _BraveHandle:
@@ -731,8 +799,10 @@ class _BraveHandle:
 
 def _duplicate_child_descriptor(descriptor: int) -> int:
     try:
+        import fcntl
+
         return int(fcntl.fcntl(descriptor, fcntl.F_DUPFD_CLOEXEC, 10))
-    except (OSError, ValueError):
+    except (ImportError, OSError, ValueError):
         raise BrowserBootstrapError(
             "DevTools-røret kunne ikke opprettes sikkert"
         ) from None
@@ -786,19 +856,26 @@ def _launch_brave(
     start_url: str,
     brave_path: Path | str | None,
     *,
-    allow_chrome: bool = False,
+    browser: str | None = None,
+    oauth_callback: bool = False,
 ) -> BrowserHandle:
-    executable = _official_brave_path(brave_path, allow_chrome=allow_chrome)
+    """Start the checked browser with a DevTools pipe; the name is historical."""
+
+    executable = _official_brave_path(brave_path, browser=browser, oauth_callback=oauth_callback)
+    _require_display()
     try:
         profile_metadata = profile_directory.lstat()
     except OSError:
         raise BrowserBootstrapError(
             "Den isolerte nettleserprofilen kunne ikke kontrolleres"
         ) from None
-    if not _private_directory_ok(profile_metadata):
+    if not _private_directory_ok(profile_metadata) or _reparse_point(profile_metadata):
         raise BrowserBootstrapError(
             "Den isolerte nettleserprofilen har utrygge rettigheter"
         )
+    arguments = _brave_arguments(executable, profile_directory, start_url)
+    if os.name == "nt":
+        return _launch_windows(arguments)
 
     child_input_raw, parent_write = os.pipe()
     parent_read, child_output_raw = os.pipe()
@@ -813,7 +890,6 @@ def _launch_brave(
         os.close(child_output_raw)
         child_output_raw = -1
 
-        arguments = _brave_arguments(executable, profile_directory, start_url)
         process = subprocess.Popen(
             [
                 sys.executable,
@@ -839,7 +915,7 @@ def _launch_brave(
         raise
     except OSError:
         raise BrowserBootstrapError(
-            "Den isolerte Brave-profilen kunne ikke startes"
+            "Den isolerte nettleserprofilen kunne ikke startes"
         ) from None
     finally:
         for descriptor in (child_input_raw, child_output_raw, child_input, child_output):
@@ -848,6 +924,56 @@ def _launch_brave(
                     os.close(descriptor)
                 except OSError:
                     pass
+        if process is None:
+            for descriptor in (parent_write, parent_read):
+                try:
+                    os.close(descriptor)
+                except OSError:
+                    pass
+
+
+def _launch_windows(arguments: list[str]) -> BrowserHandle:
+    """Start the browser on Windows with the DevTools pipe as two inherited handles.
+
+    Chromium reads requests from the first handle in --remote-debugging-io-pipes
+    and writes replies to the second. Only these two handles and the null
+    standard handles are inherited.
+    """
+
+    import msvcrt
+
+    child_read, parent_write = os.pipe()
+    parent_read, child_write = os.pipe()
+    process: subprocess.Popen[bytes] | None = None
+    try:
+        read_handle = msvcrt.get_osfhandle(child_read)
+        write_handle = msvcrt.get_osfhandle(child_write)
+        os.set_handle_inheritable(read_handle, True)
+        os.set_handle_inheritable(write_handle, True)
+        startup = subprocess.STARTUPINFO()
+        startup.lpAttributeList = {"handle_list": [read_handle, write_handle]}
+        # Chromium reads switches anywhere on the command line.
+        command = [*arguments, f"--remote-debugging-io-pipes={read_handle},{write_handle}"]
+        process = subprocess.Popen(
+            command,
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            close_fds=True,
+            startupinfo=startup,
+            creationflags=subprocess.CREATE_NEW_PROCESS_GROUP,
+        )
+        return _BraveHandle(process, _PipeCdpClient(parent_write, parent_read))
+    except OSError:
+        raise BrowserBootstrapError(
+            "Den isolerte nettleserprofilen kunne ikke startes"
+        ) from None
+    finally:
+        for descriptor in (child_read, child_write):
+            try:
+                os.close(descriptor)
+            except OSError:
+                pass
         if process is None:
             for descriptor in (parent_write, parent_read):
                 try:
@@ -878,7 +1004,7 @@ def _exact_origin(url: Any, expected: str) -> bool:
 def _page_session(cdp: CdpClient, origin: str) -> str:
     targets = cdp.call("Target.getTargets").get("targetInfos")
     if not isinstance(targets, list):
-        raise BrowserBootstrapError("Brave returnerte en ukjent sidelayout")
+        raise BrowserBootstrapError("Nettleseren returnerte en ukjent sidelayout")
     matching = [
         target
         for target in targets
@@ -892,13 +1018,13 @@ def _page_session(cdp: CdpClient, origin: str) -> str:
         )
     target_id = matching[0].get("targetId")
     if not isinstance(target_id, str) or not target_id or len(target_id) > 512:
-        raise BrowserBootstrapError("Brave returnerte en ugyldig side-ID")
+        raise BrowserBootstrapError("Nettleseren returnerte en ugyldig side-ID")
     attached = cdp.call(
         "Target.attachToTarget", {"targetId": target_id, "flatten": True}
     )
     session_id = attached.get("sessionId")
     if not isinstance(session_id, str) or not session_id or len(session_id) > 512:
-        raise BrowserBootstrapError("Brave returnerte en ugyldig sesjons-ID")
+        raise BrowserBootstrapError("Nettleseren returnerte en ugyldig sesjons-ID")
     return session_id
 
 
@@ -912,7 +1038,7 @@ def _single_https_page_session(
     while time.monotonic() < deadline:
         targets = cdp.call("Target.getTargets").get("targetInfos")
         if not isinstance(targets, list):
-            raise BrowserBootstrapError("Brave returnerte en ukjent sidelayout")
+            raise BrowserBootstrapError("Nettleseren returnerte en ukjent sidelayout")
         pages = []
         for target in targets:
             if not isinstance(target, Mapping) or target.get("type") != "page":
@@ -930,22 +1056,22 @@ def _single_https_page_session(
             break
         if len(pages) > 1:
             raise BrowserBootstrapError(
-                "Fant mer enn én autorisasjonsside i isolert Brave"
+                "Fant mer enn én autorisasjonsside i den isolerte nettleseren"
             )
         time.sleep(0.1)
     else:
         raise BrowserBootstrapError(
-            "Fant ikke autorisasjonssiden i isolert Brave"
+            "Fant ikke autorisasjonssiden i den isolerte nettleseren"
         )
     target_id = pages[0].get("targetId")
     if not isinstance(target_id, str) or not target_id or len(target_id) > 512:
-        raise BrowserBootstrapError("Brave returnerte en ugyldig side-ID")
+        raise BrowserBootstrapError("Nettleseren returnerte en ugyldig side-ID")
     attached = cdp.call(
         "Target.attachToTarget", {"targetId": target_id, "flatten": True}
     )
     session_id = attached.get("sessionId")
     if not isinstance(session_id, str) or not session_id or len(session_id) > 512:
-        raise BrowserBootstrapError("Brave returnerte en ugyldig sesjons-ID")
+        raise BrowserBootstrapError("Nettleseren returnerte en ugyldig sesjons-ID")
     return session_id
 
 
@@ -1062,8 +1188,13 @@ def capture_oauth_callback(
     brave_path: Path | str | None = None,
     browser_factory: BrowserFactory | None = None,
     cancelled: Callable[[], bool] | None = None,
+    login_browser: str | None = None,
 ) -> str:
-    """Capture one exact custom-scheme callback without displaying its value."""
+    """Capture one exact custom-scheme callback without displaying its value.
+
+    `login_browser` is a catalog ID; without it the user's saved choice or the first
+    installed browser is used.
+    """
 
     try:
         authorization = urlsplit(authorization_url)
@@ -1088,6 +1219,7 @@ def capture_oauth_callback(
     from .password_autofill import PasswordAutofill
 
     autofill = PasswordAutofill(root, "bankid")
+    choice = _login_browser(root, login_browser)
     run_path = _create_run_directory(root)
     browser: BrowserHandle | None = None
     primary_error: BaseException | None = None
@@ -1099,7 +1231,8 @@ def capture_oauth_callback(
                 run_path,
                 authorization_url,
                 brave_path,
-                allow_chrome=True,
+                browser=choice,
+                oauth_callback=True,
             )
         session_id = _single_https_page_session(browser.cdp)
         browser.cdp.call("Page.enable", session_id=session_id)
@@ -1129,7 +1262,7 @@ def capture_oauth_callback(
                     return candidate
             targets = browser.cdp.call("Target.getTargets").get("targetInfos")
             if not isinstance(targets, list):
-                raise BrowserBootstrapError("Brave returnerte en ukjent sidelayout")
+                raise BrowserBootstrapError("Nettleseren returnerte en ukjent sidelayout")
             for target in targets:
                 if not isinstance(target, Mapping):
                     continue
@@ -1154,7 +1287,7 @@ def capture_oauth_callback(
         if close_error is not None:
             if primary_error is not None:
                 raise BrowserBootstrapError(
-                    "OAuth-flyten feilet og isolert Brave kunne ikke lukkes"
+                    "OAuth-flyten feilet og den isolerte nettleseren kunne ikke lukkes"
                 ) from None
             raise close_error
         if cleanup_error is not None:
@@ -1216,7 +1349,7 @@ def _spond_payload(cdp: CdpClient) -> dict[str, Any]:
 def spond_fields(value: Any) -> dict[str, Any]:
     """Validate the four Spond localStorage fields, however they were read.
 
-    The Brave bootstrap reads them over CDP; native iOS login reads them
+    The browser bootstrap reads them over CDP; native iOS login reads them
     from its isolated WebView. Both must pass the same checks.
     """
 
@@ -1378,7 +1511,7 @@ def _default_wait(prompt: str) -> None:
         input(prompt)
     except (EOFError, OSError):
         raise BrowserBootstrapError(
-            "Kunne ikke vente på manuell innlogging i Brave"
+            "Kunne ikke vente på manuell innlogging i nettleseren"
         ) from None
 
 
@@ -1398,10 +1531,26 @@ def _wait_with_password(prompt, autofill, cdp):
     print(prompt, end="", flush=True)
     while True:
         _password_step(autofill, cdp)
-        if select.select([sys.stdin], [], [], 1.0)[0]:
+        if _line_ready(1.0):
             if not sys.stdin.readline():
                 raise BrowserBootstrapError("Innloggingen ble avbrutt")
             return
+
+
+def _line_ready(timeout: float) -> bool:
+    """Whether the user has started typing, within `timeout` seconds."""
+
+    if os.name != "nt":
+        return bool(select.select([sys.stdin], [], [], timeout)[0])
+    import msvcrt
+
+    # Windows cannot select() on the console; poll it instead.
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        if msvcrt.kbhit():
+            return True
+        time.sleep(0.05)
+    return False
 
 
 def _timestamp_metadata(value: Any) -> str:
@@ -1461,7 +1610,7 @@ def _close_browser(browser: BrowserHandle | None) -> None:
         browser.close()
     except Exception:
         raise BrowserBootstrapError(
-            "Den isolerte Brave-profilen kunne ikke lukkes sikkert"
+            "Den isolerte nettleserprofilen kunne ikke lukkes sikkert"
         ) from None
 
 
@@ -1472,7 +1621,9 @@ def _write_import_file(run_path: Path, payload: dict[str, Any]) -> Path:
     try:
         atomic_write_private_json(import_file, payload, overwrite=False)
         metadata = import_file.lstat()
-        if not _private_file_ok(metadata) or stat.S_IMODE(metadata.st_mode) != 0o600:
+        if not _private_file_ok(metadata) or (
+            os.name != "nt" and stat.S_IMODE(metadata.st_mode) != 0o600
+        ):
             raise BrowserBootstrapError(
                 "Den kortlivede tokenimportfilen har utrygge rettigheter"
             )
@@ -1515,7 +1666,7 @@ def import_extracted_fields(
     replace_existing: bool = False,
     importer: Importer | None = None,
 ) -> dict[str, Any]:
-    """Validate and import auth fields that were read outside Brave.
+    """Validate and import auth fields that were read outside the browser.
 
     Used by native iOS login and the development test. The fields pass the same
     checks as the CDP extraction and the same private import file and importer
@@ -1583,22 +1734,25 @@ def _bootstrap(
     brave_path: Path | str | None,
     wait_for_user: WaitForUser | None,
     browser_factory: BrowserFactory | None,
+    login_browser: str | None = None,
 ) -> dict[str, Any]:
+    choice = _login_browser(root, login_browser)
     run_path = _create_run_directory(root)
     browser: BrowserHandle | None = None
     primary_error: BaseException | None = None
     try:
         try:
-            browser = (browser_factory or _launch_brave)(
-                run_path, start_url, brave_path
-            )
+            if browser_factory is not None:
+                browser = browser_factory(run_path, start_url, brave_path)
+            else:
+                browser = _launch_brave(run_path, start_url, brave_path, browser=choice)
         except (KeyboardInterrupt, SystemExit):
             raise
         except BrowserBootstrapError:
             raise
         except Exception:
             raise BrowserBootstrapError(
-                "Den isolerte Brave-profilen kunne ikke startes"
+                "Den isolerte nettleserprofilen kunne ikke startes"
             ) from None
         if wait_for_user is not None:
             wait_for_user(prompt)
@@ -1628,7 +1782,7 @@ def _bootstrap(
         if close_error is not None:
             if primary_error is not None:
                 raise BrowserBootstrapError(
-                    "Bootstrapen feilet og den isolerte Brave-profilen kunne ikke lukkes"
+                    "Bootstrapen feilet og den isolerte nettleserprofilen kunne ikke lukkes"
                 ) from None
             raise close_error
         if cleanup_error is not None:
@@ -1647,6 +1801,7 @@ def bootstrap_spond(
     wait_for_user: WaitForUser | None = None,
     browser_factory: BrowserFactory | None = None,
     importer: Importer | None = None,
+    login_browser: str | None = None,
 ) -> dict[str, Any]:
     """Capture and import exactly four Spond localStorage auth fields."""
 
@@ -1665,7 +1820,7 @@ def bootstrap_spond(
         source="spond",
         start_url=SPOND_LOGIN_URL,
         prompt=(
-            "Logg inn i Spond i det isolerte Brave-vinduet. "
+            "Logg inn i Spond i det isolerte nettleservinduet. "
             "Når Spond er ferdig lastet, gå tilbake hit og trykk Enter: "
         ),
         extractor=_spond_payload,
@@ -1674,6 +1829,7 @@ def bootstrap_spond(
         brave_path=brave_path,
         wait_for_user=wait_for_user,
         browser_factory=browser_factory,
+        login_browser=login_browser,
     )
 
 
@@ -1685,6 +1841,7 @@ def bootstrap_hoopit(
     wait_for_user: WaitForUser | None = None,
     browser_factory: BrowserFactory | None = None,
     importer: Importer | None = None,
+    login_browser: str | None = None,
 ) -> dict[str, Any]:
     """Capture one exact, provider-bound Hoopit Firebase Auth record."""
 
@@ -1710,7 +1867,7 @@ def bootstrap_hoopit(
         source="hoopit",
         start_url=HOOPIT_LOGIN_URL,
         prompt=(
-            "Logg inn i Hoopit i det isolerte Brave-vinduet. "
+            "Logg inn i Hoopit i det isolerte nettleservinduet. "
             "Når Hoopit er ferdig lastet, gå tilbake hit og trykk Enter: "
         ),
         extractor=extract,
@@ -1719,6 +1876,7 @@ def bootstrap_hoopit(
         brave_path=brave_path,
         wait_for_user=wait_for_user,
         browser_factory=browser_factory,
+        login_browser=login_browser,
     )
 
 

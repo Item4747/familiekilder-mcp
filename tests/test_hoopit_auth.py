@@ -44,6 +44,7 @@ from familiekilder.hoopit_auth import (
 )
 from familiekilder.private_state import read_private_json
 from familiekilder.source_adapter import SourceUnavailable
+from familiekilder_testing.private import protect
 
 
 NOW = 2_000_000_000.0
@@ -184,6 +185,7 @@ class HoopitAuthTests(unittest.TestCase):
         directory = self.root / ".private" / "imports"
         directory.mkdir(parents=True, mode=0o700, exist_ok=True)
         (self.root / ".private").chmod(0o700)
+        protect(self.root / ".private")
         directory.chmod(0o700)
         path = directory / name
         path.write_text(json.dumps(dict(value)), encoding="utf-8")
@@ -215,7 +217,8 @@ class HoopitAuthTests(unittest.TestCase):
 
     def test_configure_is_strict_private_and_has_no_app_check_contract(self) -> None:
         self._configure()
-        self.assertEqual(os.stat(client_config_path(self.root)).st_mode & 0o777, 0o600)
+        if os.name != "nt":
+            self.assertEqual(os.stat(client_config_path(self.root)).st_mode & 0o777, 0o600)
 
         for change in (
             {"api_root": "https://evil.example"},
@@ -287,7 +290,8 @@ class HoopitAuthTests(unittest.TestCase):
         self._import()
         _record_direct_access_rejection(self.root, session_for_use(self.root, at=NOW), at=NOW)
         target = _direct_access_rejection_path(self.root)
-        self.assertEqual(target.stat().st_mode & 0o777, 0o600)
+        if os.name != "nt":
+            self.assertEqual(target.stat().st_mode & 0o777, 0o600)
         text = target.read_text()
         for sensitive in ['user-1', 'refresh-secret', _token(), _config()['firebase_api_key']]:
             self.assertNotIn(sensitive, text)
@@ -343,7 +347,8 @@ class HoopitAuthTests(unittest.TestCase):
 
         self.assertTrue(result["recorded"])
         proof_path = direct_access_proof_path(self.root)
-        self.assertEqual(proof_path.stat().st_mode & 0o777, 0o600)
+        if os.name != "nt":
+            self.assertEqual(proof_path.stat().st_mode & 0o777, 0o600)
         proof = dict(read_private_json(proof_path))
         self.assertEqual(
             set(proof),
@@ -479,7 +484,8 @@ class HoopitAuthTests(unittest.TestCase):
         self.assertEqual(stored["refresh_token"], "refresh-secret")
         self.assertEqual(stored["subject"], "user-1")
         self.assertNotIn("app_check_token", stored)
-        self.assertEqual(session_path(self.root).stat().st_mode & 0o777, 0o600)
+        if os.name != "nt":
+            self.assertEqual(session_path(self.root).stat().st_mode & 0o777, 0o600)
         credential = SessionCredential("id-secret", "refresh-secret")
         self.assertNotIn("id-secret", repr(credential))
         self.assertNotIn("refresh-secret", repr(credential))

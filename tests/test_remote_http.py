@@ -432,7 +432,8 @@ class RemoteHttpTests(unittest.TestCase):
                     self.assertNotIn(secret.encode(), content, path.name)
         stored = json.loads((host.root / ".private/remote/oauth.json").read_text())
         self.assertTrue(stored["access"] and stored["refresh"])
-        self.assertEqual(os.stat(host.root / ".private/remote/oauth.json").st_mode & 0o777, 0o600)
+        if os.name != "nt":
+            self.assertEqual(os.stat(host.root / ".private/remote/oauth.json").st_mode & 0o777, 0o600)
 
     def test_registered_clients_are_listed_without_secrets(self) -> None:
         host = Host(self)
@@ -714,6 +715,10 @@ class StopTests(unittest.TestCase):
                     process.communicate()
         return process.returncode, elapsed, error.decode("utf-8", "replace")
 
+    @unittest.skipIf(
+        os.name == "nt",
+        "The container runs Linux; the test starts it through a sh shim and stops it with POSIX signals",
+    )
     def test_container_server_stops_quietly_on_sigint_and_sigterm(self) -> None:
         for signal_number in (signal.SIGINT, signal.SIGTERM):
             with self.subTest(signal=signal_number.name):
@@ -756,7 +761,11 @@ class StopTests(unittest.TestCase):
 
                 def stop_when_up(number=signal_number):
                     _wait_for_health(f"http://127.0.0.1:{port}")
-                    os.kill(os.getpid(), number)
+                    if os.name == "nt":
+                        # os.kill ends the whole process on Windows; raise the signal instead.
+                        signal.raise_signal(number)
+                    else:
+                        os.kill(os.getpid(), number)
 
                 stopper = threading.Thread(target=stop_when_up, daemon=True)
                 stopper.start()

@@ -124,10 +124,13 @@ def main() -> None:
         check_artifacts(wheel, sdist, version)
         installed = work / "installed"
         run("uv", "venv", "--quiet", "--python", args.python, str(installed), cwd=work)
-        python = installed / "bin/python"
+        # Windows keeps a virtual environment's programs in Scripts, as .exe files.
+        binaries = installed / ("Scripts" if os.name == "nt" else "bin")
+        suffix = ".exe" if os.name == "nt" else ""
+        python = binaries / f"python{suffix}"
         run("uv", "pip", "install", "--quiet", "--python", str(python), str(wheel), cwd=work)
         run("uv", "pip", "check", "--python", str(python), cwd=work)
-        run(str(installed / "bin/familiekilder-mcp"), "--version", cwd=work)
+        run(str(binaries / f"familiekilder-mcp{suffix}"), "--version", cwd=work)
         tests = sorted(str(path) for path in (source / "tests").glob("test_*.py"))
         test_environment = {**os.environ, "PYTHONPATH": str(source / "tests/support")}
         run(

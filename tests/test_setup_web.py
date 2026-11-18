@@ -139,6 +139,35 @@ class SetupHttpTests(SetupServerCase):
         self.assertEqual(status, 200)
         self.assertTrue((self.home / ".codex/config.toml").exists())
 
+    def test_login_browser_is_shown_and_chosen_by_explicit_post(self):
+        from familiekilder.browsers import BrowserApp, saved_browser
+
+        apps = (BrowserApp("chrome", "Google Chrome", ()), BrowserApp("edge", "Microsoft Edge", ()))
+        with patch("familiekilder.setup_service.installed_browsers", return_value=apps):
+            state = json.loads(self.request("/api/state")[2])
+            self.assertEqual(
+                state["browsers"],
+                {
+                    "installed": [
+                        {"id": "chrome", "name": "Google Chrome"},
+                        {"id": "edge", "name": "Microsoft Edge"},
+                    ],
+                    "chosen": "auto",
+                    "used": "chrome",
+                },
+            )
+            self.assertTrue(state["dependencies"]["browser"])
+            status, _, _ = self.request("/api/browser", method="POST", value={"browser": "edge"})
+            self.assertEqual(status, 200)
+            self.assertEqual(saved_browser(self.root), "edge")
+            self.assertEqual(json.loads(self.request("/api/state")[2])["browsers"]["used"], "edge")
+            for value in ("/usr/bin/evil", "firefox", None):
+                status, _, _ = self.request("/api/browser", method="POST", value={"browser": value})
+                self.assertEqual(status, 400)
+            self.assertEqual(saved_browser(self.root), "edge")
+            self.request("/api/browser", method="POST", value={"browser": "auto"})
+            self.assertIsNone(saved_browser(self.root))
+
     def test_upload_failure_is_sanitized_and_temporary_file_removed(self):
         with patch("familiekilder.setup_service.auth_module") as module:
             module.return_value.session_path.return_value.exists.return_value = False

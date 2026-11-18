@@ -19,12 +19,16 @@ personopplysninger. Skriv om eksemplene først.
 
 ## Oppsett
 
-Installer på Macen. Prosjektet krever macOS, Python 3.11 eller nyere og
-[Brave](https://brave.com/).
+Installer på datamaskinen: macOS, Windows eller Linux. Prosjektet krever
+Python 3.11 eller nyere og [Brave](https://brave.com/),
+[Google Chrome](https://www.google.com/chrome/) eller
+[Microsoft Edge](https://www.microsoft.com/edge). Windows, Linux og Chrome og
+Edge på Mac er nytt og ikke prøvd med ekte innlogging ennå; se
+[oppsettsveiledningen](kom-i-gang.md#nettleseren).
 
-> Installer familiekilder-mcp fra https://github.com/familiekilder/familiekilder-mcp i ~/familiekilder-mcp. Prosjektet krever macOS, Python 3.11+ og Brave. Kjør scripts/setup i bakgrunnen. Veiviseren åpnes automatisk. Innlogging og resten av oppsettet gjør jeg selv der.
+> Installer familiekilder-mcp fra https://github.com/familiekilder/familiekilder-mcp i ~/familiekilder-mcp. Prosjektet krever Python 3.11+ og Brave, Google Chrome eller Microsoft Edge, på macOS, Windows eller Linux. Kjør scripts/setup.py med Python i bakgrunnen. Veiviseren åpnes automatisk. Innlogging og resten av oppsettet gjør jeg selv der.
 
-Egen server på Fly.io, etter at oppsettet på Macen er ferdig. Se
+Egen server på Fly.io, etter at oppsettet på datamaskinen er ferdig. Se
 [veiledningen for egen server](alltid-pa.md).
 
 > Sett opp min egen familiekilder-server på Fly.io. Følg docs/alltid-pa.md i ~/familiekilder-mcp. Installer flyctl, og la meg logge inn hos Fly selv. Kjør så `familiekilder-mcp deploy fly --move`. Gi meg adressen til serveren og stien til filen med eierkoden. Ikke les eller vis eierkoden.
@@ -46,7 +50,7 @@ hendelser. familiekilder-mcp skriver ikke i kalenderen selv.
 > med frist. Sjekk hva som står der fra før, så ingenting kommer inn to ganger.
 
 Legg til denne teksten når du lager en planlagt oppgave i Codex eller Claude
-Desktop. Macen må være på når oppgaven kjører, eller oppgaven må
+Desktop. Datamaskinen må være på når oppgaven kjører, eller oppgaven må
 [kjøre i skyen](alltid-pa.md#en-kveldsoppgave-i-skyen) mot egen server.
 
 > Gjør dette hver kveld kl. 19. Oppdater oppføringer når tid eller sted er

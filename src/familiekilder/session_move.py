@@ -541,5 +541,5 @@ def move_to(
     raise MoveUncertain(
         "Pakken ble sendt, men svaret fra verten kom ikke fram. Innloggingene er fjernet "
         "her. Spør assistenten om family_connections på verten; mangler noe, logg inn på "
-        "nytt på Macen og flytt igjen."
+        "nytt på datamaskinen og flytt igjen."
     )

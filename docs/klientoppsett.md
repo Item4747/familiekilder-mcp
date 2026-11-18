@@ -178,5 +178,5 @@ er en formatoversikt, ikke en fil med verdier som kan brukes til innlogging.
 ## Egen vert som prøveordning
 
 Lokal stdio er standard. For HTTP, OAuth, Fly.io og flytting av innlogginger,
-se [alltid-på-oppsettet](alltid-pa.md). Innloggingen gjøres fortsatt på Macen;
-ikke kopier øktfiler for hånd.
+se [alltid-på-oppsettet](alltid-pa.md). Innloggingen gjøres fortsatt på
+datamaskinen din; ikke kopier øktfiler for hånd.

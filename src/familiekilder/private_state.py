@@ -74,6 +74,14 @@ def ensure_private_directory(path: Path | str) -> Path:
             ):
                 raise PrivateStateError("En privat katalog kan ikke være en symbolsk lenke")
             current.chmod(0o700)
+            if os.name == "nt" and current == private:
+                # Windows ignores the mode; the access list does the same job.
+                # Its owner could change the list again, so it must be ours.
+                from .windows_acl import OWNER_MESSAGE, owner_allowed, restrict
+
+                if not owner_allowed(private):
+                    raise PrivateStateError(OWNER_MESSAGE)
+                restrict(private)
     except PrivateStateError:
         raise
     except ValueError:
@@ -106,8 +114,32 @@ def _validate_open_file(descriptor: int) -> None:
         raise PrivateStateError("En privat fil må være en vanlig fil")
     if os.name != "nt" and metadata.st_mode & 0o077:
         raise PrivateStateError("En privat fil har for brede rettigheter")
+    if os.name == "nt" and not _windows_private_file(descriptor):
+        raise PrivateStateError("En privat fil har for brede rettigheter")
     if hasattr(os, "geteuid") and metadata.st_uid != os.geteuid():
         raise PrivateStateError("En privat fil har uventet eier")
+
+
+def _windows_private_file(descriptor: int) -> bool:
+    """Windows: owned by the user and in nobody else's access list, as 0o077 elsewhere."""
+
+    from .windows_acl import file_is_private
+
+    try:
+        return file_is_private(descriptor)
+    except OSError:
+        return False
+
+
+def _windows_private(path: Path) -> bool:
+    """Windows: `.private` is a real folder with the user-only access list."""
+
+    from .windows_acl import is_private
+
+    attributes = getattr(path.lstat(), "st_file_attributes", 0)
+    if attributes & getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0x400):
+        return False
+    return is_private(path)
 
 
 def _validate_private_parent_tree(path: Path) -> None:
@@ -132,6 +164,7 @@ def _validate_private_parent_tree(path: Path) -> None:
             or not stat.S_ISDIR(metadata.st_mode)
             or (hasattr(os, "geteuid") and metadata.st_uid != os.geteuid())
             or (os.name != "nt" and metadata.st_mode & 0o077)
+            or (os.name == "nt" and current == private and not _windows_private(current))
         ):
             raise PrivateStateError(
                 "En privat katalog har utrygg type, eier eller modus"
@@ -160,6 +193,30 @@ def validate_private_parent_tree(path: Path | str) -> bool:
     return True
 
 
+_NAME_SURROGATE_TAGS = frozenset(
+    {
+        getattr(stat, "IO_REPARSE_TAG_SYMLINK", 0xA000000C),
+        getattr(stat, "IO_REPARSE_TAG_MOUNT_POINT", 0xA0000003),
+    }
+)
+
+
+def _final_file_without_link(path: Path) -> os.stat_result:
+    """Windows has no O_NOFOLLOW: refuse a final link before opening.
+
+    The caller compares the opened file with this result, so a link swapped in
+    between the check and the open is refused too.
+    """
+
+    metadata = path.lstat()
+    if (
+        stat.S_ISLNK(metadata.st_mode)
+        or getattr(metadata, "st_reparse_tag", 0) in _NAME_SURROGATE_TAGS
+    ):
+        raise OSError("a private file cannot be a link")
+    return metadata
+
+
 def read_private_bytes(
     path: Path | str,
     *,
@@ -171,11 +228,14 @@ def read_private_bytes(
     if isinstance(max_bytes, bool) or not isinstance(max_bytes, int) or max_bytes <= 0:
         raise PrivateStateError("Grensen for privat filstørrelse er ugyldig")
     target = Path(path)
-    flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
+    flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_BINARY", 0)
     descriptor: int | None = None
     try:
         _validate_private_parent_tree(target)
+        expected = None if hasattr(os, "O_NOFOLLOW") else _final_file_without_link(target)
         descriptor = os.open(target, flags)
+        if expected is not None and not os.path.samestat(os.fstat(descriptor), expected):
+            raise OSError("the file changed between check and open")
         _validate_open_file(descriptor)
         chunks: list[bytes] = []
         remaining = max_bytes + 1

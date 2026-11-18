@@ -7,14 +7,32 @@ litt terminalbruk. Be gjerne om hjelp fra noen med teknisk erfaring.
 
 ## Installere
 
-Du trenger macOS, Python 3.11 eller nyere og [Brave](https://brave.com/) for
-innlogging i nettleser. Lesing av PDF krever Poppler (`pdftotext`, `pdftoppm`),
-og Word-dokumenter krever LibreOffice. Prosjektet er laget for og prøvd på macOS:
-passord lagres i macOS-nøkkelringen, og standard datarot er
-`~/Library/Application Support/familiekilder-mcp`.
+Programmet kan brukes på macOS, Windows og Linux. Du trenger Python 3.11 eller
+nyere og en nettleser for innlogging: Brave, Google Chrome eller Microsoft
+Edge; se [nettleseren](#nettleseren). Lesing av PDF krever Poppler
+(`pdftotext`, `pdftoppm`), og Word-dokumenter krever LibreOffice.
+
+### Hva er prøvd
+
+- **Mac med Brave** er prøvd med ekte innlogging hos tjenestene.
+- **Nytt:** Chrome og Edge på Mac, og alle tre nettleserne på Windows og
+  Linux. Det er maskinelt testet, ikke prøvd med ekte innlogging ennå.
+  Testene kjører på alle tre systemene. De starter hver nettleser med en
+  midlertidig profil mot en lokal testside og rydder opp etterpå, men de
+  logger ikke inn hos noen tjeneste.
+- **Lagrede passord** på Windows og Linux er nytt og bare dekket av
+  enhetstester.
+
+Har du prøvd på Windows, Linux eller med Chrome eller Edge, si gjerne fra
+under **Issues**, også når det virker. Skriv system, nettleser og tjeneste,
+uten innlogging eller innhold fra ekte beskjeder.
+
+### Last ned og installer
 
 Last ned kildekoden fra reposiden (**Code → Download ZIP**) og pakk den ut.
-Åpne Terminal og gå til mappen du pakket ut; bytt ut stien i første linje:
+
+**macOS og Linux.** Åpne Terminal og gå til mappen du pakket ut; bytt ut stien
+i første linje:
 
 ```sh
 cd /sti/til/familiekilder-mcp
@@ -28,11 +46,88 @@ låst i `pyproject.toml`. Kommandoen er da
 tilgjengelig i dette terminalvinduet. Den gamle kommandoen `familiekilder`
 virker også.
 
+**Windows.** Installer Python 3.11 eller nyere fra
+[python.org](https://www.python.org/downloads/windows/). Åpne PowerShell og gå
+til mappen du pakket ut:
+
+```powershell
+cd C:\sti\til\familiekilder-mcp
+py scripts\setup.py
+$env:Path = "$PWD\.private\venv\Scripts;$env:Path"
+```
+
+`scripts\setup.py` lager `.private\venv`, installerer pakken der og åpner
+veiviseren. Kommandoen er da `.private\venv\Scripts\familiekilder-mcp.exe`.
+Når du har avsluttet veiviseren, gjør den siste linjen kommandoen
+tilgjengelig i dette vinduet.
+
+### Hvor dataene ligger
+
+Innlogginger, oppsett og mellomlager ligger i dataroten, utenfor koden:
+
+| System | Standard datarot |
+|---|---|
+| macOS | `~/Library/Application Support/familiekilder-mcp` |
+| Windows | `%LOCALAPPDATA%\familiekilder-mcp` |
+| Linux | `~/.local/share/familiekilder-mcp`, eller `$XDG_DATA_HOME/familiekilder-mcp` |
+
+`--root MAPPE` eller `FAMILIEKILDER_ROOT` velger en annen. Mappen `.private`
+er bare tilgjengelig for brukeren din: på macOS og Linux med filrettigheter, på
+Windows med en tilgangsliste. Mappen må også eies av deg. Har en annen bruker
+på maskinen laget den, stopper programmet; flytt den bort eller velg en annen
+datarot.
+
+## Nettleseren
+
+Innlogging i nettleser åpner en isolert, midlertidig profil i Brave, Google
+Chrome eller Microsoft Edge. Profilen slettes etterpå, og den bruker ikke
+bokmerker, innlogginger eller utvidelser fra din vanlige nettleser. Programmet
+styrer vinduet gjennom en privat forbindelse, aldri gjennom en nettverksport.
+Gmail er unntaket: Google-innloggingen åpnes i den vanlige nettleseren din; se
+[Gmail](gmail.md).
+
+Programmet bruker bare en nettleser som er installert fra leverandøren, og
+kontrollerer den før hver start. En nettleser som ikke består kontrollen,
+brukes ikke, og programmet prøver ikke en annen i stedet.
+
+- **macOS:** Nettleseren må ligge i `/Applications` eller `~/Applications`.
+  Programmet kontrollerer signaturen fra leverandøren og at macOS godtar appen.
+- **Windows:** Installer nettleseren **for alle brukere** på maskinen, så den
+  havner under `Program Files` eller `Program Files (x86)`. Det krever
+  administrator. En nettleser som bare er installert for deg, under `AppData`,
+  blir avvist. Det er vanlig for Chrome og Brave når de installeres uten
+  administratorrettigheter. Programmet kontrollerer også signaturen fra
+  leverandøren, og avviser en mappe som vanlige brukere kan endre.
+- **Linux:** Bruk leverandørens egen .deb- eller .rpm-pakke fra
+  [brave.com](https://brave.com/linux/),
+  [google.com/chrome](https://www.google.com/chrome/) eller
+  [microsoft.com/edge](https://www.microsoft.com/edge). Pakkene legger
+  nettleseren under `/opt`. Programmet kontrollerer hele mappen: alle filer
+  der må eies av root, ingen andre må kunne endre dem, og ingen lenker må peke
+  ut av mappen. Snap, Flatpak og distribusjonens `chromium`
+  støttes ikke. Innloggingen trenger et skrivebord med skjerm. Over SSH eller
+  på en server uten skjerm stopper den med en melding.
+
+Har du ikke valgt, brukes den første installerte av Brave, Chrome og Edge, i
+den rekkefølgen. Velg i veiviseren under «Nettleser for innlogging», eller fra
+terminalen:
+
+```sh
+familiekilder-mcp browser            # vis installerte nettlesere og valget
+familiekilder-mcp browser chrome     # bruk Chrome; også brave, edge eller auto
+```
+
+`auto` fjerner valget. Valget gjelder profilen du bruker. Med
+`--browser brave|chrome|edge` på `auth … browser-login` og
+`auth … browser-bootstrap` velger du for én innlogging.
+
 ## Oppsett i nettleseren
 
-Kjør `familiekilder-mcp setup`, eller `scripts/setup` fra prosjektmappen.
-Sistnevnte installerer pakken først. Veiviseren åpnes på `127.0.0.1` med en
-ledig port og er bare tilgjengelig på denne maskinen.
+Kjør `familiekilder-mcp setup`, eller fra prosjektmappen
+`python3 scripts/setup.py` (på Windows `py scripts\setup.py`). Skriptet
+installerer pakken først. `scripts/setup` virker også på macOS og Linux.
+Veiviseren åpnes på `127.0.0.1` med en ledig port og er bare tilgjengelig på
+denne maskinen.
 
 1. Velg «Logg inn» på tjenestene du bruker. Vigilo, Skolemelding, Spond,
    Hoopit og IST Home har innebygd oppsett, så du trenger ingen fil. Flyt spør
@@ -51,8 +146,10 @@ Avslutt med «Avslutt oppsett» eller Ctrl+C. Innloggingen og konfigurasjonen
 beholdes. AI-klienten starter MCP-serveren ved senere bruk. `setup --no-open`
 viser adressen uten å åpne nettleseren; `--port NUMMER` velger en fast port.
 
-Claude-konfigurasjonen lagres i `~/Library/Application Support/Claude/`.
-Lokal ChatGPT / Codex bruker `~/.codex/config.toml`. Har du valgt en annen
+Claude Desktop-konfigurasjonen lagres i `claude_desktop_config.json` i
+`~/Library/Application Support/Claude/` på macOS, `%APPDATA%\Claude\` på
+Windows og `~/.config/Claude/` på Linux. Lokal ChatGPT / Codex bruker
+`~/.codex/config.toml` på alle systemene. Har du valgt en annen
 Codex-konfigurasjonsmappe, må du legge til serveren der manuelt.
 Konfigurasjoner som ikke
 kan leses sikkert, overskrives ikke. En lokal konfigurasjon betyr ikke at
@@ -83,8 +180,9 @@ familiekilder-mcp auth spond import-session --session-file /privat/mappe/spond-�
 familiekilder-mcp auth gmail login                 # se docs/gmail.md
 ```
 
-Innlogging i nettleser åpner en isolert, midlertidig Brave-profil. BankID og
-telefonbekreftelse gjør du selv. For Vigilo, Skolemelding, IST Home og Flyt ber
+Innlogging i nettleser åpner en isolert, midlertidig profil i nettleseren du
+har valgt; se [nettleseren](#nettleseren). BankID og telefonbekreftelse gjør du
+selv. For Vigilo, Skolemelding, IST Home og Flyt ber
 kommandoen deg første gang skrive `JEG FORSTÅR` for å bekrefte at integrasjonen
 er uoffisiell.
 
@@ -146,7 +244,7 @@ Git. Feltene kontrolleres av `configure_client` i tjenestens auth-modul
 (`vigilo_auth.py`, `skolemelding_auth.py`, `spond_auth.py`, `hoopit_auth.py`
 og `ist_oauth.py`).
 For IST Home kan `familiekilder-mcp ist-auth export-mac-client --output FIL` hente
-klientkonfigurasjonen fra IST Home-appen på Macen din.
+klientkonfigurasjonen fra IST Home-appen på en Mac.
 
 Den utgitte pakken har ingen betrodde leverandørnøkler og kan derfor ikke
 installere en signert providerpakke uten at prosjektets nøkkelliste først
@@ -156,8 +254,12 @@ endres. Bruk det innebygde oppsettet eller en egen klientfil.
 
 - `--profile NAVN` gir en egen profil med egne tjenester, økter og passord, uten
   arv fra standardprofilen. `--root MAPPE` velger en annen datarot.
-- `familiekilder-mcp password set bankid` lagrer et passord i macOS-nøkkelringen, så
-  innloggingen i nettleseren kan fylle det ut. Det finnes ingen filbasert reserve.
+- `familiekilder-mcp password set bankid` lagrer et passord i systemets
+  nøkkelring, så innloggingen i nettleseren kan fylle det ut. Det er
+  nøkkelringen på macOS, Legitimasjonsbehandling på Windows og Secret Service
+  (GNOME Keyring eller KWallet) på Linux. Det finnes ingen filbasert reserve.
+  Finnes ingen nøkkelring, er passordhjelperen av, og du skriver passordet i
+  nettleservinduet. Innloggingen virker likevel.
 
 Se [profiler og passord](personal-profiles.md).
 
@@ -227,5 +329,5 @@ De kontakter ingen ekte tjeneste; én test starter en lokal OIDC-server på
 ## Egen vert som prøveordning
 
 Lokal stdio er standard. For HTTP, OAuth, Fly.io og flytting av innlogginger,
-se [alltid-på-oppsettet](alltid-pa.md). Innloggingen gjøres fortsatt på Macen;
-ikke kopier øktfiler for hånd.
+se [alltid-på-oppsettet](alltid-pa.md). Innloggingen gjøres fortsatt på
+datamaskinen din; ikke kopier øktfiler for hånd.

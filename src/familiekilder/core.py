@@ -139,6 +139,14 @@ def _ensure_private_directory(path: Path) -> None:
         raise FamiliekilderError("Den private katalogen har utrygg type eller eier")
     try:
         path.chmod(0o700)
+        if os.name == "nt":
+            # Windows ignores the mode; the access list does the same job, and
+            # readers of .private require it.
+            from .windows_acl import OWNER_MESSAGE, owner_allowed, restrict
+
+            if not owner_allowed(path):
+                raise FamiliekilderError(OWNER_MESSAGE)
+            restrict(path)
     except OSError:
         raise FamiliekilderError("Den private katalogen kunne ikke sikres") from None
 

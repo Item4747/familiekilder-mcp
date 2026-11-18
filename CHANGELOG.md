@@ -2,6 +2,33 @@
 
 ## Ikke utgitt
 
+- Innlogging kan nå også gjøres på Windows og Linux, og i Google Chrome og
+  Microsoft Edge i tillegg til Brave. Uten valg brukes den første installerte
+  av Brave, Chrome og Edge. Velg med `familiekilder-mcp browser`, med
+  `--browser` på `auth … browser-login` og `auth … browser-bootstrap`, eller
+  under «Nettleser for innlogging» i veiviseren. Mac med Brave virker som før.
+  Det nye er maskinelt testet: testene kjører på macOS, Windows og Linux og
+  starter hver nettleser mot en lokal testside. Det er ikke prøvd med ekte
+  innlogging ennå. Se [nettleseren](docs/kom-i-gang.md#nettleseren).
+- Innloggingen bruker bare en nettleser som er installert fra leverandøren, og
+  kontrollerer signaturen eller pakken før hver start. På Windows må den være
+  installert for alle brukere, under Program Files. På Linux må den komme fra
+  leverandørens egen .deb- eller .rpm-pakke; Snap, Flatpak og Chromium støttes
+  ikke, og innloggingen trenger et skrivebord med skjerm. Programmet styrer
+  nettleseren gjennom en privat forbindelse, aldri en nettverksport.
+- Lagrede passord bruker Legitimasjonsbehandling på Windows og Secret Service
+  (GNOME Keyring eller KWallet) på Linux. Uten nøkkelring er passordhjelperen
+  av, og du skriver passordet i nettleservinduet. Bare enhetstestet på Windows
+  og Linux.
+- Standard datarot er `%LOCALAPPDATA%\familiekilder-mcp` på Windows og
+  `~/.local/share/familiekilder-mcp` på Linux. På Windows får `.private` en
+  tilgangsliste bare for brukeren. Eierbindingen bruker `MachineGuid` på
+  Windows.
+- `scripts/setup.py` installerer og åpner veiviseren på macOS, Windows og
+  Linux (`py scripts\setup.py` på Windows). Veiviseren registrerer Claude
+  Desktop på riktig sted for hvert system.
+- Meldinger og hjelpetekster sier «datamaskinen» i stedet for «Macen».
+
 - Ny side med [prompter som virker](docs/oppskrifter.md), med promptene fra
   README-en og noen flere. Del egne prompter under Discussions eller med en
   pull request.

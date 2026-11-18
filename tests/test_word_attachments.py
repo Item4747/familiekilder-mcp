@@ -30,7 +30,8 @@ class WordConversionTests(unittest.TestCase):
         if name == "soffice":
             temp = Path(kwargs["env"]["TMPDIR"])
             self.assertTrue(temp.is_dir())
-            self.assertEqual(stat.S_IMODE(temp.stat().st_mode), 0o700)
+            if os.name != "nt":
+                self.assertEqual(stat.S_IMODE(temp.stat().st_mode), 0o700)
             outdir = Path(args[args.index("--outdir") + 1])
             (outdir / (self.source.stem + ".pdf")).write_bytes(b"%PDF-fictional")
         elif name == "pdfinfo":

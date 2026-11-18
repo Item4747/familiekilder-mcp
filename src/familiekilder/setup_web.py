@@ -138,6 +138,8 @@ class Handler(BaseHTTPRequestHandler):
                 service.connect_client(value.get("client"))
             elif path == "/api/service":
                 service.set_enabled(value.get("source"), value.get("enabled"))
+            elif path == "/api/browser":
+                service.set_browser(value.get("browser"))
             elif path == "/api/close":
                 service.close()
                 self._reply(200, {"ok": True})

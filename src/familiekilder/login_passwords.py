@@ -1,9 +1,15 @@
-"""Profile-bound password storage. Secrets only enter the native macOS Keychain."""
+"""Profile-bound password storage. Secrets only enter the system's own store.
+
+That is the macOS Keychain, Windows Credential Manager or the Secret Service on
+Linux; `desktop_platform.password_backend` picks it. The service name and the
+account format are stored data and must not change.
+"""
 
 import getpass
 import hashlib
 import sys
 
+from . import desktop_platform
 from .core import FamiliekilderError, project_paths
 from .private_state import atomic_write_private_json, read_private_json
 from .sources import REGISTRY
@@ -20,15 +26,7 @@ def account(root, kind):
 
 
 def _backend():
-    if sys.platform != "darwin":
-        raise FamiliekilderError("Passordlagring krever macOS-nøkkelringen")
-    try:
-        # Explicit backend: never use an environment-selected plaintext fallback.
-        from keyring.backends.macOS import Keyring
-
-        return Keyring()
-    except Exception:  # noqa: BLE001 - never expose secret-bearing backend errors
-        raise FamiliekilderError("macOS-nøkkelringen er utilgjengelig") from None
+    return desktop_platform.password_backend()
 
 
 def _path(root):
@@ -124,5 +122,5 @@ def run_password_command(root, kind, command):
     return {
         "kind": kind,
         "configured": configured(root, kind),
-        "storage": "macos-keychain",
+        "storage": desktop_platform.password_storage(),
     }

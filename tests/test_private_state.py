@@ -7,6 +7,8 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
+from familiekilder_testing.private import readable_by_others
+
 from familiekilder.private_state import (
     PrivateStateError,
     atomic_write_private_bytes,
@@ -31,8 +33,14 @@ class PrivateStateTests(unittest.TestCase):
         directory = credentials_directory(self.root)
         target = credential_path(self.root, "vigilo-session.json")
         atomic_write_private_json(target, {"version": 1, "token": "private"})
-        self.assertEqual(stat.S_IMODE(directory.stat().st_mode), 0o700)
-        self.assertEqual(stat.S_IMODE(target.stat().st_mode), 0o600)
+        if os.name == "nt":
+            # Windows ignores the mode; .private's access list keeps it to the user.
+            from familiekilder.windows_acl import is_private
+
+            self.assertTrue(is_private(self.root / ".private"))
+        else:
+            self.assertEqual(stat.S_IMODE(directory.stat().st_mode), 0o700)
+            self.assertEqual(stat.S_IMODE(target.stat().st_mode), 0o600)
 
         def validate(value):
             if value.get("version") != 1:
@@ -61,10 +69,9 @@ class PrivateStateTests(unittest.TestCase):
 
         broad = credential_path(self.root, "broad.json")
         broad.write_text("{}", encoding="utf-8")
-        broad.chmod(0o644)
-        if os.name != "nt":
-            with self.assertRaisesRegex(PrivateStateError, "brede"):
-                read_private_json(broad)
+        readable_by_others(broad)
+        with self.assertRaisesRegex(PrivateStateError, "brede"):
+            read_private_json(broad)
 
     def test_atomic_failure_removes_secret_temporary_and_preserves_target(self) -> None:
         target = credential_path(self.root, "session.json")
