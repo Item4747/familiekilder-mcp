@@ -140,6 +140,36 @@ class DeployTests(unittest.TestCase):
         self.assertEqual(config['build']['dockerfile'], 'context/Dockerfile')
         self.assertEqual(config['build']['args'], {'FAMILIEKILDER_PACKAGE': 'familiekilder-mcp==0.0.0'})
 
+    def test_word_builds_with_libreoffice_and_says_so(self):
+        fake = FakeFly()
+        output = io.StringIO()
+        with tempfile.TemporaryDirectory() as directory:
+            result = self.deploy(fake, directory, output, interactive=False, word=True)
+        config = tomllib.loads(fake.config)
+        self.assertEqual(config['build']['args']['WITH_LIBREOFFICE'], '1')
+        self.assertEqual(config['swap_size_mb'], 512)
+        self.assertIs(result['word'], True)
+        self.assertIn('Word-vedlegg er på', output.getvalue())
+        self.assertIn('--word også neste gang', output.getvalue())
+
+    def test_without_word_there_is_no_libreoffice_and_the_output_says_so(self):
+        fake = FakeFly()
+        output = io.StringIO()
+        with tempfile.TemporaryDirectory() as directory:
+            result = self.deploy(fake, directory, output, interactive=False)
+        config = tomllib.loads(fake.config)
+        self.assertNotIn('WITH_LIBREOFFICE', config['build'].get('args', {}))
+        self.assertNotIn('swap_size_mb', config)
+        self.assertIs(result['word'], False)
+        self.assertIn('Word-vedlegg er av', output.getvalue())
+
+    def test_word_is_an_option_on_the_command_line(self):
+        from familiekilder.source_cli import build_parser
+
+        parser = build_parser()
+        self.assertTrue(parser.parse_args(['deploy', 'fly', '--word']).word)
+        self.assertFalse(parser.parse_args(['deploy', 'fly']).word)
+
     def test_secret_cli_errors_do_not_echo_stdin(self):
         def failed(argv, **kwargs):
             return subprocess.CompletedProcess(argv, 1, '', kwargs['input'])

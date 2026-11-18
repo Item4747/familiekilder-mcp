@@ -4,8 +4,9 @@ Dette er en prøveordning utenfor løftet for 1.0. Lokal bruk på Mac over stdio
 er fortsatt standard. Funksjonen er med fra 1.0.0rc3. En første ekte prøve på
 Fly.io 17. og 18. november 2026 bekreftet utrulling, stopp og start ved kall,
 flytting av innloggingene for Spond og Hoopit, lesing på verten og tilkobling
-fra Claude og ChatGPT på nett og fra Codex CLI. Mobilklientene, planlagt
-skykjøring, de andre kildene og drift over tid er ennå ikke prøvd. Se
+fra Claude og ChatGPT på nett og mobil og fra Codex CLI, en planlagt
+skykjøring og Word-vedlegg. Kildene med BankID-innlogging, Gmail med gyldig
+innlogging og drift over tid er ennå ikke prøvd på ekte vert. Se
 [Prøvd på ekte vert](#prøvd-på-ekte-vert).
 
 Verten kjører samme lesende MCP-server i en Linux-container. Den henter bare
@@ -58,6 +59,20 @@ Utrulling skjer med `immediate`, som gir et kort avbrudd. En eksisterende app
 med flere maskiner avvises før endringer. Installasjons-ID-en endres ikke ved
 ny utrulling. `--region arn` og `--org personal` er standard.
 
+Standardbildet kan ikke lese Word-vedlegg (.docx og .doc). Vil du det, legg
+til `--word`:
+
+```sh
+familiekilder-mcp deploy fly --app DITT-UNIKE-APPNAVN --word
+```
+
+Da bygges bildet med LibreOffice, og maskinen får 512 MB vekselminne (swap).
+Bildet blir omtrent 2,5 ganger så stort, og utrullingen tar lengre tid. Valget
+huskes ikke. Ruller du ut senere uten
+`--word`, forsvinner Word-støtten igjen. Kommandoen sier derfor ved hver
+utrulling om Word-vedlegg er på eller av. Se
+[Word-vedlegg på verten](#word-vedlegg-på-verten) for hva som er prøvd.
+
 Adressen er `https://DITT-UNIKE-APPNAVN.fly.dev/mcp`. Eierkoden leveres før
 hashen sendes til Fly, og vises én gang på terminalen. Behold den også hvis
 bygg eller utrulling feiler; et nytt forsøk kan bruke den samme koden. Når en kodeagent kjører uten terminal, skrives den i en privat
@@ -108,8 +123,9 @@ finnes også på Free, begrenset til én. Legg til under **Customize > Connector
 > + Add > Add custom connector** på nett. Bruk vertens `/mcp`-adresse,
 OAuth-innlogging og automatisk klientregistrering der valget vises. Skriv
 eierkoden bare på vertens godkjenningsside. Claude dokumenterer at eksterne
-koblinger brukes gjennom skyen også fra mobil. Kontroller dette med egen
-konto; denne koblingen er prøvd på nett, men ikke i mobilklienten.
+koblinger brukes gjennom skyen også fra mobil. Koblingen er prøvd både på
+nett og i iPhone-appen. I appen ligger den under **+ > Tilkoblinger**, og
+hvert verktøy spør om tillatelse første gang.
 [Autentisering](https://claude.com/docs/connectors/building/authentication)
 støtter DCR, som denne serveren bruker. CIMD annonseres ikke.
 
@@ -122,8 +138,9 @@ dokumenterer full MCP for Business og Enterprise/Edu og lesende MCP for Pro.
 og kontoreglene må kontrolleres før kjøp: en synlig katalog beviser ikke at
 din plan kan legge til en egen MCP-server. Koblingen er prøvd på en
 Pro-konto; Plus, Free og Go loves ikke her. MCP-siden sier at tilkobling
-opprettes på nett, ikke mobil. Mobilbruk og planlagt ChatGPT-kjøring med
-denne serveren er ikke bekreftet.
+opprettes på nett, ikke mobil. En kobling som er lagt til på nett, virket
+deretter i iPhone-appen: velg **+ > Pluginer** og søk etter navnet. Planlagt
+ChatGPT-kjøring med denne serveren er ikke bekreftet.
 
 Begge klientene kan registrere OAuth-klienter automatisk. Registrering gir
 ingen tilgang før eierkoden godkjennes. Serveren annonserer `offline_access`
@@ -145,8 +162,9 @@ eventuelt kalenderen separat, og prøv først oppgaven manuelt:
 
 Kalenderendringer krever en egen kalenderkobling og en uttrykkelig bestilling.
 Kontroller én planlagt kjøring med Macen avslått før du stoler på rutinen.
-Ingen slik klientprøve er utført for dette oppsettet. ChatGPTs muligheter må
-prøves særskilt; det gis ikke et løfte om denne oppgaven på mobil eller i skyen.
+En planlagt skykjøring fra Claude Code er prøvd mot en ekte vert; se
+[Prøvd på ekte vert](#prøvd-på-ekte-vert). Planlagte oppgaver i Claude Cowork
+og i ChatGPT er ikke prøvd; det gis ikke et løfte om dem.
 
 ## Prøvd på ekte vert
 
@@ -203,6 +221,29 @@ Dette virket:
   gikk nettleseren tilbake til chatgpt.com, og koblingen viste 20
   leseverktøy. En ny samtale kalte `family_connections` og
   `spond_list_items` uten spørsmål om tillatelse og svarte riktig.
+- **Claude og ChatGPT på iPhone.** Koblingene var lagt til på nett dagen før.
+  I Claude-appen (1.261113.19) lå «Familiekilder» under **+ > Tilkoblinger**.
+  Appen spurte om tillatelse for hvert verktøy («Tillat én gang», «Tillat
+  alltid», «Avslå»), kalte `family_connections` og `spond_list_items` og
+  svarte riktig. I ChatGPT-appen (1.2026.307) ble koblingen valgt med
+  **+ > Pluginer** og søk etter navnet. Appen kalte verktøyene uten spørsmål
+  om tillatelse og svarte riktig. Ingen av appene ba om ny innlogging.
+- **Planlagt skykjøring.** En planlagt oppgave («routine») i Claude Code på
+  nett, med bare denne koblingen, ble satt til å kjøre én gang noen minutter
+  frem i tid. Den startet i Anthropics sky til avtalt tid, kalte
+  `family_connections`, `spond_list_items`, `hoopit_list_items` og
+  `gmail_search`, og skrev en oppsummering. Kjøringen tok 35 sekunder og
+  brukte ikke Macen. Macen var likevel på, så en kjøring med Macen avslått er
+  ikke prøvd bokstavelig.
+- **Flytting av en utløpt innlogging.** Gmail ble flyttet med
+  `remote move ADRESSE --source gmail`. Google-innloggingen viste seg å være
+  utløpt hos Google. Verten svarte da «Gmail-tilgangen må fornyes med
+  Google-innlogging» på `gmail_search`, og de andre kildene virket som før.
+  Flyttingen tar også med Google-klienten. Ny innlogging på Macen krever
+  derfor Google-filen på nytt; ta vare på den.
+- **Word-vedlegg.** Se [Word-vedlegg på verten](#word-vedlegg-på-verten).
+  Uten vekselminne gikk maskinen tom for minne. `deploy fly --word` gir den
+  derfor vekselminne.
 - **Fornyelse av OAuth-token.** Etter én time var klientens access-token
   utløpt. MCP SDK-klienten fornyet det med refresh-tokenet, og lesingen
   virket videre. Verten fornyet da Hoopit-økten en gang til.
@@ -215,12 +256,14 @@ Dette virket:
 
 Dette er ennå ikke prøvd:
 
-- Claude og ChatGPT på mobil, og en hel samtale i Claudes nettgrensesnitt.
-- En planlagt skyoppgave som kjører mens Macen er av.
-- Kilder som logger inn med BankID (Vigilo, Skolemelding, IST Home og Flyt),
-  og Gmail, på verten. Bare Spond og Hoopit ble flyttet.
+- En hel samtale i Claudes nettgrensesnitt. Claude på Android og ChatGPT på
+  Android er heller ikke prøvd.
+- Planlagte oppgaver i Claude Cowork og i ChatGPT.
+- Kilder som logger inn med BankID (Vigilo, Skolemelding, IST Home og Flyt)
+  på verten, og Gmail med en gyldig innlogging. Bare Spond og Hoopit leses
+  der nå.
+- Ekte Word-vedlegg fra en kilde.
 - Fornyelse over dager og uker, og hva verten faktisk koster per måned.
-- Word-vedlegg på verten (byggvalget `WITH_LIBREOFFICE=1`).
 
 ## Når en innlogging må fornyes
 
@@ -276,15 +319,74 @@ fortsatt være registrert og stemme nøyaktig.
 
 Bildet bruker Python 3.12 og Poppler. Serverprosessen kjører som UID 10001;
 oppstarten klargjør disken og slipper root før serveren startes. Dataroten har
-modus 0700. LibreOffice er et valgfritt byggargument `WITH_LIBREOFFICE=1`.
-Standardbildet prioriterer den lille verten; Word-vedlegg krever tilvalget.
-Målt med Docker på arm64 17. november 2026: standardbildet var 246 536 964
-byte (omtrent 247 MB), bildet med LibreOffice 570 461 728 byte (omtrent
-571 MB). Begge brukte omtrent 49–51 MiB i ro etter OAuth og omstart, under en
-grense på 256 MiB. LibreOffice mer enn dobler bildestørrelsen og er derfor
-ikke med som standard. Minne ved Word-konvertering er ikke målt; 256 MB er
-ikke kvalifisert for det. Containerprøven bekreftet full SDK-OAuth,
+modus 0700. LibreOffice er et valgfritt byggargument `WITH_LIBREOFFICE=1`;
+se [Word-vedlegg på verten](#word-vedlegg-på-verten). Målt med Docker på arm64
+17. november 2026 brukte bildet omtrent 49–51 MiB i ro etter OAuth og omstart,
+både med og uten LibreOffice. Containerprøven bekreftet full SDK-OAuth,
 verktøyliste, gjenbruk av token etter omstart, UID 10001 og datamodus 0700.
+
+## Word-vedlegg på verten
+
+Word-vedlegg gjøres om til PDF med LibreOffice og leses så som PDF.
+Standardbildet har ikke LibreOffice, fordi det gjør bildet mye større. Uten
+LibreOffice svarer lesingen «soffice er ikke installert». Slå det på med
+`deploy fly --word`, eller med `--build-arg WITH_LIBREOFFICE=1` når du bygger
+selv.
+
+Bildestørrelse for linux/amd64, som Fly bruker, målt 18. november 2026:
+
+| Bilde | Utpakket | Komprimert |
+| --- | --- | --- |
+| Uten LibreOffice | 218 MB | omtrent 78 MB |
+| Med LibreOffice | 536 MB | omtrent 204 MB |
+
+Komprimert størrelse er målt med `docker save` og gzip. `flyctl` oppga 69 MB
+for standardbildet, så tallene der kan avvike litt. En stoppet maskin betaler
+for rotfilsystemet; se [Kostnad og personvern](#kostnad-og-personvern).
+
+**Prøvd på ekte vert 18. november 2026.** Maskinen har 256 MB, og Linux
+oppga 215 MB som samlet minne. Med serveren i gang var omtrent 105 MB ledig.
+
+- **Uten vekselminne virket det ikke.** Linux drepte LibreOffice («Out of
+  memory», avslutningskode 137). I en hardere prøve drepte Linux selve
+  serveren, og maskinen startet på nytt.
+- **Med 512 MB vekselminne virket det.** `deploy fly --word` setter derfor
+  `swap_size_mb = 512` i `fly.toml`. Et oppdiktet Word-dokument ble lest med
+  `spond_read_attachment` og falske kildesvar, ved siden av den ekte serveren.
+  Teksten kom med, også æ, ø og å. Omtrent 60 MB vekselminne var i bruk.
+- **Det går tregt.** LibreOffice brukte 22 sekunder på én side og 30 sekunder
+  på 25 sider. Grensen er 60 sekunder per konvertering, så svært store
+  dokumenter kan feile. Lesing av PDF er ikke berørt.
+- Ekte Word-vedlegg fra en kilde er ikke prøvd; kildene på prøveverten hadde
+  ingen.
+
+Vekselminne koster ikke noe ekstra hos Fly. Mer minne ville gått raskere, men
+`deploy fly` har ikke et valg for det.
+
+**Prøvd i lokal container.** Prøven ble gjort 18. november 2026 i Docker på
+en Mac med Apple-brikke. Bildet ble bygd for linux/amd64 og
+kjørt gjennom emulering. Containeren fikk 256 MB minne, ingen swap og én CPU,
+som Fly-maskinen. Et oppdiktet Word-dokument ble lest med
+`spond_read_attachment` og falske kildesvar, som brukeren `familiekilder`.
+
+- **Det virket.** Teksten kom med, også æ, ø og å, og siden kom som bilde.
+  Et dokument på 25 sider virket også.
+- **Tid.** LibreOffice brukte omtrent 1,4–1,8 sekunder. Hele lesingen av et
+  dokument på én side tok omtrent 2 sekunder.
+- **Minne.** Ingen prosess ble drept av minnegrensen, verken med 256 MB eller
+  512 MB. Med 256 MB nådde containeren likevel taket. Serveren og LibreOffice
+  brukte opptil 255 MB, og Linux måtte frigjøre bufret programkode underveis.
+  Med 512 MB var det god margin. På arm64 uten emulering var toppen omtrent
+  207 MB.
+- **Mapper.** LibreOffice trenger en skrivbar `/tmp` eller `/var/tmp`, og det
+  har Fly. Hjemmemappen trenger ikke være skrivbar. LibreOffices midlertidige
+  filer legges i vedleggets private arbeidsmappe og slettes med den.
+
+256 MB holdt altså i den lokale containeren, men ikke på den ekte maskinen,
+der også Linux-kjernen bruker av de samme 256 MB. Bygger du bildet selv for en
+annen vert, trenger den mer enn 256 MB minne eller vekselminne. Feiler
+lesingen med «soffice avsluttet med -9», eller starter maskinen på nytt under
+lesing, var minnet for lite.
 
 ## Feilsøking og tilbakekalling
 

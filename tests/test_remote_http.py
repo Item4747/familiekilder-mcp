@@ -9,6 +9,7 @@ import json
 import os
 import queue
 import secrets
+import shlex
 import signal
 import subprocess
 import sys
@@ -670,13 +671,14 @@ class StopTests(unittest.TestCase):
     def _container_command(self, directory: Path) -> tuple[list[str], dict[str, str]]:
         # The container entry point execs "familiekilder-mcp" from PATH. This
         # shim is what the installed console script does, with this interpreter.
+        # A shell wrapper, because a "#!" line breaks on a path with a space.
         bin_directory = directory / "bin"
         bin_directory.mkdir()
         script = bin_directory / "familiekilder-mcp"
+        program = "from familiekilder.source_cli import main; raise SystemExit(main())"
         script.write_text(
-            f"#!{sys.executable}\n"
-            "from familiekilder.source_cli import main\n"
-            "raise SystemExit(main())\n",
+            "#!/bin/sh\n"
+            f'exec {shlex.quote(sys.executable)} -c {shlex.quote(program)} "$@"\n',
             encoding="utf-8",
         )
         script.chmod(0o755)

@@ -242,6 +242,14 @@ def _add_remote_commands(sub: Any) -> None:
     fly.add_argument(
         "--new-owner-code", action="store_true", help="Lag ny eierkode for en eksisterende app"
     )
+    fly.add_argument(
+        "--word",
+        action="store_true",
+        help=(
+            "Les Word-vedlegg på verten. Bygger med LibreOffice, så bildet blir over "
+            "dobbelt så stort. Gjenta valget ved hver utrulling"
+        ),
+    )
     choice = fly.add_mutually_exclusive_group()
     choice.add_argument("--move", dest="move", action="store_true", default=None,
                         help="Flytt innloggingene etter utrulling uten å spørre")
@@ -515,6 +523,7 @@ def _run_deploy_fly(args: argparse.Namespace, config: Config) -> int:
         org=args.org,
         move=args.move,
         new_code=args.new_owner_code,
+        word=args.word,
     )
     _json(result)
     return 0

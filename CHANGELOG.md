@@ -2,6 +2,19 @@
 
 ## Ikke utgitt
 
+- `familiekilder-mcp deploy fly --word` bygger verten med LibreOffice, så den
+  kan lese Word-vedlegg, og gir maskinen 512 MB vekselminne (swap). Uten det
+  drepte Linux LibreOffice på en ekte 256 MB-maskin. Bildet blir omtrent 2,5
+  ganger så stort. Valget
+  huskes ikke; ruller du ut uten `--word`, forsvinner Word-støtten. Kommandoen
+  sier derfor ved hver utrulling om Word-vedlegg er på eller av. Word-lesing
+  er prøvd på ekte vert med et oppdiktet dokument: det virker, men tar 20–30
+  sekunder. Se
+  [Word-vedlegg på verten](docs/alltid-pa.md#word-vedlegg-på-verten).
+- LibreOffice legger nå sine midlertidige filer i vedleggets private
+  arbeidsmappe, ikke i systemets felles mappe for midlertidige filer.
+- Veiledningen sier også at Claude og ChatGPT på iPhone og en planlagt
+  skykjøring fra Claude Code er prøvd mot en ekte vert (18. november 2026).
 - Veiledningen for [alltid-på-oppsettet](docs/alltid-pa.md) sier nå at
   ChatGPT på nett er prøvd mot en ekte vert (Pro-konto, 18. november 2026),
   og at kommandoene for tilbakekalling på Fly trenger en maskin som er i

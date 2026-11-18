@@ -19,13 +19,17 @@ from .core import FamiliekilderError, extract_text
 from .private_state import ensure_private_directory, atomic_write_private_bytes
 
 
-def _run(args):
+def _run(args, *, temp=None):
+    """Run a converter; ``temp`` becomes its TMPDIR instead of the shared one."""
+    env = {**os.environ, "LC_ALL": "C"}
+    if temp is not None:
+        env["TMPDIR"] = str(temp)
     try:
         result = subprocess.run(
             args,
             capture_output=True,
             timeout=TIMEOUT,
-            env={**os.environ, "LC_ALL": "C"},
+            env=env,
             umask=0o077,
         )
     except (OSError, subprocess.TimeoutExpired) as exc:
@@ -152,6 +156,12 @@ def render(source, mime, work):
             profile / "user/registrymodifications.xcu",
             b"""<?xml version="1.0"?><oor:items xmlns:oor="http://openoffice.org/2001/registry"><item oor:path="/org.openoffice.Office.Common/Security/Scripting"><prop oor:name="MacroSecurityLevel" oor:op="fuse"><value>3</value></prop></item><item oor:path="/org.openoffice.Office.Writer/Content/Update"><prop oor:name="Link" oor:op="fuse"><value>2</value></prop></item></oor:items>""",
         )
+        # LibreOffice writes temporary copies of the document to TMPDIR. Keep
+        # them in the private, disposable work directory. Its single-instance
+        # pipe ignores TMPDIR and still needs a writable /tmp or /var/tmp; a
+        # read-only home directory only costs warnings.
+        temp = work / "tmp"
+        ensure_private_directory(temp)
         _run(
             [
                 _executable("soffice"),
@@ -163,7 +173,8 @@ def render(source, mime, work):
                 "--outdir",
                 str(work),
                 str(source),
-            ]
+            ],
+            temp=temp,
         )
         document = work / (source.stem + ".pdf")
         mime = "application/pdf"

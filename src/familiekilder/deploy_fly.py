@@ -8,7 +8,9 @@ with one command:
 3. Store the owner-code hash and the installation ID as Fly secrets. They go
    to ``flyctl`` on stdin, never as arguments.
 4. Deploy the container image with exactly one machine that stops when idle
-   and starts on the next request.
+   and starts on the next request. ``word=True`` builds it with LibreOffice
+   for Word attachments; every deploy states whether Word is on, since the
+   choice is not remembered between deploys.
 5. Show the address and, on first run, the owner code once.
 6. Offer to move the logins from this Mac.
 
@@ -52,6 +54,12 @@ DATA_ROOT = "/data/familiekilder"
 INTERNAL_PORT = 8080
 _APP_NAME = re.compile(r"[a-z][a-z0-9-]{2,62}\Z")
 _REGION = re.compile(r"[a-z]{3}\Z")
+# Dockerfile build argument that installs LibreOffice for Word attachments.
+WORD_BUILD_ARG = "WITH_LIBREOFFICE"
+# LibreOffice does not fit in the machine's memory next to the server: on a
+# real 256 MB machine the kernel killed it. Swap costs nothing extra and is
+# only touched during a conversion.
+WORD_SWAP_MB = 512
 
 INSTALL_HELP = (
     "Fant ikke flyctl. Installer den med «brew install flyctl» (eller se "
@@ -122,10 +130,13 @@ def _names(items: Any) -> set[str]:
     }
 
 
-def fly_toml(app: str, region: str, dockerfile: str, build_args: dict[str, str]) -> str:
+def fly_toml(
+    app: str, region: str, dockerfile: str, build_args: dict[str, str], *, swap_mb: int = 0
+) -> str:
     """The app configuration: one volume, HTTPS, stop when idle, health check.
 
     ``dockerfile`` must be relative to the directory that holds fly.toml.
+    ``swap_mb`` above zero gives the machine that much swap space.
     """
 
     if Path(dockerfile).is_absolute():
@@ -134,6 +145,10 @@ def fly_toml(app: str, region: str, dockerfile: str, build_args: dict[str, str])
     lines = [
         f'app = "{app}"',
         f'primary_region = "{region}"',
+    ]
+    if swap_mb:
+        lines.append(f"swap_size_mb = {swap_mb}")
+    lines += [
         "",
         "[deploy]",
         '  strategy = "immediate"',
@@ -242,6 +257,7 @@ def deploy(
     org: str,
     move: bool | None,
     new_code: bool,
+    word: bool = False,
     out: TextIO = sys.stdout,
     interactive: bool | None = None,
     flyctl: Flyctl | None = None,
@@ -303,12 +319,19 @@ def deploy(
         context = Path(directory) / "context"
         context.mkdir()
         build_args = build_context(context)
+        if word:
+            build_args[WORD_BUILD_ARG] = "1"
         config = Path(directory) / "fly.toml"
         # flyctl joins [build] dockerfile onto the directory of fly.toml, even
         # when the value is absolute, and ignores --dockerfile when fly.toml
         # names one. So the Dockerfile is named here only, relative to fly.toml.
         dockerfile = (context / "Dockerfile").relative_to(config.parent).as_posix()
-        config.write_text(fly_toml(app, region, dockerfile, build_args), encoding="utf-8")
+        config.write_text(
+            fly_toml(
+                app, region, dockerfile, build_args, swap_mb=WORD_SWAP_MB if word else 0
+            ),
+            encoding="utf-8",
+        )
         out.write("Bygger og ruller ut (dette tar noen minutter) ...\n")
         out.flush()
         fly(
@@ -329,6 +352,13 @@ def deploy(
             )
 
     out.write(f"\nVerten er klar: {url}{MCP_PATH}\n")
+    if word:
+        out.write(
+            "Word-vedlegg er på. Bruk --word også neste gang du ruller ut, ellers "
+            "forsvinner støtten.\n"
+        )
+    else:
+        out.write("Word-vedlegg er av. Bruk --word for å lese Word-vedlegg på verten.\n")
     if owner_code is None:
         out.write("Eierkoden er uendret. Bruk --new-owner-code for å lage en ny.\n")
 
@@ -351,4 +381,10 @@ def deploy(
         out.write("Flyttet: " + ", ".join(moved["moved"]) + "\n")
     else:
         out.write(f"Flytt innloggingene senere med «familiekilder-mcp remote move {url}».\n")
-    return {"app": app, "url": url + MCP_PATH, "region": region, "moved": moved and moved["moved"]}
+    return {
+        "app": app,
+        "url": url + MCP_PATH,
+        "region": region,
+        "word": word,
+        "moved": moved and moved["moved"],
+    }
