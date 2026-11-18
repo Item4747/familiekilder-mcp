@@ -63,6 +63,7 @@
               <label for="login-browser">Nettleser for innlogging</label>
               <select id="login-browser"></select>
               <p id="login-browser-status" class="muted"></p>
+              <ul id="login-browser-rejected" class="rejected-browsers" hidden></ul>
             </div>
             <div id="services" class="services" aria-label="Tjenester">
               <p>Laster tilkoblinger …</p>
@@ -86,6 +87,19 @@
                   >Microsoft Edge</a
                 >
               </p>
+              <section class="doctor" aria-labelledby="doctor-title">
+                <h2 id="doctor-title">Forhåndssjekk</h2>
+                <p>
+                  Sjekken ser på nettlesere, passordlagring, datamappen og AI-klientene, uten å
+                  logge inn. Rapporten har ingen passord, tokens eller brukernavn, og kan limes inn
+                  i en feilmelding. Det samme får du med <code>familiekilder-mcp doctor</code>.
+                </p>
+                <pre id="doctor-text" tabindex="0">Kjører forhåndssjekken …</pre>
+                <div class="actions">
+                  <button id="doctor-copy" class="secondary" disabled>Kopier rapporten</button
+                  ><button id="doctor-run" class="text-button">Kjør på nytt</button>
+                </div>
+              </section>
             </details>
             <div class="footer">
               <span id="connected-count" class="muted"></span

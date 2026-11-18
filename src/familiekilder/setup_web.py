@@ -22,8 +22,8 @@ MAX_BODY_BYTES = 2 * 1024 * 1024
 class SetupServer(ThreadingHTTPServer):
     daemon_threads = True
 
-    def __init__(self, root: Path, *, port=0, service=None):
-        self.service = service or SetupService(root)
+    def __init__(self, root: Path, *, port=0, service=None, root_source=None):
+        self.service = service or SetupService(root, root_source=root_source)
         self.token = secrets.token_urlsafe(32)
         super().__init__(("127.0.0.1", port), Handler)
         self.origin = f"http://127.0.0.1:{self.server_port}"
@@ -78,6 +78,11 @@ class Handler(BaseHTTPRequestHandler):
                 self._reply(200, self.server.service.state())
             except Exception:
                 self._reply(500, {"error": "Den lokale profilen kunne ikke leses."})
+        elif path == "/api/doctor":
+            try:
+                self._reply(200, self.server.service.doctor())
+            except Exception:
+                self._reply(500, {"error": "Forhåndssjekken kunne ikke kjøres."})
         elif path == "/api/flyt-municipalities":
             try:
                 self._reply(200, {"municipalities": self.server.service.flyt_municipalities()})
@@ -155,10 +160,10 @@ class Handler(BaseHTTPRequestHandler):
             self._reply(500, {"error": "Steget kunne ikke fullføres. Ingen innloggingsdata vises her."})
 
 
-def serve(root: Path, *, port=0, open_browser=True) -> int:
+def serve(root: Path, *, port=0, open_browser=True, root_source=None) -> int:
     # A newer built-in setup replaces one the wizard stored; never raises.
     refresh_stored_defaults(root)
-    with SetupServer(root, port=port) as server:
+    with SetupServer(root, port=port, root_source=root_source) as server:
         print(f"Åpne lokalt oppsett: {server.origin}", flush=True)
         print("Lukk med «Avslutt oppsett» eller Ctrl+C.", flush=True)
         if open_browser:

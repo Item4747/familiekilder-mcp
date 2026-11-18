@@ -10,6 +10,8 @@ let busy = false;
 let closed = false;
 let renderedServices = '';
 let municipalities = null;
+let doctorReport = null;
+let doctorRunning = false;
 
 async function api(path, value) {
   const options = { headers: { 'X-Setup-Token': token }, cache: 'no-store' };
@@ -349,8 +351,70 @@ function renderBrowsers(browsers) {
   select.disabled = busy;
   const used = browsers.installed.find((browser) => browser.id === browsers.used);
   byId('login-browser-status').textContent = used
-    ? `Innloggingen åpnes i ${used.name}.`
+    ? 'Nettleseren kontrolleres før innlogging.'
     : 'Fant ingen av nettleserne. Installer Brave, Google Chrome eller Microsoft Edge.';
+  renderBrowserChecks(browsers);
+}
+
+// The checked result from the pre-flight report, once it has run for the current choice.
+function renderBrowserChecks(browsers) {
+  const list = byId('login-browser-rejected');
+  const checked = doctorReport && doctorReport.browsers;
+  if (!checked || checked.choice !== browsers.chosen) {
+    list.replaceChildren();
+    list.hidden = true;
+    return;
+  }
+  const selected = checked.items.find((item) => item.status === 'selected');
+  const candidate = checked.items.find((item) => item.status === 'candidate');
+  byId('login-browser-status').textContent = selected
+    ? `Innloggingen åpnes i ${selected.name}.`
+    : candidate
+      ? `${candidate.name} er første kandidat. Signaturen sjekkes ved innlogging.`
+      : checked.advice || 'Ingen nettleser kan brukes til innlogging.';
+  const rejected = checked.items.filter((item) => item.status === 'rejected');
+  list.replaceChildren(
+    ...rejected.map((item) => {
+      const node = document.createElement('li');
+      node.textContent = `${item.name} er avvist: ${item.reason} ${item.advice}`;
+      return node;
+    }),
+  );
+  list.hidden = rejected.length === 0;
+}
+
+async function runDoctor() {
+  if (doctorRunning || closed) return;
+  doctorRunning = true;
+  byId('doctor-run').disabled = true;
+  try {
+    const result = await api('/api/doctor');
+    doctorReport = result.report;
+    byId('doctor-text').textContent = result.text;
+    byId('doctor-copy').disabled = false;
+    if (currentState) renderBrowsers(currentState.browsers);
+  } catch (exception) {
+    byId('doctor-text').textContent =
+      'Forhåndssjekken kunne ikke kjøres her. Kjør familiekilder-mcp doctor i et terminalvindu.';
+  } finally {
+    doctorRunning = false;
+    byId('doctor-run').disabled = false;
+  }
+}
+
+async function copyDoctor() {
+  const text = byId('doctor-text').textContent;
+  try {
+    await navigator.clipboard.writeText(text);
+    showInfo('Rapporten er kopiert.');
+  } catch (exception) {
+    // Without clipboard access the text is selected, so the user can copy it.
+    const range = document.createRange();
+    range.selectNodeContents(byId('doctor-text'));
+    window.getSelection().removeAllRanges();
+    window.getSelection().addRange(range);
+    showInfo('Rapporten er merket. Kopier den med Ctrl+C eller Cmd+C.');
+  }
 }
 
 async function refresh() {
@@ -396,9 +460,12 @@ document
     node.addEventListener('click', () => perform('/api/connect', { client: node.dataset.client })),
   );
 byId('test').addEventListener('click', () => perform('/api/start', { action: 'check' }));
-byId('login-browser').addEventListener('change', (event) =>
-  perform('/api/browser', { browser: event.target.value }),
-);
+byId('login-browser').addEventListener('change', async (event) => {
+  await perform('/api/browser', { browser: event.target.value });
+  runDoctor();
+});
+byId('doctor-run').addEventListener('click', runDoctor);
+byId('doctor-copy').addEventListener('click', copyDoctor);
 byId('close').addEventListener('click', closeSetup);
 byId('finish').addEventListener('click', closeSetup);
 byId('dismiss-login').addEventListener('click', () => byId('login-dialog').close());
@@ -468,4 +535,5 @@ byId('client-file').addEventListener('change', async (event) => {
   await refresh();
 });
 refresh();
+runDoctor();
 setInterval(refresh, 1200);

@@ -29,6 +29,17 @@ def _backend():
     return desktop_platform.password_backend()
 
 
+def _store(failure):
+    """The store, or its own fixed text when it is missing; any other error is hidden."""
+
+    try:
+        return _backend()
+    except FamiliekilderError:
+        raise
+    except Exception:  # noqa: BLE001 - never expose secret-bearing backend errors
+        raise FamiliekilderError(failure) from None
+
+
 def _path(root):
     return project_paths(root).private / "login-passwords.json"
 
@@ -63,8 +74,10 @@ def set_password(root, kind, password):
     ):
         raise FamiliekilderError("Passordet har ugyldig format")
     settings = _settings(root)
+    # A missing store raises its own fixed text, which says what to do.
+    backend = _store("Passordet kunne ikke lagres i nøkkelringen")
     try:
-        _backend().set_password(SERVICE, identity, password)
+        backend.set_password(SERVICE, identity, password)
     except Exception:  # noqa: BLE001 - never expose secret-bearing backend errors
         raise FamiliekilderError(
             "Passordet kunne ikke lagres i nøkkelringen"
@@ -77,8 +90,9 @@ def set_password(root, kind, password):
 def get_password(root, kind):
     if not configured(root, kind):
         return None
+    backend = _store("Passordet kunne ikke hentes fra nøkkelringen")
     try:
-        value = _backend().get_password(SERVICE, account(root, kind))
+        value = backend.get_password(SERVICE, account(root, kind))
     except Exception:  # noqa: BLE001 - never expose secret-bearing backend errors
         raise FamiliekilderError(
             "Passordet kunne ikke hentes fra nøkkelringen"
@@ -94,8 +108,8 @@ def delete_password(root, kind):
     settings = _settings(root)
     if kind not in settings:
         return
+    backend = _store("Passordet kunne ikke slettes fra nøkkelringen")
     try:
-        backend = _backend()
         if backend.get_password(SERVICE, account(root, kind)) is not None:
             backend.delete_password(SERVICE, account(root, kind))
     except Exception:  # noqa: BLE001 - never expose secret-bearing backend errors

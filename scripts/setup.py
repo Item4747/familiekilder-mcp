@@ -29,6 +29,21 @@ restrict(sys.argv[1])
 """
 
 
+def protect_output() -> None:
+    """Escape what a legacy console encoding cannot show, instead of failing.
+
+    A redirected run on Windows writes cp1252, and a folder name can hold any
+    character. familiekilder.console does the same for the installed commands;
+    this script runs before the package is installed and cannot import it.
+    """
+
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            stream.reconfigure(errors="backslashreplace")
+        except (AttributeError, OSError, ValueError):
+            pass
+
+
 def fail(message: str) -> None:
     print(f"familiekilder-mcp-oppsett: {message}", file=sys.stderr)
     raise SystemExit(2)
@@ -57,6 +72,7 @@ def real_directory(path: Path, name: str) -> None:
 
 
 def main() -> int:
+    protect_output()
     if sys.version_info < (3, 11):
         fail("Python 3.11 eller nyere kreves")
     os.umask(0o077)

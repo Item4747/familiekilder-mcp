@@ -1,7 +1,8 @@
 """Command line for the open source-connector side.
 
 Covers the global options, ``configure``, ``auth``, ``ist-auth``, ``onboard
---bundle``, ``connections``, ``password`` and ``mcp serve``.
+--bundle``, ``connections``, ``password`` and ``mcp serve``, and with setup
+also ``browser``, ``doctor``, ``setup``, ``remote`` and ``deploy``.
 A downstream CLI adds its own commands and flags through ``CliExtension``
 without this module knowing about them; nothing here imports such a CLI.
 """
@@ -18,6 +19,7 @@ from typing import Any
 
 from . import __version__
 from .auth_cli import API_AUTH_SOURCES, _json, _run_generic_auth
+from .console import protect_console
 from .core import FamiliekilderError
 from .live_config import CATEGORIES, SOURCES, Config
 from .login_passwords import KINDS
@@ -58,7 +60,9 @@ class CliExtension:
     ``handler(args, config)`` and its return value becomes the exit code.
     Setting a handler in ``extend_command`` replaces this module's handler for
     that command. ``parser.set_defaults(create_root=False)`` keeps the data
-    root from being created before the handler runs.
+    root from being created before the handler runs, and
+    ``parser.set_defaults(load_config=False)`` gives the handler a config with
+    the data root and no services, without reading the stored configuration.
     """
 
     def before_command(self, name: str, subparsers: Any) -> None:
@@ -204,6 +208,19 @@ def build_parser(
             choices=("brave", "chrome", "edge", "auto"),
             help="auto bruker den første installerte av Brave, Chrome og Edge",
         )
+
+    if program.allow_setup:
+        doctor = sub.add_parser(
+            "doctor",
+            help="Forhåndssjekk av maskinen uten nettverksoppslag",
+            description=(
+                "Kontrollerer nettlesere, passordlagring, datamappen, AI-klientene og "
+                "tjenestene. Rapporten har ingen passord, tokens eller brukernavn og kan limes "
+                "inn i en feilmelding. Avslutter med 1 når noe som trengs for innlogging, mangler."
+            ),
+        )
+        doctor.set_defaults(handler=_run_doctor, create_root=False, load_config=False)
+        doctor.add_argument("--json", action="store_true", help="Skriv rapporten som JSON")
 
     if program.allow_setup:
         setup = sub.add_parser("setup", help="Åpne lokalt oppsett i nettleseren")
@@ -579,12 +596,37 @@ def _run_browser(args: argparse.Namespace, config: Config) -> int:
     return 0
 
 
+def _run_doctor(args: argparse.Namespace, config: Config) -> int:
+    import json
+
+    from .doctor import render, root_source
+    from .doctor import run as run_doctor
+
+    report = run_doctor(
+        config.root,
+        root_source=root_source(args.root, args.profile),
+    )
+    if args.json:
+        # ASCII only, so any console code page can show it.
+        print(json.dumps(report, ensure_ascii=True, indent=2, sort_keys=True))
+    else:
+        sys.stdout.write(render(report))
+    sys.stdout.flush()
+    return 0 if report["ok"] else 1
+
+
 def _run_setup(args: argparse.Namespace, config: Config) -> int:
+    from .doctor import root_source
     from .hosting import refuse_on_remote_host
     from .setup_web import serve
 
     refuse_on_remote_host("Oppsett og innlogging")
-    return serve(config.root, port=args.port, open_browser=not args.no_open)
+    return serve(
+        config.root,
+        port=args.port,
+        open_browser=not args.no_open,
+        root_source=root_source(args.root, args.profile),
+    )
 
 
 def run(args: argparse.Namespace) -> Any:
@@ -595,7 +637,12 @@ def run(args: argparse.Namespace) -> Any:
         from .hosting import default_data_root
 
         options["default_root"] = Path(os.environ.get("FAMILIEKILDER_ROOT") or default_data_root())
-    config = Config.load(args.root, **options)
+    if getattr(args, "load_config", True):
+        config = Config.load(args.root, **options)
+    else:
+        from .profiles import resolve_root
+
+        config = Config(resolve_root(args.root, **options), {})
     if args.create_root:
         config.root.mkdir(parents=True, exist_ok=True)
     return args.handler(args, config)
@@ -610,6 +657,8 @@ def main(
     program: Program = PROGRAM,
     version: str | None = __version__,
 ) -> Any:
+    # Before anything is printed, including help and argument errors.
+    protect_console()
     parser = build_parser(
         extensions, prog=prog, description=description, program=program, version=version
     )

@@ -58,11 +58,14 @@ eller [Microsoft Edge](https://www.microsoft.com/edge) for å logge inn på
 tjenestene.
 
 - **Prøvd:** Mac med Brave, med ekte innlogging hos tjenestene.
-- **Nytt:** Windows, Linux, og Chrome og Edge på Mac. Det er maskinelt
-  testet, ikke prøvd med ekte innlogging ennå. Prøver du, si gjerne fra under
-  **Issues**, også når det virker.
+- **Nytt:** Windows, Linux, og Chrome og Edge på Mac. Installasjonen,
+  veiviseren, serveren og innloggingsløpet er prøvd maskinelt mot oppdiktede,
+  lokale sider, men ikke med ekte innlogging ennå. Vil du prøve, les
+  [Prøve på Windows eller Linux](docs/prove-pa-windows-og-linux.md), og si
+  gjerne fra under **Issues**, også når det virker.
 - **Windows:** Installer nettleseren for alle brukere på maskinen. En
-  nettleser som bare er installert for deg, blir avvist.
+  nettleser som bare er installert for deg, blir avvist. Edge følger med
+  Windows og brukes da i stedet.
 - **Linux:** Bruk leverandørens egen .deb- eller .rpm-pakke, og logg inn fra
   skrivebordet, ikke over SSH. Snap, Flatpak og Chromium støttes ikke.
 

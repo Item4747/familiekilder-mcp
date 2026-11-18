@@ -318,7 +318,7 @@ uvx ruff@0.17.4 check .
 
 ```sh
 familiekilder-mcp configure mykid
-familiekilder-mcp auth mykid import-session --session-file /privat/mappe/mykid-økt.json
+familiekilder-mcp auth mykid import-session --session-file /sti/til/.private/mykid-økt.json
 familiekilder-mcp connections
 familiekilder-mcp mcp serve
 ```

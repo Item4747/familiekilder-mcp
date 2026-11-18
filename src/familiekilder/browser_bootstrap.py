@@ -741,7 +741,12 @@ def _official_brave_path(
     from .hosting import refuse_on_remote_host
 
     refuse_on_remote_host("Innlogging i nettleser")
-    return Path(select_browser(browser, explicit, oauth_callback=oauth_callback).executable)
+    selection = select_browser(browser, explicit, oauth_callback=oauth_callback)
+    notice = selection.notice()
+    if notice is not None:
+        # stderr: stdout may carry the MCP protocol or a command's JSON.
+        print(notice, file=sys.stderr, flush=True)
+    return Path(selection.executable)
 
 
 def _login_browser(root: Path | str | None, login_browser: str | None) -> str | None:
@@ -752,12 +757,19 @@ def _login_browser(root: Path | str | None, login_browser: str | None) -> str | 
     return saved_browser(root)
 
 
-def _require_display() -> None:
-    """A Linux desktop login needs a screen; say so instead of failing later."""
+def _require_display(
+    platform: str | None = None, environ: Mapping[str, str] | None = None
+) -> None:
+    """A Linux desktop login needs a screen; say so instead of failing later.
 
-    if not sys.platform.startswith("linux") or os.environ.get("FAMILIEKILDER_HOSTED") == "1":
+    `platform` and `environ` default to this process; ``doctor`` passes its own.
+    """
+
+    platform = sys.platform if platform is None else platform
+    environ = os.environ if environ is None else environ
+    if not platform.startswith("linux") or environ.get("FAMILIEKILDER_HOSTED") == "1":
         return
-    if not (os.environ.get("DISPLAY") or os.environ.get("WAYLAND_DISPLAY")):
+    if not (environ.get("DISPLAY") or environ.get("WAYLAND_DISPLAY")):
         raise BrowserBootstrapError(
             "Fant ingen skjerm for innloggingsvinduet. Logg inn fra skrivebordet på "
             "maskinen, ikke over SSH eller fra en server uten skjerm."

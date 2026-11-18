@@ -85,15 +85,27 @@ def _document(client: str, content: str):
 
 
 def client_state(client: str, root: Path, home: Path) -> dict:
+    """Whether the client starts this installation with this data root.
+
+    ``registered`` is true for an active familiekilder-mcp entry, even one that
+    starts another installation or data root; ``configured`` only for this one.
+    """
+
     try:
         document = _document(client, _read(config_path(client, home), home))
         table = document.get("mcpServers" if client == "claude" else "mcp_servers", {})
         entry = table.get(NAME, {})
         expected = server_entry(root)
         active = entry.get("enabled", True) is not False and entry.get("disabled", False) is not True
-        return {"id": client, "configured": active and all(entry.get(k) == v for k, v in expected.items()), "error": False}
-    except (ClientSetupError, OSError, ValueError, AttributeError):
-        return {"id": client, "configured": False, "error": True}
+        registered = NAME in table and active
+        return {
+            "id": client,
+            "configured": registered and all(entry.get(k) == v for k, v in expected.items()),
+            "registered": registered,
+            "error": False,
+        }
+    except (ClientSetupError, OSError, ValueError, AttributeError, TypeError):
+        return {"id": client, "configured": False, "registered": False, "error": True}
 
 
 def install_client(client: str, root: Path, home: Path) -> None:

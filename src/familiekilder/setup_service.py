@@ -60,9 +60,13 @@ class Job:
 
 
 class SetupService:
-    def __init__(self, root: Path, *, home: Path | None = None):
+    def __init__(self, root: Path, *, home: Path | None = None, root_source: str | None = None):
+        from .doctor import root_source as find_root_source
+
         self.root = root
         self.home = Path.home() if home is None else home
+        # How the data root was chosen, for the pre-flight report.
+        self.root_source = root_source or find_root_source(None, None)
         self.lock = threading.RLock()
         self.job: Job | None = None
         self.tested = False
@@ -128,6 +132,17 @@ class SetupService:
             "chosen": chosen or "auto",
             "used": used,
         }
+
+    def doctor(self) -> dict:
+        """The pre-flight report, as text and as data; the same as «familiekilder-mcp doctor».
+
+        Runs the browser checks without logging in, storing data or contacting the sources.
+        """
+
+        from .doctor import render, run
+
+        report = run(self.root, root_source=self.root_source, client_home=self.home)
+        return {"text": render(report), "report": report}
 
     def set_browser(self, browser):
         if browser not in {"auto", "brave", "chrome", "edge"}:

@@ -168,6 +168,48 @@ class SetupHttpTests(SetupServerCase):
             self.request("/api/browser", method="POST", value={"browser": "auto"})
             self.assertIsNone(saved_browser(self.root))
 
+    def test_doctor_gives_the_same_report_as_the_command_behind_the_same_protection(self):
+        from familiekilder import browsers, doctor
+        from familiekilder_testing.browsers import FILE, FakeBrowserSystem, stat_result
+
+        local = r"C:\Brukere\Qzorbatnik\AppData\Local"
+        system = FakeBrowserSystem(
+            browsers.WINDOWS,
+            {
+                local + r"\Google\Chrome\Application\chrome.exe": stat_result(FILE),
+                r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe": stat_result(FILE),
+            },
+            home=r"C:\Brukere\Qzorbatnik",
+            environ={"USERNAME": "Qzorbatnik"},
+            local_app_data=local,
+        )
+        with (
+            patch.object(browsers, "System", return_value=system),
+            patch("familiekilder.desktop_platform.password_backend", return_value=object()),
+        ):
+            for headers in ({"X-Setup-Token": "wrong"}, {"Host": "attacker.invalid"}):
+                with self.subTest(headers=headers):
+                    self.assertEqual(self.request("/api/doctor", headers=headers)[0], 403)
+            self.assertEqual(self.request("/api/doctor", method="POST", value={})[0], 404)
+            status, headers, body = self.request("/api/doctor")
+            expected = doctor.render(
+                doctor.run(self.root, root_source=self.service.root_source, client_home=self.home)
+            )
+        self.assertEqual(status, 200)
+        self.assertEqual(headers["Cache-Control"], "no-store")
+        result = json.loads(body)
+        self.assertEqual(result["text"], expected)
+        self.assertIn("familiekilder-mcp doctor", result["text"])
+        self.assertNotIn("qzorbatnik", body.decode().lower())
+        chrome = next(item for item in result["report"]["browsers"]["items"] if item["browser"] == "chrome")
+        self.assertEqual(chrome["status"], "rejected")
+        self.assertEqual(chrome["reason"], "Google Chrome er bare installert for din bruker, under AppData.")
+        self.assertEqual(result["report"]["browsers"]["candidate"], "edge")
+        self.assertIsNone(result["report"]["browsers"]["selected"])
+        self.assertTrue(system.calls)
+        self.assertTrue(all("Get-AuthenticodeSignature" not in call[-1] for call in system.calls))
+        self.assertFalse(self.root.exists())
+
     def test_upload_failure_is_sanitized_and_temporary_file_removed(self):
         with patch("familiekilder.setup_service.auth_module") as module:
             module.return_value.session_path.return_value.exists.return_value = False

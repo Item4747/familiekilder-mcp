@@ -21,6 +21,7 @@ SOURCE_COMMANDS = [
     "onboard",
     "ist-auth",
     "browser",
+    "doctor",
     "setup",
     "remote",
     "deploy",

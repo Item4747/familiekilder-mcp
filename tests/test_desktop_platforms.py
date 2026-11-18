@@ -292,6 +292,18 @@ class MacosBraveUnchangedTests(unittest.TestCase):
             ],
         )
 
+    def test_signature_commands_may_take_a_minute(self):
+        # spctl on a large app such as Chrome took longer than the old 15 seconds.
+        timeouts = []
+
+        class Timed(FakeSystem):
+            def run(self, argv, *, env=None, timeout=15):
+                timeouts.append(timeout)
+                return super().run(argv, env=env, timeout=timeout)
+
+        select_browser(system=Timed(browsers.MACOS, {MAC_BRAVE: _stat(FILE)}))
+        self.assertEqual(timeouts, [60, 60])
+
     def test_old_constants_keep_their_values(self):
         home = Path.home()
         self.assertEqual(
@@ -702,7 +714,7 @@ class WindowsTests(unittest.TestCase):
                 select_browser(system=self.system(report=report))
 
     def test_the_script_uses_the_write_mask(self):
-        self.assertIn(f"0x{browsers._WINDOWS_WRITE_MASK:08X}", browsers._WINDOWS_CHECK_SCRIPT)
+        self.assertIn(f"0x{browsers._WINDOWS_WRITE_MASK:08X}", browsers._WINDOWS_ACCESS_SCRIPT)
 
     def test_a_check_that_cannot_run_is_refused(self):
         for report in ({}, [], "Valid"):
@@ -929,6 +941,16 @@ class PasswordStorageTests(unittest.TestCase):
                 desktop_platform.password_backend("win32")
         with self.assertRaisesRegex(FamiliekilderError, "macOS, Windows og Linux"):
             desktop_platform.password_backend("freebsd14")
+
+    def test_saving_without_a_store_says_what_is_missing(self):
+        with (
+            tempfile.TemporaryDirectory() as directory,
+            patch.dict(sys.modules, self.fake_backends(available=False)),
+            patch.object(sys, "platform", "linux"),
+        ):
+            with self.assertRaisesRegex(FamiliekilderError, "Fant ingen nøkkelring"):
+                login_passwords.set_password(Path(directory), "bankid", "oppdiktet")
+            self.assertFalse(login_passwords.configured(Path(directory), "bankid"))
 
     def test_login_without_a_stored_password_never_touches_the_store(self):
         from familiekilder.password_autofill import PasswordAutofill

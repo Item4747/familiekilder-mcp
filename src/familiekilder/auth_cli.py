@@ -2,13 +2,13 @@ from __future__ import annotations
 
 import argparse
 import getpass
-import json
 import os
 import sys
 import warnings
 from pathlib import Path
 from typing import Any
 
+from .console import json_text
 from .core import FamiliekilderError, SOURCES
 from .connection_status import auth_module as _auth_module
 from .connection_status import has_local_session as _has_local_session
@@ -25,7 +25,7 @@ _AUTH_CAPABILITIES = {
 
 
 def _json(value: Any) -> None:
-    print(json.dumps(value, ensure_ascii=False, indent=2, sort_keys=True))
+    print(json_text(value, sys.stdout, indent=2, sort_keys=True))
 
 
 def _require_hidden_tty() -> None:

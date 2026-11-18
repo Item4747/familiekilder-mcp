@@ -8,6 +8,9 @@ choice and check of the browser, the DevTools pipe and the cleanup. The page
 is served from 127.0.0.1 and contacts nothing else. The user's own data root
 and browser profiles are not used.
 
+Without --browser the catalog picks as a login does: the first browser that
+passes its check, and "rejected" lists the ones skipped before it.
+
 Prints one JSON line and exits 0 when the browser started, DevTools answered
 with the page title and the profile folder was gone afterwards.
 """
@@ -90,6 +93,11 @@ def main() -> int:
     try:
         chosen = select_browser(args.browser)
         report.update(browser=chosen.app.id, executable=chosen.executable)
+        # Without --browser: the browsers skipped before this one, and why.
+        report["rejected"] = [
+            {"browser": item.browser, "kind": item.kind, "reason": item.reason}
+            for item in chosen.rejected
+        ]
         run_path = browser_bootstrap._create_run_directory(root)
         started = time.monotonic()
         browser = browser_bootstrap._launch_brave(run_path, url, None, browser=args.browser)

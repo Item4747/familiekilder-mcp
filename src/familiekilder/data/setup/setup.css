@@ -315,6 +315,34 @@ summary {
 .requirements li {
   padding: 4px 0;
 }
+.rejected-browsers {
+  margin: 8px 0 0;
+  padding-left: 18px;
+  color: var(--muted);
+  font-size: 13px;
+}
+.rejected-browsers li {
+  padding: 2px 0;
+}
+.doctor {
+  margin-top: 18px;
+}
+.doctor h2 {
+  font-size: 15px;
+  margin: 0 0 6px;
+  color: var(--ink);
+}
+.doctor pre {
+  max-height: 360px;
+  overflow: auto;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--paper);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 12px;
+}
 .clients {
   display: grid;
   grid-template-columns: 1fr 1fr;

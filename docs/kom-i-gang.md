@@ -16,23 +16,25 @@ Edge; se [nettleseren](#nettleseren). Lesing av PDF krever Poppler
 
 - **Mac med Brave** er prøvd med ekte innlogging hos tjenestene.
 - **Nytt:** Chrome og Edge på Mac, og alle tre nettleserne på Windows og
-  Linux. Det er maskinelt testet, ikke prøvd med ekte innlogging ennå.
-  Testene kjører på alle tre systemene. De starter hver nettleser med en
-  midlertidig profil mot en lokal testside og rydder opp etterpå, men de
-  logger ikke inn hos noen tjeneste.
-- **Lagrede passord** på Windows og Linux er nytt og bare dekket av
-  enhetstester.
+  Linux. Det er prøvd maskinelt, ikke med ekte innlogging ennå. På alle tre
+  systemene kjører prøvene installasjonen ordrett etter denne veiledningen,
+  veiviseren, serveren slik AI-appen starter den, nettleserne og
+  innloggingsløpet mot oppdiktede, lokale sider. Lagrede passord er prøvd mot
+  Legitimasjonsbehandling på Windows og GNOME Keyring på Linux. Ingen prøve
+  logger inn hos en ekte tjeneste.
 
-Har du prøvd på Windows, Linux eller med Chrome eller Edge, si gjerne fra
-under **Issues**, også når det virker. Skriv system, nettleser og tjeneste,
-uten innlogging eller innhold fra ekte beskjeder.
+Vil du prøve på Windows eller Linux, les [Prøve på Windows eller
+Linux](prove-pa-windows-og-linux.md). Der står hva du trenger, hva du skal se
+i hvert steg, hva hver maskinell prøve dekker, og hva du limer inn i en sak
+hvis noe går galt. Si gjerne fra under **Issues**, også når det virker.
 
 ### Last ned og installer
 
 Last ned kildekoden fra reposiden (**Code → Download ZIP**) og pakk den ut.
 
 **macOS og Linux.** Åpne Terminal og gå til mappen du pakket ut; bytt ut stien
-i første linje:
+i første linje. Har stien mellomrom, setter du den i enkle anførselstegn. På
+Debian og Ubuntu trenger du også pakken `python3-venv`.
 
 ```sh
 cd /sti/til/familiekilder-mcp
@@ -48,7 +50,8 @@ virker også.
 
 **Windows.** Installer Python 3.11 eller nyere fra
 [python.org](https://www.python.org/downloads/windows/). Åpne PowerShell og gå
-til mappen du pakket ut:
+til mappen du pakket ut. Har stien mellomrom, setter du den i enkle
+anførselstegn: `cd 'C:\sti med mellomrom\familiekilder-mcp'`.
 
 ```powershell
 cd C:\sti\til\familiekilder-mcp
@@ -88,7 +91,7 @@ Gmail er unntaket: Google-innloggingen åpnes i den vanlige nettleseren din; se
 
 Programmet bruker bare en nettleser som er installert fra leverandøren, og
 kontrollerer den før hver start. En nettleser som ikke består kontrollen,
-brukes ikke, og programmet prøver ikke en annen i stedet.
+brukes ikke.
 
 - **macOS:** Nettleseren må ligge i `/Applications` eller `~/Applications`.
   Programmet kontrollerer signaturen fra leverandøren og at macOS godtar appen.
@@ -108,9 +111,15 @@ brukes ikke, og programmet prøver ikke en annen i stedet.
   støttes ikke. Innloggingen trenger et skrivebord med skjerm. Over SSH eller
   på en server uten skjerm stopper den med en melding.
 
-Har du ikke valgt, brukes den første installerte av Brave, Chrome og Edge, i
-den rekkefølgen. Velg i veiviseren under «Nettleser for innlogging», eller fra
-terminalen:
+Har du ikke valgt, bruker innloggingen den første av Brave, Chrome og Edge,
+i den rekkefølgen, som består kontrollen. En nettleser som feiler kontrollen,
+eller som er installert på en måte som ikke støttes (bare for deg under
+`AppData` på Windows; Snap, Flatpak eller distribusjonens Chromium på Linux),
+hoppes over. Du får en linje om hvilken som ble hoppet over og hvorfor. Har du
+valgt en nettleser, prøves bare installasjoner av den nettleseren, i samme
+rekkefølge som ved automatisk valg. Hvis ingen av dem består, sier
+feilmeldingen hvorfor og hva du kan gjøre. Velg i veiviseren under «Nettleser for
+innlogging», eller fra terminalen:
 
 ```sh
 familiekilder-mcp browser            # vis installerte nettlesere og valget
@@ -120,6 +129,34 @@ familiekilder-mcp browser chrome     # bruk Chrome; også brave, edge eller auto
 `auto` fjerner valget. Valget gjelder profilen du bruker. Med
 `--browser brave|chrome|edge` på `auth … browser-login` og
 `auth … browser-bootstrap` velger du for én innlogging.
+
+### Forhåndssjekk
+
+```sh
+familiekilder-mcp doctor           # rapport til skjermen
+familiekilder-mcp doctor --json    # det samme som JSON
+```
+
+Forhåndssjekken bruker lokale opplysninger. Rapporten viser nettleserne,
+passordlagring, statusen til den private datamappen, AI-klientene, skjerm på
+Linux og hvilke tjenester som er slått på. For dataroten vises bare hvordan
+den ble valgt og statusen, også ved feil. Profilnavn og egendefinerte stier
+utelates. Den samme rapporten står under «Hva trenger jeg på maskinen?» i
+veiviseren og kan limes inn i en sak.
+
+- **macOS:** sjekker appstien og leser app- og utgiver-ID fra signaturen
+  med `codesign -dv`. Gatekeeper (`spctl`) kjøres ved innlogging, før
+  nettleseren startes.
+- **Windows:** sjekker programstien, lenker og skrivetilgang med lokale
+  tilgangslister. Authenticode-signaturen og utgiveren sjekkes ved
+  innlogging, før nettleseren startes.
+- **Linux:** sjekker pakkestien, eier, rettigheter og lenker i hele
+  nettleserpakken lokalt, som ved innlogging.
+
+På Mac og Windows står det «KANDIDAT» ved første aktuelle installasjon og
+«UAVKLART» ved andre aktuelle nettlesere. Innloggingen avgjør hvilken
+installasjon som består signaturkontrollen. Avslutningskoden er 1 ved en
+konkret feil som blokkerer innlogging.
 
 ## Oppsett i nettleseren
 
@@ -176,12 +213,13 @@ Logg derfor inn første gang i veiviseren, eller importer en fil. Deretter:
 ```sh
 familiekilder-mcp auth vigilo browser-login        # Vigilo, Skolemelding, IST Home, Flyt
 familiekilder-mcp auth spond browser-bootstrap     # Spond, Hoopit
-familiekilder-mcp auth spond import-session --session-file /privat/mappe/spond-økt.json
+familiekilder-mcp auth spond import-session --session-file /sti/til/.private/spond-økt.json
 familiekilder-mcp auth gmail login                 # se docs/gmail.md
 ```
 
-Innlogging i nettleser åpner en isolert, midlertidig profil i nettleseren du
-har valgt; se [nettleseren](#nettleseren). BankID og telefonbekreftelse gjør du
+En øktfil til `import-session` må ligge i en mappe som heter `.private` og
+bare er tilgjengelig for deg. Innlogging i nettleser åpner en isolert,
+midlertidig profil i nettleseren du har valgt; se [nettleseren](#nettleseren). BankID og telefonbekreftelse gjør du
 selv. For Vigilo, Skolemelding, IST Home og Flyt ber
 kommandoen deg første gang skrive `JEG FORSTÅR` for å bekrefte at integrasjonen
 er uoffisiell.
@@ -294,6 +332,7 @@ gjøre at en kobling slutter å virke.
 
 | Dokument | Innhold |
 |---|---|
+| [Prøve på Windows eller Linux](prove-pa-windows-og-linux.md) | Hva du trenger, hva du skal se, forhåndssjekken og hva som er prøvd |
 | [Funksjonsmatrise](service-capabilities.md) | Lesing per tjeneste og grenser; intern kode for skriving er merket separat |
 | [Fornyelse og levetid](auth-lifecycle.md) | Tokenfornyelse, lagring og hva som er målt |
 | [Profiler og passord](personal-profiles.md) | Datarot, profiler og nøkkelring |
@@ -307,8 +346,9 @@ gjøre at en kobling slutter å virke.
 ## Hjelp og bidrag
 
 Meld feil eller spørsmål under **Issues** på prosjektets reposide. Beskriv
-kommandoen, feilmeldingen og hvilken tjeneste det gjelder, uten å dele
-innlogging, tokens, navn eller innhold fra ekte beskjeder.
+kommandoen, feilmeldingen og hvilken tjeneste det gjelder, og lim inn
+rapporten fra `familiekilder-mcp doctor`, uten å dele innlogging, tokens, navn
+eller innhold fra ekte beskjeder.
 
 ### Kjøre testene
 
