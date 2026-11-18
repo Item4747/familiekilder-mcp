@@ -145,8 +145,9 @@ og kontoreglene må kontrolleres før kjøp: en synlig katalog beviser ikke at
 din plan kan legge til en egen MCP-server. Koblingen er prøvd på en
 Pro-konto; Plus, Free og Go loves ikke her. MCP-siden sier at tilkobling
 opprettes på nett, ikke mobil. En kobling som er lagt til på nett, virket
-deretter i iPhone-appen: velg **+ > Pluginer** og søk etter navnet. Planlagt
-ChatGPT-kjøring med denne serveren er ikke bekreftet.
+deretter i iPhone-appen: velg **+ > Pluginer** og søk etter navnet. En
+planlagt oppgave i ChatGPT er også prøvd; se
+[Prøvd på ekte vert](#prøvd-på-ekte-vert).
 
 Begge klientene kan registrere OAuth-klienter automatisk. Registrering gir
 ingen tilgang før eierkoden godkjennes. Serveren annonserer `offline_access`
@@ -168,9 +169,10 @@ eventuelt kalenderen separat, og prøv først oppgaven manuelt:
 
 Kalenderendringer krever en egen kalenderkobling og en uttrykkelig bestilling.
 Kontroller én planlagt kjøring med Macen avslått før du stoler på rutinen.
-En planlagt skykjøring fra Claude Code er prøvd mot en ekte vert; se
-[Prøvd på ekte vert](#prøvd-på-ekte-vert). Planlagte oppgaver i Claude Cowork
-og i ChatGPT er ikke prøvd; det gis ikke et løfte om dem.
+En planlagt skykjøring fra Claude Code og en planlagt oppgave i ChatGPT er
+prøvd mot en ekte vert; se [Prøvd på ekte vert](#prøvd-på-ekte-vert).
+Planlagte oppgaver i Claude Cowork er ikke prøvd; det gis ikke et løfte om
+dem.
 
 ## Prøvd på ekte vert
 
@@ -218,8 +220,9 @@ Dette virket:
   gikk nettleseren tilbake til claude.ai, og koblingen sto som tilkoblet med
   20 leseverktøy. `family_connections` og `spond_list_items` ble deretter
   kalt gjennom Claude-koblingen fra Claude Code, som bruker koblingene
-  kontoen har på nett. En samtale i nettgrensesnittet ble ikke fullført, fordi
-  kontoens bruksgrense var nådd.
+  kontoen har på nett. Dagen etter ble en hel samtale kjørt i
+  nettgrensesnittet: Claude spurte om tillatelse for hvert verktøy («Allow
+  once»), kalte `family_connections` og `spond_list_items` og svarte riktig.
 - **ChatGPT på nett.** På en Pro-konto ble verten lagt til med **Plugins >
   Add > Add custom MCP server**, med OAuth og uten utviklermodus.
   Risikovarselet «Custom MCP servers introduce risk» måtte godtas. Vertens
@@ -241,6 +244,12 @@ Dette virket:
   `gmail_search`, og skrev en oppsummering. Kjøringen tok 35 sekunder og
   brukte ikke Macen. Macen var likevel på, så en kjøring med Macen avslått er
   ikke prøvd bokstavelig.
+- **Planlagt oppgave i ChatGPT.** I en samtale med koblingen valgt ble ChatGPT
+  bedt om å lage en oppgave som skulle kjøre én gang seks minutter senere.
+  ChatGPT laget oppgaven og viste den under **Scheduled**. Den kjørte til
+  avtalt tid mens Macens skjerm var låst, og svaret var riktig. ChatGPT viser
+  ikke verktøykall for en planlagt kjøring, men verten registrerte en lesing
+  fra Spond i samme minutt som svaret er stemplet.
 - **Flytting av en utløpt innlogging.** Gmail ble flyttet med
   `remote move ADRESSE --source gmail`. Google-innloggingen viste seg å være
   utløpt hos Google. Verten svarte da «Gmail-tilgangen må fornyes med
@@ -262,9 +271,8 @@ Dette virket:
 
 Dette er ennå ikke prøvd:
 
-- En hel samtale i Claudes nettgrensesnitt. Claude på Android og ChatGPT på
-  Android er heller ikke prøvd.
-- Planlagte oppgaver i Claude Cowork og i ChatGPT.
+- Claude og ChatGPT på Android.
+- Planlagte oppgaver i Claude Cowork.
 - Kilder som logger inn med BankID (Vigilo, Skolemelding, IST Home og Flyt)
   på verten, og Gmail med en gyldig innlogging. Bare Spond og Hoopit leses
   der nå.

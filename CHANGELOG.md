@@ -24,8 +24,9 @@
   [Word-vedlegg på verten](docs/alltid-pa.md#word-vedlegg-på-verten).
 - LibreOffice legger nå sine midlertidige filer i vedleggets private
   arbeidsmappe, ikke i systemets felles mappe for midlertidige filer.
-- Veiledningen sier også at Claude og ChatGPT på iPhone og en planlagt
-  skykjøring fra Claude Code er prøvd mot en ekte vert (18. november 2026).
+- Veiledningen sier også at Claude og ChatGPT på iPhone, en hel samtale i
+  Claude på nett, en planlagt skykjøring fra Claude Code og en planlagt
+  oppgave i ChatGPT er prøvd mot en ekte vert (18. november 2026).
 - Veiledningen for [alltid-på-oppsettet](docs/alltid-pa.md) sier nå at
   ChatGPT på nett er prøvd mot en ekte vert (Pro-konto, 18. november 2026),
   og at kommandoene for tilbakekalling på Fly trenger en maskin som er i
