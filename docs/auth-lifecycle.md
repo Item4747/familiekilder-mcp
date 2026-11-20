@@ -63,6 +63,12 @@ Levetidsmåling:
   med `invalid_grant` etter 18,8 døgn uten bruk; innloggingen var 37,9 døgn
   gammel. Årsaken er ukjent: en inaktivitetsgrense på 4,1–18,8 døgn, en absolutt
   grense på 19,1–37,9 døgn, eller tilbakekalling.
+- En ny innlogging i desktop-nettleser 7. november 2026 ble fornyet uten feil
+  etter 5,0 og deretter 7,6 døgn uten bruk. Ved siste fornyelse var den 12,6
+  døgn gammel. Gjelder samme regler for nettleser og app, ligger en eventuell
+  inaktivitetsgrense mellom 7,6 og 18,8 døgn. Målingen ble avsluttet
+  20. november 2026: nettleserinnlogging holder, og Android trengs ikke.
+  Grensen er derfor ikke målt nøyere.
 - Målinger av varighet trenger en egen stabil datarot (`--root`); øktfiler kan
   ikke gjenskapes når en midlertidig mappe er slettet.
 
