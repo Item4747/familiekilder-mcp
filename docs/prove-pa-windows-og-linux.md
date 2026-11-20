@@ -150,8 +150,9 @@ For Skolemelding, IST Home eller Flyt bytter du ut `vigilo` med henholdsvis
 
 ## Hva som er prøvd
 
-Maskinelle prøver kjører på macOS, Windows og Linux for hver endring. De
-bruker bare oppdiktede data og lokale sider og kontakter ingen tjeneste.
+Maskinelle prøver kjører på Linux for hver endring. På Windows og macOS kjører
+de når en endring kan virke ulikt der, og før en ny versjon. De bruker bare
+oppdiktede data og lokale sider og kontakter ingen tjeneste.
 
 | Del | Hvordan det er prøvd |
 |---|---|
