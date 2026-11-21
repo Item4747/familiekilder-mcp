@@ -1,11 +1,4 @@
 {
-  "hoopit": {
-    "api_root": "https://api.hoopit.io",
-    "app_version": "Web 1104dffce00b",
-    "attachment_hosts": [],
-    "firebase_api_key": "AIzaSyBs2V8ZQQvQArdCPzNUiJ-nSR4x0e5G230",
-    "firebase_project_id": "hoopit-30d5c"
-  },
   "ist-home": {
     "authority": "https://skolid.se",
     "client_id": "com.ist.home.miniforum-school",

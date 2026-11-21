@@ -54,6 +54,7 @@ class Source:
     writes: bool = True
     auth_commands: frozenset[str] = frozenset()
     logout_revokes: bool = False
+    # "browser", "google" or "token" (a personal access token the user pastes).
     login: str = "browser"
     streams: tuple[str, ...] = ("feed",)
     # The feed holds notifications that are read from the list only.
@@ -66,6 +67,8 @@ class Source:
     provider_bundle: bool = True
     password_origins: tuple[str, ...] = ()
     aliases: tuple[str, ...] = ()
+    # False when the source gives no attachments: no `<source>_read_attachment`.
+    attachments: bool = True
 
 
 _OAUTH_COMMANDS = frozenset(
@@ -120,20 +123,19 @@ REGISTRY = {
             session_estimate="refresh_deadline",
             password_origins=("https://spond.com",),
         ),
+        # Hoopit's external API with a personal access token (hoopit_auth.py).
         Source(
             "hoopit", "Hoopit", "hoopit_auth", "live_hoopit_reader",
-            letter="h", description="Idrett, arrangementer og chat",
+            letter="h", description="Innlegg, kommentarer og aktiviteter fra klubben",
             kind="sport",
-            actions=("live_hoopit", "live_hoopit_chat", "live_hoopit_chat_actions"),
-            verified=frozenset({"participation", "messages"}),
-            implemented=frozenset({"set_participation", "reply_message",
-                                   "reply_chat", "send_message"}),
-            extra_actions=("reply_chat",),
-            auth_commands=_BOOTSTRAP_COMMANDS | {"verify-direct"},
-            streams=("feed", "chat"),
-            notifications=True,
+            actions=("live_hoopit",),
+            verified=frozenset({"participation"}),
+            implemented=frozenset({"set_participation"}),
+            auth_commands=frozenset({"token", "status", "logout"}),
+            login="token",
             session_estimate="long_lived",
-            password_origins=("https://app.hoopit.io",),
+            provider_bundle=False,
+            attachments=False,
         ),
         Source(
             "ist-home", "IST Home", "ist_oauth", "live_ist_reader",

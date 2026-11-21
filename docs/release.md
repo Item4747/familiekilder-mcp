@@ -32,7 +32,7 @@ under krever per tjeneste.
 
 [HTTP og egen vert](alltid-pa.md) inngår ikke i løftet for 1.0 og blokkerer
 ikke lokal 1.0. Den første prøven på en ekte Fly-vert bekreftet utrulling,
-flytting av innloggingene for Spond og Hoopit, tilkobling fra Claude og
+flytting av innloggingen for Spond, tilkobling fra Claude og
 ChatGPT på nett og iPhone og fra Codex CLI, en planlagt skykjøring og
 Word-vedlegg. Kildene med BankID-innlogging, Gmail med gyldig innlogging og
 drift over tid må fortsatt bekreftes særskilt; se
@@ -44,8 +44,8 @@ drift over tid må fortsatt bekreftes særskilt; se
   profiler. Den lokale oppsettsveiviseren må kontrolleres med en ny profil.
 - En ny bruker må kunne skaffe og importere klientkonfigurasjon uten tilgang
   til utviklerens maskin eller private oppsett. Det er løst for Vigilo,
-  Skolemelding, Spond, Hoopit og IST Home, som har innebygd appidentitet, og for
-  Flyt, der veiviseren spør om kommune. Gmail krever brukerens egen
+  Skolemelding, Spond og IST Home, som har innebygd appidentitet, for Flyt, der
+  veiviseren spør om kommune, og for Hoopit, der brukeren lager et token selv. Gmail krever brukerens egen
   Google-klient. Se [klientoppsett](klientoppsett.md).
 - Innlogging, liste, meldingsdetalj og ett vedlegg må bekreftes per tjeneste som
   skal omtales som klar. Bruk egen konto, eller en uttrykkelig avtalt testkonto,

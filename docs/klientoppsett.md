@@ -23,9 +23,14 @@ en bestemt installasjon eller bruker.
 
 Koblingene er uoffisielle. Leverandørene har ikke godkjent dem.
 
+## Hoopit: token i stedet for oppsett
+
+Hoopit har ikke klientoppsett. Du kobler til med et personlig tilgangstoken som
+du lager hos Hoopit; se [Hoopit](hoopit-ingestion.md).
+
 ## Tjenester med innebygd oppsett
 
-For Vigilo, Skolemelding, Spond, Hoopit og IST Home følger appidentiteten med
+For Vigilo, Skolemelding, Spond og IST Home følger appidentiteten med
 pakken. Velg «Logg inn» i veiviseren (`familiekilder-mcp setup`). Mangler
 tjenesten klientoppsett, legger veiviseren inn det innebygde oppsettet og åpner
 innloggingen. Du trenger ingen fil.
@@ -87,8 +92,8 @@ Disse oppsettene byttes aldri ut automatisk:
 
 Innloggingen din slettes aldri av byttet. Gjelder det nye oppsettet bare en
 nyere appversjon, beholdes innloggingen. Endrer det appidentiteten (klient-ID,
-klienthemmelighet eller adresser), avviser Vigilo, Skolemelding, Hoopit og IST
-Home byttet så lenge tjenesten har en lagret innlogging. Da beholdes både det
+klienthemmelighet eller adresser), avviser Vigilo, Skolemelding og IST Home
+byttet så lenge tjenesten har en lagret innlogging. Da beholdes både det
 gamle oppsettet og innloggingen, og byttet prøves igjen ved neste start. Slik
 tar du det nye oppsettet i bruk:
 
@@ -104,8 +109,8 @@ Har du importert et eget oppsett og vil gå over til det innebygde:
 
 1. Logg ut av tjenesten, for eksempel `familiekilder-mcp auth vigilo logout`.
 2. Slett det lagrede oppsettet under `.private/credentials/` i dataroten:
-   `vigilo-client.json`, `skolemelding-client.json`, `spond-provider.json`,
-   `hoopit-client.json` eller `ist-home-client.json`.
+   `vigilo-client.json`, `skolemelding-client.json`, `spond-provider.json`
+   eller `ist-home-client.json`.
 3. Velg «Logg inn» i veiviseren. Den legger da inn det innebygde oppsettet og
    merker det, så senere versjoner fornyer det.
 
@@ -134,8 +139,8 @@ familiekilder-mcp configure vigilo
 familiekilder-mcp auth vigilo browser-login
 ```
 
-Spond og Hoopit bruker `browser-bootstrap` i stedet for `browser-login`. Gmail
-bruker `auth gmail login`; se [Gmail](gmail.md#oppsett).
+Spond bruker `browser-bootstrap` i stedet for `browser-login`. Gmail bruker
+`auth gmail login`; se [Gmail](gmail.md#oppsett).
 
 Klientfilen må eies av din OS-bruker, være en vanlig fil og ha filmodus `0600`.
 Bruk en privat mappe med modus `0700`. Ikke legg filen i Git og ikke send den til
@@ -170,7 +175,6 @@ er en formatoversikt, ikke en fil med verdier som kan brukes til innlogging.
 | Vigilo (`vigilo`) | `authority`, `client_id`, `client_secret`, `redirect_uri`, `scope`, `api_root`, `app_version`, `attachment_hosts` |
 | Skolemelding (`skolemelding`) | `oidc_client_id`, `portal_client_id`, `app_version`, `issuer`, `redirect_uri`, `scopes`, `authorization_endpoint`, `oidc_token_endpoint`, `attachment_hosts`, `attachment_path_prefixes` |
 | Spond (`spond`) | `api_root`, `app_version`, `attachment_hosts` |
-| Hoopit (`hoopit`) | `api_root`, `firebase_api_key`, `firebase_project_id`, `app_version`, `attachment_hosts` |
 | IST Home (`ist-home`) | `authority`, `client_id`, `client_secret`, `redirect_uri`, `scope` |
 | Flyt (`flyt`) | `municipality` (kommunens navn slik det står i Flyts åpne kommuneliste, eller organisasjonsnummeret), eller én oppføring fra listen: `organizationNumber`, `customerName`, `displayName`, `vismaConnectClientContext` |
 | Gmail (`gmail`) | Google-filen for en egen OAuth-klient av typen Desktop app; se [Gmail](gmail.md#oppsett). |

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import base64
 import contextlib
 import io
 import json
@@ -17,18 +16,10 @@ from unittest.mock import patch
 from familiekilder import browser_bootstrap
 from familiekilder.browser_bootstrap import (
     BrowserBootstrapError,
-    HOOPIT_LOGIN_URL,
-    HOOPIT_ORIGIN,
     SPOND_LOGIN_URL,
     SPOND_ORIGIN,
-    bootstrap_hoopit,
     bootstrap_source,
     bootstrap_spond,
-)
-from familiekilder.hoopit_auth import (
-    API_ROOT as HOOPIT_API_ROOT,
-    FIREBASE_PROJECT_ID,
-    client_config_path as hoopit_client_config_path,
 )
 from familiekilder.private_state import atomic_write_private_json
 from familiekilder.spond_auth import (
@@ -39,27 +30,6 @@ from familiekilder.spond_auth import (
 
 SPOND_ACCESS = "spond-access-secret"
 SPOND_REFRESH = "spond-refresh-secret"
-HOOPIT_REFRESH = "hoopit-refresh-secret"
-FIREBASE_KEY = "AIza" + "x" * 36
-
-
-def _firebase_token(project_id: str = FIREBASE_PROJECT_ID) -> str:
-    header = base64.urlsafe_b64encode(b'{"alg":"RS256"}').rstrip(b"=").decode()
-    payload = (
-        base64.urlsafe_b64encode(
-            json.dumps(
-                {
-                    "aud": project_id,
-                    "iss": f"https://securetoken.google.com/{project_id}",
-                    "sub": "fixture-user",
-                },
-                separators=(",", ":"),
-            ).encode()
-        )
-        .rstrip(b"=")
-        .decode()
-    )
-    return f"{header}.{payload}.fixture-signature"
 
 
 class FakeCdp:
@@ -157,18 +127,6 @@ class BrowserBootstrapTests(unittest.TestCase):
         self.temporary = tempfile.TemporaryDirectory()
         self.addCleanup(self.temporary.cleanup)
         self.root = Path(self.temporary.name)
-
-    def _configure_hoopit(self) -> None:
-        atomic_write_private_json(
-            hoopit_client_config_path(self.root),
-            {
-                "api_root": HOOPIT_API_ROOT,
-                "firebase_api_key": FIREBASE_KEY,
-                "firebase_project_id": FIREBASE_PROJECT_ID,
-                "app_version": "Web test",
-                "attachment_hosts": [],
-            },
-        )
 
     def _configure_spond(self) -> None:
         atomic_write_private_json(
@@ -704,131 +662,6 @@ while True:
             )
 
         self.assertEqual([call[0] for call in cdp.calls], ["Target.getTargets"])
-        self._assert_bootstrap_empty()
-
-    def test_hoopit_bootstrap_reads_one_exact_provider_bound_record(self) -> None:
-        self._configure_hoopit()
-        id_token = _firebase_token()
-        record_key = f"firebase:authUser:{FIREBASE_KEY}:[DEFAULT]"
-        cdp = FakeCdp(
-            HOOPIT_ORIGIN,
-            indexed_entries=[
-                {
-                    "key": {"type": "string", "value": record_key},
-                    "primaryKey": {"type": "string", "value": record_key},
-                    "value": {"type": "object", "objectId": "record-object-1"},
-                }
-            ],
-            record_value={
-                "apiKey": FIREBASE_KEY,
-                "accessToken": id_token,
-                "refreshToken": HOOPIT_REFRESH,
-            },
-        )
-        holder: dict[str, Any] = {}
-
-        def factory(profile: Path, url: str, brave_path: Path | str | None) -> FakeBrowser:
-            self.assertEqual(url, HOOPIT_LOGIN_URL)
-            browser = FakeBrowser(cdp, profile)
-            holder["browser"] = browser
-            return browser
-
-        def importer(
-            root: Path,
-            session_file: Path,
-            *,
-            replace_existing: bool,
-        ) -> Mapping[str, Any]:
-            self.assertTrue(holder["browser"].closed)
-            self.assertFalse(replace_existing)
-            if os.name != "nt":
-                self.assertEqual(stat.S_IMODE(session_file.stat().st_mode), 0o600)
-            self.assertEqual(
-                json.loads(session_file.read_text(encoding="utf-8")),
-                {"id_token": id_token, "refresh_token": HOOPIT_REFRESH},
-            )
-            return {
-                "configured": True,
-                "authenticated": True,
-                "firebase_verified": True,
-                "expires_at": "2033-05-18T04:33:20+00:00",
-                "attachment_hosts": 0,
-                "id_token": id_token,
-            }
-
-        result = bootstrap_hoopit(
-            self.root,
-            wait_for_user=lambda prompt: None,
-            browser_factory=factory,
-            importer=importer,
-        )
-
-        self.assertEqual(
-            result,
-            {
-                "source": "hoopit",
-                "attachment_hosts": 0,
-                "authenticated": True,
-                "configured": True,
-                "expires_at": "2033-05-18T04:33:20+00:00",
-                "firebase_verified": True,
-            },
-        )
-        self.assertNotIn(id_token, repr(result))
-        request = next(call for call in cdp.calls if call[0] == "IndexedDB.requestData")
-        self.assertEqual(request[1]["securityOrigin"], HOOPIT_ORIGIN)
-        self.assertEqual(request[1]["databaseName"], "firebaseLocalStorageDb")
-        self.assertEqual(request[1]["objectStoreName"], "firebaseLocalStorage")
-        self.assertEqual(request[1]["pageSize"], 2)
-        self.assertEqual(request[1]["keyRange"]["lower"]["string"], record_key)
-        function_call = next(call for call in cdp.calls if call[0] == "Runtime.callFunctionOn")
-        declaration = function_call[1]["functionDeclaration"]
-        self.assertNotIn("Object.keys", declaration)
-        self.assertNotIn("cookie", declaration.lower())
-        self.assertNotIn("password", declaration.lower())
-        self._assert_bootstrap_empty()
-
-    def test_hoopit_duplicate_record_and_wrong_project_fail_closed(self) -> None:
-        self._configure_hoopit()
-        key = f"firebase:authUser:{FIREBASE_KEY}:[DEFAULT]"
-        entry = {
-            "key": {"value": key},
-            "primaryKey": {"value": key},
-            "value": {"objectId": "record"},
-        }
-        duplicate = FakeCdp(
-            HOOPIT_ORIGIN,
-            indexed_entries=[entry, entry],
-            record_value={},
-        )
-        with self.assertRaises(BrowserBootstrapError):
-            bootstrap_hoopit(
-                self.root,
-                wait_for_user=lambda prompt: None,
-                browser_factory=lambda profile, url, path: FakeBrowser(duplicate, profile),
-                importer=lambda *args, **kwargs: {},
-            )
-        self._assert_bootstrap_empty()
-
-        wrong_token = _firebase_token("wrong-project")
-        wrong_project = FakeCdp(
-            HOOPIT_ORIGIN,
-            indexed_entries=[entry],
-            record_value={
-                "apiKey": FIREBASE_KEY,
-                "accessToken": wrong_token,
-                "refreshToken": HOOPIT_REFRESH,
-            },
-        )
-        with self.assertRaises(BrowserBootstrapError) as raised:
-            bootstrap_hoopit(
-                self.root,
-                wait_for_user=lambda prompt: None,
-                browser_factory=lambda profile, url, path: FakeBrowser(wrong_project, profile),
-                importer=lambda *args, **kwargs: {},
-            )
-        self.assertNotIn(wrong_token, str(raised.exception))
-        self.assertNotIn(HOOPIT_REFRESH, repr(raised.exception))
         self._assert_bootstrap_empty()
 
     def test_import_failure_is_redacted_and_profile_is_removed(self) -> None:

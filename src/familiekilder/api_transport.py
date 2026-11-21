@@ -56,6 +56,23 @@ def api_call_completed():
 
 
 _HEADER_NAME = re.compile(r"[!#$%&'*+.^_`|~0-9A-Za-z-]+\Z")
+# Response headers a caller may ask for: an API's notices about the version it
+# answered with. Their values are short provider text, never credentials.
+VERSION_HEADERS = ("deprecated-version", "invalid-version")
+
+
+def _version_headers(headers: Any) -> dict[str, str]:
+    result: dict[str, str] = {}
+    if headers is None:
+        return result
+    for name in VERSION_HEADERS:
+        try:
+            value = headers.get(name)
+        except Exception:
+            value = None
+        if isinstance(value, str) and value:
+            result[name] = value[:128]
+    return result
 _BLOCKED_EXTRA_HEADERS = {
     "connection",
     "content-length",
@@ -81,10 +98,13 @@ class ApiHTTPError(ApiTransportError):
         status_code: int,
         error_code: str | None = None,
         retry_after_seconds: int | None = None,
+        headers: Mapping[str, str] | None = None,
     ) -> None:
         self.status_code = status_code
         self.error_code = error_code
         self.retry_after_seconds = retry_after_seconds
+        # Only VERSION_HEADERS; see _version_headers.
+        self.headers = dict(headers or {})
         suffix = f", {error_code}" if error_code else ""
         super().__init__(f"API-endepunktet avviste forespørselen (HTTP {status_code}{suffix})")
 
@@ -394,6 +414,7 @@ class ApiTransport:
                     int(response.status),
                     self._error_code(raw),
                     retry_after,
+                    _version_headers(response.headers),
                 )
             return _PinnedResponse(response, connection)
         request_headers = {
@@ -422,6 +443,7 @@ class ApiTransport:
                 int(exc.code),
                 self._error_code(raw),
                 retry_after,
+                _version_headers(exc.headers),
             ) from None
         except (OSError, TimeoutError, urllib.error.URLError) as exc:
             if definitely_not_sent(exc):
@@ -436,8 +458,11 @@ class ApiTransport:
         method: str,
         headers: Mapping[str, str] | None,
         allow_empty: bool = False,
+        response_headers: dict[str, str] | None = None,
     ) -> Any:
         response = self._open(url, data=data, method=method, headers=headers)
+        if response_headers is not None:
+            response_headers.update(_version_headers(getattr(response, "headers", None)))
         try:
             raw = response.read(self.max_json_bytes + 1)
         except (OSError, TimeoutError, http.client.HTTPException):
@@ -480,12 +505,15 @@ class ApiTransport:
         *,
         bearer_token: str | None = None,
         headers: Mapping[str, str] | None = None,
+        response_headers: dict[str, str] | None = None,
     ) -> Any:
+        """``response_headers``, when given, receives the VERSION_HEADERS present."""
         return self._request_json(
             url,
             data=None,
             method="GET",
             headers=self._auth_headers(bearer_token, headers),
+            response_headers=response_headers,
         )
 
     def delete_json(
@@ -583,6 +611,7 @@ class ApiTransport:
         *,
         bearer_token: str | None = None,
         headers: Mapping[str, str] | None = None,
+        response_headers: dict[str, str] | None = None,
     ) -> Any:
         if not isinstance(payload, Mapping):
             raise ApiTransportError("JSON-forespørselen må være et objekt")
@@ -592,7 +621,13 @@ class ApiTransport:
             raise ApiTransportError("JSON-forespørselen kunne ikke serialiseres") from None
         request_headers = self._auth_headers(bearer_token, headers)
         request_headers["Content-Type"] = "application/json"
-        return self._request_json(url, data=data, method="PATCH", headers=request_headers)
+        return self._request_json(
+            url,
+            data=data,
+            method="PATCH",
+            headers=request_headers,
+            response_headers=response_headers,
+        )
 
     def post_form(
         self,

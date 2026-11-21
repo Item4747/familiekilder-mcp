@@ -53,14 +53,12 @@ _PROFILE_FILES = {
     "vigilo": "vigilo-client.json",
     "skolemelding": "skolemelding-client.json",
     "spond": "spond-provider.json",
-    "hoopit": "hoopit-client.json",
     "ist-home": "ist-home-client.json",
 }
 _SESSION_FILES = {
     "vigilo": "vigilo-session.json",
     "skolemelding": "skolemelding-session.json",
     "spond": "spond-session.json",
-    "hoopit": "hoopit-session.json",
     "ist-home": "ist-home-session.json",
 }
 _TRANSACTION_TARGET_IDS = (*_PROFILE_FILES, "provider-state")
@@ -774,11 +772,6 @@ def provision_provider_bundle(
                 "source": "spond",
                 "action": "isolated-browser-bootstrap",
                 "command": f"{command} auth spond browser-bootstrap",
-            },
-            {
-                "source": "hoopit",
-                "action": "isolated-browser-bootstrap",
-                "command": f"{command} auth hoopit browser-bootstrap",
             },
             {
                 "source": "ist-home",

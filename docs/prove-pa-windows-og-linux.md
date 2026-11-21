@@ -8,7 +8,7 @@ serveren er prøvd maskinelt på alle tre systemene, men ingen har ennå logget
 inn hos en ekte tjeneste på Windows eller Linux. Se [hva som er
 prøvd](#hva-som-er-prøvd).
 
-Begynn gjerne med én tjeneste, for eksempel Spond eller Hoopit. Si fra under
+Begynn gjerne med én tjeneste, for eksempel Spond. Si fra under
 **Issues** på reposiden både når det virker og når det ikke gjør det.
 
 ## Hva du trenger
@@ -70,8 +70,10 @@ Dette er de samme kommandoene som i [Kom i gang](kom-i-gang.md#last-ned-og-insta
    på «Forhåndssjekk», eller kjør den fra en ny terminal; se
    [under](#forhåndssjekken). Første linje skal være `Resultat: OK`.
 4. **Logg inn.** Velg «Logg inn» på én tjeneste. Et eget nettleservindu
-   åpnes med en tom, midlertidig profil. Logg inn der. For Spond og Hoopit
-   trykker du «Jeg er logget inn» i veiviseren når tjenesten er ferdig lastet.
+   åpnes med en tom, midlertidig profil. Logg inn der. For Spond trykker du
+   «Jeg er logget inn» i veiviseren når tjenesten er ferdig lastet. Hoopit
+   trenger ikke nettleservinduet: du limer inn et token, se
+   [Hoopit](hoopit-ingestion.md).
    Veiviseren skal vise at innloggingen er lagret.
 5. **AI-assistenten.** Velg Claude Desktop eller ChatGPT / Codex i steg 2.
 6. **Prøv forbindelsen** i steg 3. Den skal si at den lokale forbindelsen
@@ -133,7 +135,7 @@ først, så tjenesten har oppsett. Kjør bare linjen for tjenesten du prøver.
 
 ```powershell
 .\.private\venv\Scripts\familiekilder-mcp.exe auth spond browser-bootstrap
-.\.private\venv\Scripts\familiekilder-mcp.exe auth hoopit browser-bootstrap
+.\.private\venv\Scripts\familiekilder-mcp.exe auth hoopit token
 .\.private\venv\Scripts\familiekilder-mcp.exe auth vigilo browser-login
 ```
 
@@ -141,7 +143,7 @@ først, så tjenesten har oppsett. Kjør bare linjen for tjenesten du prøver.
 
 ```sh
 .private/venv/bin/familiekilder-mcp auth spond browser-bootstrap
-.private/venv/bin/familiekilder-mcp auth hoopit browser-bootstrap
+.private/venv/bin/familiekilder-mcp auth hoopit token
 .private/venv/bin/familiekilder-mcp auth vigilo browser-login
 ```
 
@@ -161,7 +163,7 @@ oppdiktede data og lokale sider og kontakter ingen tjeneste.
 | Serveren slik AI-appen starter den | Kommandoen fra klientkonfigurasjonen, uten UTF-8-modus, mot en oppdiktet Spond med æøå, «», tankestrek, emoji og vedlegg. Svarene er gyldig UTF-8. På Windows også med tegnsett 850 og 1252 (`scripts/stdio_trial.py`). |
 | Utskrift i eldre konsoller | Alle kommandoer med tegnsett 850 og 1252 (`tests/test_console.py`). |
 | Nettleserne | Brave, Chrome og Edge starter i en midlertidig profil og svarer over DevTools (`scripts/browser_smoke.py`). |
-| Innloggingsløpet | Med ekte nettleser og en oppdiktet innloggingsside på 127.0.0.1: tilbakekallet fanges, koden byttes hos en lokal, oppdiktet tokentjeneste, økten lagres privat og leses første gang. Spond- og Hoopit-økter leses fra en side i nettleseren (`scripts/login_trial.py`). Hvor prøven skiller seg fra en ekte innlogging, står øverst i skriptet. |
+| Innloggingsløpet | Med ekte nettleser og en oppdiktet innloggingsside på 127.0.0.1: tilbakekallet fanges, koden byttes hos en lokal, oppdiktet tokentjeneste, økten lagres privat og leses første gang. Spond-økter leses fra en side i nettleseren (`scripts/login_trial.py`). Hvor prøven skiller seg fra en ekte innlogging, står øverst i skriptet. |
 | Nettlesere installert per bruker (Windows) | Brave og Chrome under `AppData` hoppes over, Edge brukes, og forhåndssjekken forklarer hvorfor. |
 | Passordlagring | Et oppdiktet passord lagres, leses og slettes i Legitimasjonsbehandling (Windows) og GNOME Keyring (Linux). Uten nøkkelring sier programmet fra, og innloggingen virker uten lagret passord (`scripts/password_trial.py`). |
 | Ekte innlogging hos tjenestene | Bare på Mac med Brave. |

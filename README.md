@@ -40,14 +40,15 @@ lager programmet. Vi har ingen server, og programmet sender oss ingenting.
   med skrivebord. Windows og Linux er nytt; se under.
 - **Innlogginger.** Du logger alltid inn på datamaskinen. På Fly.io flytter du
   innloggingene til serveren din etterpå.
-- **Prøveordning.** Oppsettet på Fly.io er nytt. Spond og Hoopit er prøvd
-  der. Tjenestene med BankID-innlogging og Gmail er ikke prøvd ennå.
+- **Prøveordning.** Oppsettet på Fly.io er nytt. Spond er prøvd der. Hoopit,
+  tjenestene med BankID-innlogging og Gmail er ikke prøvd der ennå.
 - **ChatGPT.** I nettleseren og på mobilen trenger du et abonnement som
   tillater egne MCP-servere. Det er prøvd med Pro.
 
 Uansett hvor serveren kjører, kan den bare lese. Det assistenten leser, sendes
-til AI-leverandøren du bruker. Gmail bruker Googles offisielle API. De øvrige
-koblingene er uoffisielle.
+til AI-leverandøren du bruker. Gmail og Hoopit bruker tjenestens offisielle API.
+Hoopit kobles til med et personlig tilgangstoken du lager selv; se
+[Hoopit](docs/hoopit-ingestion.md). De øvrige koblingene er uoffisielle.
 
 ## Kom i gang på datamaskinen
 
@@ -149,10 +150,11 @@ flere. Del dine egne under **Discussions** på reposiden, i kategorien
 
 ## Leter du etter et Spond API eller Vigilo API?
 
-Så vidt vi vet, har verken Spond, Vigilo, Hoopit, Skolemelding, IST Home eller
-Flyt et åpent API for foreldre. Søker du etter Spond API, Vigilo API, Hoopit
-API, Skolemelding API, IST Home API eller Flyt API, er dette en uoffisiell
-kobling i stedet. Den logger inn med din egen konto og leser beskjeder,
+Så vidt vi vet, har verken Spond, Vigilo, Skolemelding, IST Home eller Flyt et
+åpent API for foreldre. Søker du etter Spond API, Vigilo API, Skolemelding API,
+IST Home API eller Flyt API, er dette en uoffisiell kobling i stedet.
+Hoopit har et [offisielt API](https://api.hoopit.io/external/docs/) med
+personlige tilgangstokener, og det er det denne koblingen bruker for Hoopit. Den logger inn med din egen konto og leser beskjeder,
 aktiviteter og vedlegg du selv har tilgang til. Den kan ikke sende, svare eller
 melde på.
 

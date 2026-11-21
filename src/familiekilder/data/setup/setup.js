@@ -177,10 +177,33 @@ function openLogin(source) {
   byId('login-dialog').showModal();
 }
 
+// A source connected with a personal access token the user pastes (Hoopit).
+// The job id of the token check this dialog started; its result is shown here.
+let tokenJob = null;
+
+function tokenMessage(text, isError) {
+  byId('token-error').textContent = text;
+  byId('token-error').hidden = !text;
+  byId('token-error').classList.toggle('field-error', isError);
+}
+
+function openToken(source) {
+  selectedSource = source;
+  tokenJob = null;
+  byId('token-submit').disabled = false;
+  byId('token-title').textContent = `Koble til ${source.label}`;
+  tokenMessage(source.state === 'connected' ? '' : source.detail || '', true);
+  byId('token').value = '';
+  byId('token-replace-label').hidden = !source.has_session;
+  byId('token-replace').checked = false;
+  byId('token-dialog').showModal();
+  byId('token').focus();
+}
+
 function serviceAction(source) {
   if (source.state === 'connected' && source.enabled) {
     return {
-      status: 'Innlogging lagret',
+      status: source.setup === 'token' ? 'Token lagret' : 'Innlogging lagret',
       label: 'Slå av',
       action: () => perform('/api/service', { source: source.id, enabled: false }),
     };
@@ -190,6 +213,13 @@ function serviceAction(source) {
       status: 'Klar til å aktiveres',
       label: 'Bruk tjenesten',
       action: () => perform('/api/service', { source: source.id, enabled: true }),
+    };
+  }
+  if (source.setup === 'token' && source.state !== 'connected') {
+    return {
+      status: source.has_session ? 'Tokenet må fornyes' : 'Ikke koblet til',
+      label: 'Koble til med token',
+      action: () => openToken(source),
     };
   }
   if (source.state === 'moved') {
@@ -238,6 +268,12 @@ function renderServices(state) {
     description.className = 'service-description';
     description.textContent = source.description;
     info.append(heading, description);
+    if (source.detail) {
+      const detail = document.createElement('p');
+      detail.className = 'service-description';
+      detail.textContent = source.detail;
+      info.append(detail);
+    }
     if (source.setup === 'file') {
       const help = document.createElement('a');
       help.className = 'service-help';
@@ -260,7 +296,11 @@ function renderServices(state) {
       action.disabled = busy;
       controls.append(action);
     }
-    if (source.has_session && choice.label !== 'Logg inn') {
+    if (source.has_session && source.setup === 'token' && source.state === 'connected') {
+      const again = button('Bytt token', 'text-button', () => openToken(source));
+      again.disabled = busy;
+      controls.append(again);
+    } else if (source.has_session && choice.label !== 'Logg inn' && source.setup !== 'token') {
       const again = button('Logg inn på nytt', 'text-button', () => openLogin(source));
       again.disabled = busy;
       controls.append(again);
@@ -280,8 +320,28 @@ function renderServices(state) {
   });
 }
 
+// While the dialog's check runs, show its progress and outcome in the dialog.
+function renderTokenJob(state) {
+  const job = state.job;
+  if (!tokenJob || !job || job.id !== tokenJob || !byId('token-dialog').open) return;
+  if (job.phase === 'working') {
+    tokenMessage(job.message, false);
+    return;
+  }
+  tokenJob = null;
+  byId('token-submit').disabled = false;
+  if (job.phase === 'done') {
+    byId('token-dialog').close();
+    showInfo(job.message);
+  } else {
+    tokenMessage(job.message, true);
+    byId('token').focus();
+  }
+}
+
 function render(state) {
   currentState = state;
+  renderTokenJob(state);
   busy = !!state.job && ['working', 'waiting'].includes(state.job.phase);
   byId('version').textContent = `familiekilder-mcp ${state.version}`;
   renderServices(state);
@@ -503,6 +563,37 @@ byId('login-form').addEventListener('submit', async (event) => {
   }
   byId('login-dialog').close();
   await perform('/api/start', request);
+});
+byId('dismiss-token').addEventListener('click', () => byId('token-dialog').close());
+byId('token-form').addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const token = byId('token').value.trim();
+  if (!token) {
+    tokenMessage('Lim inn tokenet fra Hoopit.', true);
+    return;
+  }
+  if (selectedSource.has_session && !byId('token-replace').checked) {
+    tokenMessage('Kryss av for at tokenet som er lagret, kan erstattes.', true);
+    return;
+  }
+  const request = {
+    source: selectedSource.id,
+    token,
+    replace: byId('token-replace').checked,
+  };
+  // The field is cleared before sending, so the token is not left in the page.
+  byId('token').value = '';
+  byId('token-submit').disabled = true;
+  tokenMessage('Kontrollerer tokenet hos Hoopit …', false);
+  try {
+    await api('/api/token', request);
+    const state = await api('/api/state');
+    tokenJob = state.job && state.job.id;
+    render(state);
+  } catch (exception) {
+    byId('token-submit').disabled = false;
+    tokenMessage(exception.message, true);
+  }
 });
 byId('continue-job').addEventListener('click', () =>
   perform('/api/job', { id: currentState.job.id, action: 'continue' }),

@@ -221,6 +221,52 @@
         </div>
       </form>
     </dialog>
+    <dialog id="token-dialog" aria-labelledby="token-title">
+      <form id="token-form">
+        <h2 id="token-title">Koble til med token</h2>
+        <p>Tjenesten kobles til med et personlig tilgangstoken som du lager selv.</p>
+        <a
+          id="token-page"
+          class="secondary token-page"
+          href="https://id.hoopit.io/security/access-tokens/"
+          target="_blank"
+          rel="noreferrer"
+          >Åpne tokensiden hos Hoopit</a
+        >
+        <ol class="token-steps">
+          <li>Logg inn hos Hoopit på siden som åpnes.</li>
+          <li>Skriv «familiekilder» i «Navn».</li>
+          <li>
+            Under «Dine» krysser du av for «Se aktivitetene og invitasjonene dine, og barnas»,
+            «Svare på invitasjoner for deg selv og barna dine» og «Se innlegg og kommentarer i
+            gruppene dine». Boksene under «Som administrator» trengs ikke.
+          </li>
+          <li>
+            Velg hvor lenge tokenet skal virke i «Utløper om». Når det har utløpt, lager du et nytt.
+          </li>
+          <li>Trykk «Opprett et token», og kopier tokenet. Det vises bare én gang.</li>
+          <li>Lim det inn her.</li>
+        </ol>
+        <div class="field">
+          <label for="token">Token</label>
+          <input
+            id="token"
+            type="password"
+            autocomplete="off"
+            spellcheck="false"
+            aria-describedby="token-error"
+          />
+        </div>
+        <p id="token-error" class="field-error" role="status" aria-live="polite" hidden></p>
+        <label id="token-replace-label" class="checkbox" hidden
+          ><input id="token-replace" type="checkbox" />Erstatt tokenet som er lagret.</label
+        >
+        <div class="actions">
+          <button type="button" id="dismiss-token" class="secondary">Tilbake</button
+          ><button type="submit" id="token-submit" class="primary">Kontroller og lagre</button>
+        </div>
+      </form>
+    </dialog>
     <input id="client-file" type="file" accept=".json,application/json" hidden />
   </body>
 </html>

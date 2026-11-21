@@ -4,6 +4,7 @@ import hashlib
 import json
 import math
 import os
+import re
 import time
 from datetime import UTC, datetime
 
@@ -51,6 +52,11 @@ def account_scope(root, source):
     except PrivateStateError:
         # Broken login disables reuse without stopping other sources/diagnostics.
         return None
+    carried = session.get('account_scope') if isinstance(session, dict) else None
+    if isinstance(carried, str) and re.fullmatch(r'[0-9a-f]{64}', carried):
+        # A token session (Hoopit) stores its own scope: the API does not say
+        # whose token it is, so the binding lasts from connection to logout.
+        return carried
     identity = {key: session[key] for key in (
         'subject', 'person_id', 'tenant_id', 'profile_id', 'userName',
         'device_unique_id', 'session_binding', 'client_id', 'client_fingerprint',

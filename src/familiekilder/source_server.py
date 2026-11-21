@@ -1368,6 +1368,8 @@ def register_source_reads(server, runtime, source):
             fn = accept_extra_arguments(fn, extra() if extra is not None else [])
         if source == "gmail" and name == "list_items":
             continue
+        if name == "read_attachment" and source in REGISTRY and not REGISTRY[source].attachments:
+            continue
         server.add_tool(
             safe_tool(fn), name=prefix + "_" + name,
             description=description, annotations=READ,

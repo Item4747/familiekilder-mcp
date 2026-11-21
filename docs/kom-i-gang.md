@@ -166,14 +166,29 @@ installerer pakken først. `scripts/setup` virker også på macOS og Linux.
 Veiviseren åpnes på `127.0.0.1` med en ledig port og er bare tilgjengelig på
 denne maskinen.
 
-1. Velg «Logg inn» på tjenestene du bruker. Vigilo, Skolemelding, Spond,
-   Hoopit og IST Home har innebygd oppsett, så du trenger ingen fil. Flyt spør
-   om kommune. Gmail trenger din egen Google-klient; velg den med «Velg
+1. Velg «Logg inn» på tjenestene du bruker. Vigilo, Skolemelding, Spond og
+   IST Home har innebygd oppsett, så du trenger ingen fil. Hoopit kobles til
+   med et token du lager selv; se punkt 2. Flyt spør om kommune. Gmail trenger din egen Google-klient; velg den med «Velg
    Google-fil». Valgte du feil kommune eller fil, kan du velge på nytt så lenge
    du ikke har logget inn: kommunen i innloggingsdialogen, Google-filen med
    «Velg en annen Google-fil». Se [klientoppsett](klientoppsett.md).
-2. Logg inn i det separate nettleservinduet. BankID gjør du selv. For Spond og
-   Hoopit trykker du «Jeg er logget inn» når tjenesten er ferdig lastet.
+2. Logg inn i det separate nettleservinduet. BankID gjør du selv. For Spond
+   trykker du «Jeg er logget inn» når tjenesten er ferdig lastet. For Hoopit
+   velger du «Koble til med token»:
+   1. Åpne [tokensiden hos Hoopit](https://id.hoopit.io/security/access-tokens/)
+      og logg inn.
+   2. Skriv «familiekilder» i «Navn».
+   3. Under «Dine» krysser du av for «Se aktivitetene og invitasjonene dine, og
+      barnas», «Svare på invitasjoner for deg selv og barna dine» og «Se innlegg
+      og kommentarer i gruppene dine». Boksene under «Som administrator» trengs
+      ikke.
+   4. Velg hvor lenge tokenet skal virke i «Utløper om». Når det har utløpt,
+      lager du et nytt.
+   5. Trykk «Opprett et token», og kopier tokenet. Det vises bare én gang.
+   6. Lim det inn i veiviseren og velg «Kontroller og lagre».
+
+   Veiviseren kontrollerer tokenet hos Hoopit og sier fra om det er utløpt
+   eller mangler en tilgang. Se [Hoopit](hoopit-ingestion.md).
 3. Velg Claude Desktop eller lokal ChatGPT / Codex. Veiviseren endrer bare
    oppføringen for familiekilder-mcp og beholder øvrige klientinnstillinger.
 4. Test MCP-forbindelsen og start AI-klienten på nytt. Testen henter ingen
@@ -212,10 +227,15 @@ Logg derfor inn første gang i veiviseren, eller importer en fil. Deretter:
 
 ```sh
 familiekilder-mcp auth vigilo browser-login        # Vigilo, Skolemelding, IST Home, Flyt
-familiekilder-mcp auth spond browser-bootstrap     # Spond, Hoopit
+familiekilder-mcp auth spond browser-bootstrap     # Spond
+familiekilder-mcp auth hoopit token                # Hoopit: lim inn tokenet, det vises ikke
 familiekilder-mcp auth spond import-session --session-file /sti/til/.private/spond-økt.json
 familiekilder-mcp auth gmail login                 # se docs/gmail.md
 ```
+
+Hoopit trenger ingen klientkonfigurasjon. Tokenet lager du selv, som beskrevet
+i [Hoopit](hoopit-ingestion.md); det kan også sendes på stdin
+(`auth hoopit token --stdin < fil`), men aldri som et argument.
 
 En øktfil til `import-session` må ligge i en mappe som heter `.private` og
 bare er tilgjengelig for deg. Innlogging i nettleser åpner en isolert,
@@ -264,7 +284,7 @@ Se [klientoppsett](klientoppsett.md) for hva hver kobling trenger og hvilke
 oppsettsveier som finnes. Bruk gjerne `familiekilder-mcp --version` når du ber
 om hjelp.
 
-Vigilo, Skolemelding, Spond, Hoopit og IST Home har innebygd appidentitet, som
+Vigilo, Skolemelding, Spond og IST Home har innebygd appidentitet, som
 veiviseren legger inn når tjenesten mangler oppsett. Appidentiteten er lik for
 alle brukere av leverandørens offisielle app og gir ikke tilgang til noen
 konto. Flyt spør om kommune, og Gmail bruker din egen Google OAuth-klient av
@@ -279,8 +299,8 @@ familiekilder-mcp auth <tjeneste> configure --client-file FIL
 
 Filen er privat JSON (filmodus 0600, i en privat mappe) og skal aldri ligge i
 Git. Feltene kontrolleres av `configure_client` i tjenestens auth-modul
-(`vigilo_auth.py`, `skolemelding_auth.py`, `spond_auth.py`, `hoopit_auth.py`
-og `ist_oauth.py`).
+(`vigilo_auth.py`, `skolemelding_auth.py`, `spond_auth.py` og `ist_oauth.py`).
+Hoopit har ikke klientoppsett; den bruker et personlig tilgangstoken.
 For IST Home kan `familiekilder-mcp ist-auth export-mac-client --output FIL` hente
 klientkonfigurasjonen fra IST Home-appen på en Mac.
 
@@ -338,7 +358,7 @@ gjøre at en kobling slutter å virke.
 | [Profiler og passord](personal-profiles.md) | Datarot, profiler og nøkkelring |
 | [Gmail](gmail.md) | Søk, tempo og oppsett av egen OAuth-klient |
 | [Mellomlagring](read-cache.md) | Cache, ferskhet og trafikkbudsjett |
-| [Hoopit](hoopit-ingestion.md) | Oppslag og sideinndeling |
+| [Hoopit](hoopit-ingestion.md) | Token, kall, versjoner og grenser |
 | [Flyt](flyt.md) | Kommunevalg, innlogging, ruter og grenser |
 | [Trinnvis PDF-lesing](pdf-window-reading.md) | Vinduer, grenser og binding |
 | [Legge til en ny tjeneste](adding-a-service.md) | Filer, kontrakter, registrering og tester |

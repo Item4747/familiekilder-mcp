@@ -3,10 +3,10 @@
 Dette er en prøveordning utenfor løftet for 1.0. Lokal bruk på datamaskinen
 over stdio er fortsatt standard. Funksjonen er med fra 1.0.0rc3. En første ekte prøve på
 Fly.io 17. og 18. november 2026 bekreftet utrulling, stopp og start ved kall,
-flytting av innloggingene for Spond og Hoopit, lesing på verten og tilkobling
+flytting av innloggingen for Spond, lesing på verten og tilkobling
 fra Claude og ChatGPT på nett og mobil og fra Codex CLI, en planlagt
-skykjøring og Word-vedlegg. Kildene med BankID-innlogging, Gmail med gyldig
-innlogging og drift over tid er ennå ikke prøvd på ekte vert. Se
+skykjøring og Word-vedlegg. Kildene med BankID-innlogging, Hoopit, Gmail med
+gyldig innlogging og drift over tid er ennå ikke prøvd på ekte vert. Se
 [Prøvd på ekte vert](#prøvd-på-ekte-vert).
 
 Verten kjører samme lesende MCP-server i en Linux-container. Den henter bare
@@ -100,6 +100,20 @@ Eierkoden leses skjult fra terminalen, eller fra én linje på stdin ved
 agentkjøring. Den skal aldri stå i argumentene. `--source KILDE` begrenser
 flyttingen og kan gjentas. Uten dette flyttes påslåtte kilder som har en økt.
 Skriverettigheter følger ikke med; verten tilbyr bare lesing.
+
+### Hoopit på verten
+
+Hoopit kobles til med et personlig tilgangstoken; se [Hoopit](hoopit-ingestion.md).
+Koble til på datamaskinen og flytt tokenet som de andre innloggingene:
+
+```sh
+familiekilder-mcp auth hoopit token
+familiekilder-mcp remote move https://DITT-UNIKE-APPNAVN.fly.dev --source hoopit
+```
+
+Tokenet flyttes kryptert, som de andre innloggingene, og slettes på
+datamaskinen etterpå. Når tokenet utløper eller trekkes tilbake, sier
+`family_connections` på verten det; lag et nytt token og gjør det samme.
 
 ## Codex CLI
 
@@ -201,15 +215,13 @@ Dette virket:
   og svarte etter omtrent 2,4 sekunder. MCP-kallet lyktes uten feil i klienten.
   Etter rettingen samme dag logger et stopp
   «Main child exited normally with code: 0» og ingen traceback.
-- **Flytting.** `remote move ADRESSE --source spond` og deretter
-  `--source hoopit`, med eierkoden på én linje på stdin. Begge ble meldt som
-  flyttet. På Macen viste `connections` deretter statusen `moved_to_host` for
-  begge, og de lokale øktfilene var borte.
+- **Flytting.** `remote move ADRESSE --source spond`, med eierkoden på én linje
+  på stdin. Den ble meldt som flyttet. På Macen viste `connections` deretter
+  statusen `moved_to_host`, og den lokale øktfilen var borte.
 - **Lesing på verten.** `spond_list_items` ga ekte oppføringer.
   Access-tokenet for Spond hadde vært utløpt siden 31. oktober, og verten
   fornyet det ved første lesing. Det første kallet tok derfor omtrent 20
-  sekunder. `hoopit_list_items` og `spond_list_chats` virket også. Tokenet for
-  Hoopit hadde vært utløpt siden 30. oktober og ble også fornyet på verten.
+  sekunder. `spond_list_chats` virket også.
 - **OAuth med ekte klienter.** MCP Python SDK-klienten gikk gjennom
   registrering, PKCE og godkjenningssiden med eierkode. Tokenene ble gjenbrukt
   i senere kjøringer, etter omstart av maskinen og etter ny utrulling.
@@ -245,8 +257,7 @@ Dette virket:
 - **Planlagt skykjøring.** En planlagt oppgave («routine») i Claude Code på
   nett, med bare denne koblingen, ble satt til å kjøre én gang noen minutter
   frem i tid. Den startet i Anthropics sky til avtalt tid, kalte
-  `family_connections`, `spond_list_items`, `hoopit_list_items` og
-  `gmail_search`, og skrev en oppsummering. Kjøringen tok 35 sekunder og
+  `family_connections`, `spond_list_items` og `gmail_search`, og skrev en oppsummering. Kjøringen tok 35 sekunder og
   brukte ikke Macen. Macen var likevel på, så en kjøring med Macen avslått er
   ikke prøvd bokstavelig.
 - **Planlagt oppgave i ChatGPT.** I en samtale med koblingen valgt ble ChatGPT
@@ -266,7 +277,7 @@ Dette virket:
   derfor vekselminne.
 - **Fornyelse av OAuth-token.** Etter én time var klientens access-token
   utløpt. MCP SDK-klienten fornyet det med refresh-tokenet, og lesingen
-  virket videre. Verten fornyet da Hoopit-økten en gang til.
+  virket videre.
 - **Tilbakekalling.** `remote clients` og `remote revoke --client ID` virket
   gjennom `flyctl ssh console --app APP -C '...'` som beskrevet under
   [Feilsøking og tilbakekalling](#feilsøking-og-tilbakekalling).
@@ -279,15 +290,15 @@ Dette er ennå ikke prøvd:
 - Claude og ChatGPT på Android.
 - Planlagte oppgaver i Claude Cowork.
 - Kilder som logger inn med BankID (Vigilo, Skolemelding, IST Home og Flyt)
-  på verten, og Gmail med en gyldig innlogging. Bare Spond og Hoopit leses
-  der nå.
+  på verten, og Gmail med en gyldig innlogging. Bare Spond leses der nå.
+- Hoopit med personlig tilgangstoken på verten.
 - Ekte Word-vedlegg fra en kilde.
 - Fornyelse over dager og uker, og hva verten faktisk koster per måned.
 
 ## Når en innlogging må fornyes
 
 Logg inn på nytt i veiviseren på datamaskinen, og kjør `remote move ADRESSE`
-igjen.
+igjen. For Hoopit lager du et nytt token og kobler til med det først.
 Det erstatter de flyttede øktene på verten. Et lokalt flyttemerke fjernes først
 ved vellykket ny innlogging. `family_connections` og veiviseren viser at den
 forrige økten er flyttet, også etter avbrudd før lokal sletting.

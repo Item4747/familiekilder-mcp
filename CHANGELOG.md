@@ -2,6 +2,21 @@
 
 ## Ikke utgitt
 
+- Hoopit kobles nå til med et personlig tilgangstoken og leses gjennom Hoopits
+  offisielle API, i stedet for å bruke Hoopit-appens innlogging. Lag tokenet på
+  https://id.hoopit.io/security/access-tokens/ med de tre boksene under «Dine»
+  avkrysset, og lim det inn i veiviseren eller med
+  `familiekilder-mcp auth hoopit token`. Tokenet kontrolleres hos Hoopit før det
+  lagres, og statusen sier fra når det er utløpt, trukket tilbake eller mangler
+  en tilgang. Hoopit-appens innlogging brukes ikke. API-et har ikke chatter, vedlegg,
+  varsler, kontaktgrupper eller skriving av kommentarer, så verktøyene for dette
+  er fjernet for Hoopit (`hoopit_list_chats`, `hoopit_get_chat`,
+  `hoopit_search_chat`, `hoopit_chat_replies`, `hoopit_chat_groups`,
+  `hoopit_chat_recipients`, `hoopit_reply_message`, `hoopit_reply_chat`,
+  `hoopit_send_message` og `hoopit_read_attachment`).
+  `hoopit_thread_context` tar nå `post_id`. Hoopits innebygde appoppsett er
+  fjernet fra pakken. Se [Hoopit](docs/hoopit-ingestion.md).
+
 - Den offentlige kontrollen (`Kontroller pakken`) kjører nå på Linux og
   Windows ved hver push og pull request. macOS kjøres når workflowen startes
   for hånd, fordi GitHub ofte ikke har ledige macOS-maskiner. Testene leser

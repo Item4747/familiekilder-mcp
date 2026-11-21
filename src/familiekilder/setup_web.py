@@ -135,6 +135,9 @@ class Handler(BaseHTTPRequestHandler):
                 service.start(value.get("action"), value.get("source", ""),
                               consent=value.get("consent") is True, replace=value.get("replace") is True,
                               municipality=value.get("municipality"))
+            elif path == "/api/token":
+                service.connect_token(value.get("source", ""), value.get("token"),
+                                      replace=value.get("replace") is True)
             elif path == "/api/job":
                 if value.get("action") not in {"continue", "cancel"}:
                     raise SetupError("Ukjent oppsettshandling.")

@@ -21,8 +21,6 @@ VERSION = 1
 MAX_PAGES = 100
 LIMITATIONS = {
     'spond': ['Sponds tidsmarkør kan overse chatter med likt sidetidspunkt.'],
-    'hoopit': ['Hoopit-søk dekker indekserte vanlige meldinger og svar; ikke system-/slettede meldinger.',
-               'Offsetpaginering og samtidige kildeendringer kan begrense dekningen.'],
 }
 
 
@@ -52,8 +50,6 @@ def discover(runtime, source, since, until, *, observe=None):
 
 def _discover(runtime, source, since, until, observe):
     from .live_spond_chat import list_chats, get_chat
-    from .live_hoopit_chat import read as channels, SearchCursorRejected
-    from .live_hoopit_history import discovery_page
 
     scope = account_scope(runtime.config.root, source)
     with runtime.ledger() as ledger:
@@ -65,7 +61,7 @@ def _discover(runtime, source, since, until, observe):
                 and old.get('account_scope') == scope and not old.get('traversed'))
     state = old if reusable else {
         'version': VERSION, 'account_scope': scope, 'since': since, 'until': until,
-        'list_cursor': None if source == 'spond' else 0, 'list_done': False,
+        'list_cursor': None, 'list_done': False,
         'pending_chats': [], 'seen_chats': [], 'seen_lists': [],
         'message_cursor': None, 'seen_messages': [], 'seen_message_pages': [], 'traversed': False,
     }
@@ -96,18 +92,17 @@ def _discover(runtime, source, since, until, observe):
                         updated['traversed'] = True
                         commit(updated)
                         break
-                    page = (list_chats(runtime, state['list_cursor']) if source == 'spond'
-                            else channels(runtime, state['list_cursor']))
+                    page = list_chats(runtime, state['list_cursor'])
                     chats = []
                     for chat in page['chats']:
-                        ident = _identifier(chat['reference']['id' if source == 'spond' else 'cid'])
+                        ident = _identifier(chat['reference']['id'])
                         if ident in updated['seen_chats']:
                             raise SourceUnavailable('Chatlisten gjentok en referanse')
                         updated['seen_chats'].append(ident)
-                        if source != 'spond' or _instant(chat['newest_at']) >= lower:
+                        if _instant(chat['newest_at']) >= lower:
                             chats.append(ident)
-                    done = page['complete' if source == 'spond' else 'chat_list_complete']
-                    following = page['next_before' if source == 'spond' else 'next_offset']
+                    done = page['complete']
+                    following = page['next_before']
                     if not done:
                         marker = fingerprint(following)
                         if following is None or following == state['list_cursor'] or marker in state['seen_lists']:
@@ -118,29 +113,23 @@ def _discover(runtime, source, since, until, observe):
                     commit(updated)
                 else:
                     ident = state['pending_chats'][0]
-                    page = (get_chat(runtime, ident, state['message_cursor']) if source == 'spond'
-                            else discovery_page(runtime, ident, state['since'], state['until'], state['message_cursor']))
+                    page = get_chat(runtime, ident, state['message_cursor'])
                     page_items, stamps = [], []
                     for message in page['messages']:
-                        if source == 'spond':
-                            key = message['source_id']
-                            stamp = _instant(message['timestamp'])
-                            stamps.append(stamp)
-                            eligible = lower <= stamp < upper
-                            item = message
-                        else:
-                            key = 'chat:' + ident + ':message:' + _identifier(message['reference']['id'])
-                            item = dict(message, source_id=key)
-                            eligible = True  # Existing search verifies the fixed interval.
+                        key = message['source_id']
+                        stamp = _instant(message['timestamp'])
+                        stamps.append(stamp)
+                        eligible = lower <= stamp < upper
+                        item = message
                         marker = fingerprint(key)
                         if marker in updated['seen_messages']:
                             raise SourceUnavailable('Chatmeldingssiden gjentok en referanse')
                         updated['seen_messages'].append(marker)
                         if eligible:
                             page_items.append(item)
-                    done = (page['complete'] or bool(stamps and stamps == sorted(stamps, reverse=True) and stamps[-1] < lower)
-                            if source == 'spond' else page['end_of_results'])
-                    following = page['next_before_msg_num' if source == 'spond' else 'next_cursor']
+                    done = page['complete'] or bool(
+                        stamps and stamps == sorted(stamps, reverse=True) and stamps[-1] < lower)
+                    following = page['next_before_msg_num']
                     if not done:
                         marker = fingerprint(following)
                         if following is None or following == state['message_cursor'] or marker in state['seen_message_pages']:
@@ -153,15 +142,6 @@ def _discover(runtime, source, since, until, observe):
                         updated['message_cursor'] = following
                     updated['traversed'] = updated['list_done'] and not updated['pending_chats']
                     commit(updated, page_items)
-        except SearchCursorRejected as exc:
-            # Provider cursors may expire. Re-read only this chat on the next
-            # run; already committed observations deduplicate in the ledger.
-            updated = copy.deepcopy(state)
-            updated.update(message_cursor=None, seen_messages=[], seen_message_pages=[])
-            with private_source_lock(runtime.config.root, source, wait=True, timeout=30):
-                commit(updated)
-            diagnostic = failure(exc, at=_instant(until))
-            break
         except (FamiliekilderError, ValueError, TypeError, KeyError, OSError) as exc:
             diagnostic = failure(exc, at=_instant(until))
             break

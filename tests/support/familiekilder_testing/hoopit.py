@@ -1,28 +1,30 @@
-"""Fake Hoopit API responses, transport, limiter and access token."""
+"""Fake Hoopit external API: responses, transport, limiter and token.
+
+Everything here is made up: families, clubs, IDs and tokens.
+"""
 
 from __future__ import annotations
+
 import urllib.parse
-from pathlib import Path
+from collections.abc import Callable
 from typing import Any, Mapping
 
-from familiekilder.api_transport import DownloadResult
 from familiekilder.hoopit_auth import HoopitAccess
 
-
 CUTOFF = "2026-08-17T12:00:00+00:00"
+# Fictional tokens in the documented format; neither has ever existed.
+TOKEN = "hoopit_pat_" + "Fiktiv0Token" * 3 + "Abcd"
+OTHER_TOKEN = "hoopit_pat_" + "Annet1Token0" * 3 + "Wxyz"
+POSTS = "/external/me/posts/"
+OCCURRENCES = "/external/me/occurrences/"
 
 
-class FakeClock:
-    def __init__(self, value: float = 1_000.0) -> None:
-        self.value = value
-        self.sleeps: list[float] = []
+def comments_path(post_id: int | str) -> str:
+    return f"/external/posts/{post_id}/comments/"
 
-    def __call__(self) -> float:
-        return self.value
 
-    def sleep(self, seconds: float) -> None:
-        self.sleeps.append(seconds)
-        self.value += seconds
+def response_path(event_id, occurrence_id, user_id) -> str:
+    return f"/external/events/{event_id}/occurrences/{occurrence_id}/responses/{user_id}/"
 
 
 class NoopLimiter:
@@ -45,138 +47,143 @@ class NoopLimiter:
         self.network += 1
 
 
-def _page(results: list[Mapping[str, Any]], has_next: bool = False) -> dict[str, Any]:
-    return {"results": [dict(value) for value in results], "has_next": has_next}
+class FakeClock:
+    def __init__(self, value: float = 1_000.0) -> None:
+        self.value = value
+        self.sleeps: list[float] = []
+
+    def __call__(self) -> float:
+        return self.value
+
+    def sleep(self, seconds: float) -> None:
+        self.sleeps.append(seconds)
+        self.value += seconds
 
 
-def _responses() -> dict[str, Any]:
+def page(results: list[Mapping[str, Any]], has_next: bool = False) -> dict[str, Any]:
     return {
-        "/app/users/current/notifications/": _page(
+        "count": len(results),
+        "next": None,
+        "previous": None,
+        "filters": [],
+        "has_next": has_next,
+        "results": [dict(value) for value in results],
+    }
+
+
+def person(ident: int, name: str) -> dict[str, Any]:
+    return {"id": ident, "full_name": name}
+
+
+def post(ident: int, created_at: str, **fields: Any) -> dict[str, Any]:
+    value = {
+        "id": ident,
+        "title": "Treningsinfo",
+        "text": "Ta med drikkeflaske.",
+        "author": person(501, "Lagleder Lund"),
+        "group": {"id": 77, "name": "J2014"},
+        "created_at": created_at,
+    }
+    value.update(fields)
+    return value
+
+
+def comment(ident: int, created_at: str, text: str, *, parent: int | None = None, author=None):
+    return {
+        "id": ident,
+        "parent_id": parent,
+        "author": author or person(601, "Ada Nord"),
+        "text": text,
+        "created_at": created_at,
+    }
+
+
+def occurrence(ident: int, event: int, start: str, end: str, **fields: Any) -> dict[str, Any]:
+    value = {
+        "id": ident,
+        "event_id": event,
+        "title": "Trening",
+        "event_type": "training",
+        "group": {"id": 77, "name": "J2014"},
+        "start": start,
+        "end": end,
+        "meetup_time": start,
+        "location": "Hallen",
+        "cancelled": False,
+        "responses": [
+            {"user": person(901, "Oliver Fjell"), "response": "not_answered"},
+        ],
+    }
+    value.update(fields)
+    return value
+
+
+def responses() -> dict[str, Any]:
+    """One post with a comment and a reply, an older post, and one occurrence."""
+
+    return {
+        POSTS: page(
             [
-                {
-                    "id": "n1",
-                    "timestamp": "2026-08-31T08:00:00Z",
-                    "is_accessed": False,
-                    "is_seen": False,
-                    "data": {
-                        "title": "Ny beskjed",
-                        "body": "Trening flyttet",
-                        "EXTRA_GROUP_NAME": "J2014",
-                        "EXTRA_POST_ID": "p1",
-                    },
-                }
+                post(1001, "2026-08-30T10:00:00Z"),
+                post(1000, "2026-07-01T10:00:00Z", title=None, group=None, text="Gammelt."),
             ]
         ),
-        "/app/users/current/posts/": _page(
+        comments_path(1001): page(
             [
-                {
-                    "id": "p1",
-                    "title": "Treningsinfo",
-                    "text": "Ta med drikkeflaske.",
-                    "poster_name": "Lagleder",
-                    "created_at": "2026-08-30T10:00:00Z",
-                    "updated_at": "2026-08-31T07:30:00Z",
-                    "group_name": "J2014",
-                    "comment_count": 2,
-                    "attachments": [
-                        {
-                            "id": "a1",
-                            "name": "plan.pdf",
-                            "url": "https://files.example.test/objects/a1",
-                        }
-                    ],
-                }
+                comment(2001, "2026-08-31T08:10:00Z", "Oppmøte 14:45."),
+                comment(
+                    2002,
+                    "2026-08-31T08:20:00Z",
+                    "Takk!",
+                    parent=2001,
+                    author=person(602, "Per Sør"),
+                ),
             ]
         ),
-        "/app/users/current/events/": _page(
+        OCCURRENCES: page(
             [
-                {
-                    "id": "o1",
-                    "event_id": "e1",
-                    "title": "Trening",
-                    "datetime": "2026-09-01T15:00:00Z",
-                    "end": "2026-09-01T16:30:00Z",
-                    "multi_answer_status": "NOT_RESPONDED",
-                    "group": {"name": "J2014"},
-                }
-            ]
-        ),
-        "/app/posts/p1/comments/": _page(
-            [
-                {
-                    "id": "c1",
-                    "timestamp": "2026-08-31T08:10:00Z",
-                    "comment": "Oppmøte 14:45.",
-                    "poster": {"first_name": "Ada", "last_name": "Nord"},
-                    "reply_count": 1,
-                }
-            ]
-        ),
-        "/app/posts/p1/comments/c1/replies/": _page(
-            [
-                {
-                    "id": "r1",
-                    "timestamp": "2026-08-31T08:20:00Z",
-                    "comment": "Takk!",
-                    "poster": {"first_name": "Per", "last_name": "Sør"},
-                    "reply_count": 0,
-                }
-            ]
-        ),
-        "/app/events/e1/occurrences/o1/": {
-            "id": "o1",
-            "event": "e1",
-            "title": "Trening",
-            "description": "Vanlig trening.",
-            "start": "2026-09-01T15:00:00Z",
-            "end": "2026-09-01T16:30:00Z",
-            "updated_at": "2026-08-31T09:00:00Z",
-            "response_deadline": "2026-08-31T20:00:00Z",
-            "location": {"name": "Hallen"},
-            "group": {"name": "J2014"},
-            "attachments": [
-                {
-                    "id": "a2",
-                    "name": "kart.png",
-                    "url": "https://files.example.test/objects/a2",
-                }
-            ],
-        },
-        "/app/events/e1/occurrences/o1/comments/": _page(
-            [
-                {
-                    "id": "ec1",
-                    "timestamp": "2026-08-31T09:10:00Z",
-                    "comment": "Vi bruker inngang B.",
-                    "poster_name": "Trener",
-                    "reply_count": 0,
-                }
-            ]
-        ),
-        "/app/events/e1/occurrences/o1/posts/": _page(
-            [
-                {
-                    "id": "p2",
-                    "title": "Aktivitetsbeskjed",
-                    "quill_delta": {"ops": [{"insert": "Ny inngang.\n"}]},
-                    "created_at": "2026-08-31T09:05:00Z",
-                    "updated_at": "2026-08-31T09:05:00Z",
-                    "event_name": "Trening",
-                    "group_name": "J2014",
-                    "comment_count": 0,
-                    "attachments": [],
-                }
+                occurrence(
+                    3001,
+                    4001,
+                    "2026-09-01T15:00:00Z",
+                    "2026-09-01T16:30:00Z",
+                    meetup_time="2026-09-01T14:45:00Z",
+                )
             ]
         ),
     }
 
 
 class FakeTransport:
-    def __init__(self, responses: Mapping[str, Any] | None = None) -> None:
-        self.responses = dict(responses or {})
+    """Answers GET and PATCH by path; a value may be a callable taking the URL."""
+
+    def __init__(
+        self,
+        values: Mapping[str, Any] | None = None,
+        *,
+        headers: Mapping[str, str] | None = None,
+    ) -> None:
+        self.values = dict(values if values is not None else responses())
+        self.headers = dict(headers or {})
         self.gets: list[tuple[str, str | None, dict[str, str]]] = []
-        self.downloads: list[tuple[str, Path, str | None, dict[str, str]]] = []
-        self.download_error: BaseException | None = None
+        self.patches: list[tuple[str, dict[str, Any], str | None, dict[str, str]]] = []
+        self.patch_result: Any = None
+        self.on_patch: Callable[[str, dict[str, Any]], None] | None = None
+
+    @staticmethod
+    def query(url: str) -> dict[str, str]:
+        return dict(urllib.parse.parse_qsl(urllib.parse.urlsplit(url).query))
+
+    def _answer(self, url: str) -> Any:
+        path = urllib.parse.urlsplit(url).path
+        value = self.values.get(path)
+        if callable(value):
+            value = value(url)
+        if isinstance(value, BaseException):
+            raise value
+        if value is None:
+            raise AssertionError(f"unexpected request {path}")
+        return value
 
     def get_json(
         self,
@@ -184,44 +191,30 @@ class FakeTransport:
         *,
         bearer_token: str | None = None,
         headers: Mapping[str, str] | None = None,
+        response_headers: dict[str, str] | None = None,
     ) -> Any:
         self.gets.append((url, bearer_token, dict(headers or {})))
-        path = urllib.parse.urlsplit(url).path
-        value = self.responses.get(path)
-        if callable(value):
-            value = value(url)
-        if isinstance(value, BaseException):
-            raise value
-        if value is None:
-            raise AssertionError(f"unexpected GET {path}")
+        value = self._answer(url)
+        if response_headers is not None:
+            response_headers.update(self.headers)
         return value
 
-    def download(
+    def patch_json(
         self,
         url: str,
-        target: Path | str,
+        payload: Mapping[str, Any],
         *,
         bearer_token: str | None = None,
         headers: Mapping[str, str] | None = None,
-        max_bytes: int | None = None,
-        allowed_content_types: set[str] | frozenset[str] | None = None,
-    ) -> DownloadResult:
-        path = Path(target)
-        self.downloads.append((url, path, bearer_token, dict(headers or {})))
-        if self.download_error is not None:
-            raise self.download_error
-        path.parent.mkdir(parents=True, mode=0o700, exist_ok=True)
-        payload = b"fixture"
-        path.write_bytes(payload)
-        path.chmod(0o600)
-        content_type = "application/pdf" if url.endswith("a1") else "image/png"
-        return DownloadResult(len(payload), "0" * 64, content_type)
+        response_headers: dict[str, str] | None = None,
+    ) -> Any:
+        self.patches.append((url, dict(payload), bearer_token, dict(headers or {})))
+        if isinstance(self.patch_result, BaseException):
+            raise self.patch_result
+        if self.on_patch is not None:
+            self.on_patch(url, dict(payload))
+        return self.patch_result
 
 
-def _access() -> HoopitAccess:
-    return HoopitAccess(
-        id_token="firebase-secret",
-        app_version="Web-test",
-        expires_at=2_000_000_000,
-        attachment_hosts=("files.example.test",),
-    )
+def access(token: str = TOKEN) -> HoopitAccess:
+    return HoopitAccess(token=token, account_scope="a" * 64)

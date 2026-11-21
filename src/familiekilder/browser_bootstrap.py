@@ -1,4 +1,4 @@
-"""One-shot, isolated browser bootstrap for Spond and Hoopit API sessions.
+"""One-shot, isolated browser bootstrap for Spond API sessions.
 
 The user signs in in a visible, disposable profile of Brave, Chrome or Edge
 (see `browsers`), optionally assisted by the profile-bound password helper.
@@ -15,7 +15,6 @@ data.
 
 from __future__ import annotations
 
-import base64
 import json
 import logging
 import math
@@ -57,8 +56,6 @@ from .private_state import (
 
 SPOND_ORIGIN = "https://spond.com"
 SPOND_LOGIN_URL = f"{SPOND_ORIGIN}/client"
-HOOPIT_ORIGIN = "https://app.hoopit.io"
-HOOPIT_LOGIN_URL = f"{HOOPIT_ORIGIN}/login"
 
 _BOOTSTRAP_DIRECTORY = "browser-bootstrap"
 _RUN_DIRECTORY = re.compile(r"run-[a-f0-9]{32}\Z")
@@ -1389,135 +1386,6 @@ def spond_fields(value: Any) -> dict[str, Any]:
     }
 
 
-def _remote_scalar(remote: Any) -> Any:
-    if not isinstance(remote, Mapping) or "value" not in remote:
-        raise BrowserBootstrapError("Hoopit returnerte en ukjent IndexedDB-nøkkel")
-    return remote.get("value")
-
-
-def _firebase_claim_binding(id_token: str, project_id: str) -> None:
-    parts = id_token.split(".")
-    if len(parts) != 3 or not all(parts):
-        raise BrowserBootstrapError("Hoopit Firebase-tokenet har ugyldig format")
-    try:
-        raw = base64.urlsafe_b64decode(parts[1] + "=" * (-len(parts[1]) % 4))
-        if len(raw) > 128 * 1024:
-            raise ValueError
-        claims = json.loads(raw)
-    except (ValueError, UnicodeDecodeError, json.JSONDecodeError):
-        raise BrowserBootstrapError(
-            "Hoopit Firebase-tokenet har ugyldig prosjektbinding"
-        ) from None
-    if (
-        not isinstance(claims, Mapping)
-        or claims.get("aud") != project_id
-        or claims.get("iss") != f"https://securetoken.google.com/{project_id}"
-    ):
-        raise BrowserBootstrapError(
-            "Hoopit Firebase-tokenet samsvarer ikke med providerprofilen"
-        )
-
-
-def _hoopit_payload(
-    cdp: CdpClient, *, firebase_api_key: str, firebase_project_id: str
-) -> dict[str, str]:
-    session_id = _page_session(cdp, HOOPIT_ORIGIN)
-    cdp.call("IndexedDB.enable", session_id=session_id)
-    record_key = f"firebase:authUser:{firebase_api_key}:[DEFAULT]"
-    response = cdp.call(
-        "IndexedDB.requestData",
-        {
-            "securityOrigin": HOOPIT_ORIGIN,
-            "databaseName": "firebaseLocalStorageDb",
-            "objectStoreName": "firebaseLocalStorage",
-            "skipCount": 0,
-            "pageSize": 2,
-            "keyRange": {
-                "lower": {"type": "string", "string": record_key},
-                "upper": {"type": "string", "string": record_key},
-                "lowerOpen": False,
-                "upperOpen": False,
-            },
-        },
-        session_id=session_id,
-    )
-    entries = response.get("objectStoreDataEntries")
-    if response.get("hasMore") is not False or not isinstance(entries, list) or len(entries) != 1:
-        raise BrowserBootstrapError(
-            "Hoopit har en ukjent, manglende eller duplisert Firebase-layout"
-        )
-    entry = entries[0]
-    if not isinstance(entry, Mapping) or _remote_scalar(entry.get("key")) != record_key:
-        raise BrowserBootstrapError("Hoopit Firebase-nøkkelen samsvarer ikke")
-    if "primaryKey" in entry and _remote_scalar(entry.get("primaryKey")) != record_key:
-        raise BrowserBootstrapError("Hoopit Firebase-primærnøkkelen samsvarer ikke")
-    remote_record = entry.get("value")
-    if not isinstance(remote_record, Mapping):
-        raise BrowserBootstrapError("Hoopit Firebase-recorden har ukjent format")
-    object_id = remote_record.get("objectId")
-    if not isinstance(object_id, str) or not object_id or len(object_id) > 2048:
-        raise BrowserBootstrapError("Hoopit Firebase-recorden kan ikke leses avgrenset")
-    extraction = _runtime_value(
-        cdp.call(
-            "Runtime.callFunctionOn",
-            {
-                "objectId": object_id,
-                "functionDeclaration": """function () {
-  "use strict";
-  const own = (object, key) => Object.prototype.hasOwnProperty.call(object, key)
-    ? object[key] : null;
-  if (this === null || typeof this !== "object") return null;
-  const value = own(this, "value");
-  if (value === null || typeof value !== "object") return null;
-  const manager = own(value, "stsTokenManager");
-  if (manager === null || typeof manager !== "object") return null;
-  return {
-    apiKey: own(value, "apiKey"),
-    accessToken: own(manager, "accessToken"),
-    refreshToken: own(manager, "refreshToken")
-  };
-}""",
-                "returnByValue": True,
-                "silent": True,
-            },
-            session_id=session_id,
-        )
-    )
-    return hoopit_fields(
-        extraction,
-        firebase_api_key=firebase_api_key,
-        firebase_project_id=firebase_project_id,
-    )
-
-
-def hoopit_fields(
-    extraction: Any, *, firebase_api_key: str, firebase_project_id: str
-) -> dict[str, str]:
-    """Validate the three fields read from Hoopit's Firebase auth record.
-
-    Shared by the CDP bootstrap and native iOS login.
-    """
-
-    if not isinstance(extraction, Mapping) or set(extraction) != {
-        "apiKey",
-        "accessToken",
-        "refreshToken",
-    }:
-        raise BrowserBootstrapError("Hoopit Firebase-recorden har ukjent auth-layout")
-    if extraction.get("apiKey") != firebase_api_key:
-        raise BrowserBootstrapError(
-            "Hoopit Firebase API-nøkkelen samsvarer ikke med providerprofilen"
-        )
-    id_token = _secret_text(
-        extraction.get("accessToken"), "Hoopit Firebase ID-token"
-    )
-    refresh_token = _secret_text(
-        extraction.get("refreshToken"), "Hoopit Firebase refresh-token"
-    )
-    _firebase_claim_binding(id_token, firebase_project_id)
-    return {"id_token": id_token, "refresh_token": refresh_token}
-
-
 def _default_wait(prompt: str) -> None:
     try:
         input(prompt)
@@ -1583,16 +1451,11 @@ def _safe_import_metadata(source: str, value: Any) -> dict[str, Any]:
     if not isinstance(value, Mapping):
         raise BrowserBootstrapError("Tokenimporten returnerte ugyldig metadata")
     common = {"configured", "authenticated", "expires_at", "attachment_hosts"}
-    expected = (
-        common
-        | {
-            "remote_verified",
-            "refresh_expires_at",
-            "refresh_marker_cleanup_pending",
-        }
-        if source == "spond"
-        else common | {"firebase_verified"}
-    )
+    expected = common | {
+        "remote_verified",
+        "refresh_expires_at",
+        "refresh_marker_cleanup_pending",
+    }
     if not expected.issubset(value):
         raise BrowserBootstrapError("Tokenimporten mangler forventet metadata")
     result: dict[str, Any] = {"source": source}
@@ -1682,7 +1545,7 @@ def import_extracted_fields(
 
     Used by native iOS login and the development test. The fields pass the same
     checks as the CDP extraction and the same private import file and importer
-    as ``bootstrap_spond``/``bootstrap_hoopit``.
+    as ``bootstrap_spond``.
     """
 
     if source == "spond":
@@ -1695,24 +1558,8 @@ def import_extracted_fields(
                 "Spond-providerprofilen mangler eller er ugyldig"
             ) from None
         payload = spond_fields(fields)
-    elif source == "hoopit":
-        from .hoopit_auth import import_session, load_client_config
-
-        try:
-            config = load_client_config(root)
-        except Exception:
-            raise BrowserBootstrapError(
-                "Hoopit-providerprofilen mangler eller er ugyldig"
-            ) from None
-        payload = hoopit_fields(
-            fields,
-            firebase_api_key=config.firebase_api_key,
-            firebase_project_id=config.firebase_project_id,
-        )
     else:
-        raise BrowserBootstrapError(
-            "Feltimport støttes bare for spond og hoopit"
-        )
+        raise BrowserBootstrapError("Feltimport støttes bare for spond")
     run_path = _create_run_directory(root)
     primary_error: BaseException | None = None
     try:
@@ -1845,53 +1692,6 @@ def bootstrap_spond(
     )
 
 
-def bootstrap_hoopit(
-    root: Path | str | None,
-    *,
-    replace_existing: bool = False,
-    brave_path: Path | str | None = None,
-    wait_for_user: WaitForUser | None = None,
-    browser_factory: BrowserFactory | None = None,
-    importer: Importer | None = None,
-    login_browser: str | None = None,
-) -> dict[str, Any]:
-    """Capture one exact, provider-bound Hoopit Firebase Auth record."""
-
-    from .hoopit_auth import import_session, load_client_config
-
-    try:
-        config = load_client_config(root)
-    except Exception:
-        raise BrowserBootstrapError(
-            "Hoopit-providerprofilen mangler eller er ugyldig"
-        ) from None
-    selected_importer = importer or import_session
-
-    def extract(cdp: CdpClient) -> Mapping[str, Any]:
-        return _hoopit_payload(
-            cdp,
-            firebase_api_key=config.firebase_api_key,
-            firebase_project_id=config.firebase_project_id,
-        )
-
-    return _bootstrap(
-        root,
-        source="hoopit",
-        start_url=HOOPIT_LOGIN_URL,
-        prompt=(
-            "Logg inn i Hoopit i det isolerte nettleservinduet. "
-            "Når Hoopit er ferdig lastet, gå tilbake hit og trykk Enter: "
-        ),
-        extractor=extract,
-        importer=selected_importer,
-        replace_existing=replace_existing,
-        brave_path=brave_path,
-        wait_for_user=wait_for_user,
-        browser_factory=browser_factory,
-        login_browser=login_browser,
-    )
-
-
 def bootstrap_source(
     root: Path | str | None,
     source: str,
@@ -1901,24 +1701,16 @@ def bootstrap_source(
 
     if source == "spond":
         return bootstrap_spond(root, **options)
-    if source == "hoopit":
-        return bootstrap_hoopit(root, **options)
-    raise BrowserBootstrapError(
-        "Isolert nettleserbootstrap støttes bare for spond og hoopit"
-    )
+    raise BrowserBootstrapError("Isolert nettleserbootstrap støttes bare for spond")
 
 
 __all__ = [
     "BrowserBootstrapError",
-    "HOOPIT_LOGIN_URL",
-    "HOOPIT_ORIGIN",
     "SPOND_LOGIN_URL",
     "SPOND_ORIGIN",
-    "bootstrap_hoopit",
     "bootstrap_source",
     "bootstrap_spond",
     "capture_oauth_callback",
-    "hoopit_fields",
     "import_extracted_fields",
     "spond_fields",
 ]

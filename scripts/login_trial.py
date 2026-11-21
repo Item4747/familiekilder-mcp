@@ -83,7 +83,7 @@ from typing import Any, Callable, Mapping
 from unittest.mock import patch
 
 LOOPBACK = "127.0.0.1"
-# Spond and Hoopit pages get this origin in the trial: port 443, which the
+# Spond pages get this origin in the trial: port 443, which the
 # exact-origin check requires, on an address that cannot leave the machine.
 TRIAL_ORIGIN = f"https://{LOOPBACK}"
 SIGN_IN_PATH = "/connect/authorize"
@@ -812,7 +812,7 @@ def ist_trial(trial: Trial, root: Path, work: Path, steps: Steps) -> None:
 
 
 # ----------------------------------------------------------------------------
-# Spond and Hoopit: the session read from the login page in the browser.
+# Spond: the session read from the login page in the browser.
 
 
 def _page_html(title: str, script: str) -> bytes:
@@ -828,42 +828,6 @@ def _spond_page(fields: Mapping[str, str]) -> bytes:
         for key, value in fields.items()
     )
     return _page_html("Oppdiktet Spond", lines + "window.proveKlar = true;")
-
-
-def _hoopit_page(record_key: str, value: Mapping[str, Any]) -> bytes:
-    # The record has the shape the Firebase web SDK stores.
-    record = json.dumps({"fbase_key": record_key, "value": value})
-    script = f"""
-const request = indexedDB.open("firebaseLocalStorageDb", 1);
-request.onupgradeneeded = () => {{
-  request.result.createObjectStore("firebaseLocalStorage", {{keyPath: "fbase_key"}});
-}};
-request.onsuccess = () => {{
-  const transaction = request.result.transaction("firebaseLocalStorage", "readwrite");
-  transaction.objectStore("firebaseLocalStorage").put({record});
-  transaction.oncomplete = () => {{ window.proveKlar = true; }};
-}};
-"""
-    return _page_html("Oppdiktet Hoopit", script)
-
-
-def _made_up_firebase_token(project_id: str, now: datetime) -> str:
-    """A token with the claims the page check reads; its signature is made up."""
-
-    import base64
-
-    def part(value: Mapping[str, Any]) -> str:
-        raw = json.dumps(value, separators=(",", ":")).encode("utf-8")
-        return base64.urlsafe_b64encode(raw).rstrip(b"=").decode("ascii")
-
-    claims = {
-        "iss": f"https://securetoken.google.com/{project_id}",
-        "aud": project_id,
-        "sub": "prove-bruker-1",
-        "iat": int(now.timestamp()),
-        "exp": int(now.timestamp()) + 3600,
-    }
-    return f"{part({'alg': 'RS256', 'typ': 'JWT'})}.{part(claims)}.prove-signatur"
 
 
 def _profiles_removed(trial: Trial, before: int, root: Path) -> bool:
@@ -931,92 +895,6 @@ def spond_trial(trial: Trial, root: Path, steps: Steps) -> None:
         steps.run("spond_session_private", session_step)
 
 
-def hoopit_trial(trial: Trial, root: Path, steps: Steps) -> None:
-    """The browser read of Hoopit's Firebase record, up to the import file.
-
-    The importer here only checks the private import file the product wrote;
-    Hoopit's own import verifies the token signature against Google's keys
-    and is covered by tests/test_hoopit_auth.py.
-    """
-
-    from familiekilder import browser_bootstrap, hoopit_auth
-    from familiekilder.private_state import atomic_write_private_json, read_private_json
-
-    now = datetime.now(UTC)
-    api_key = "AIza" + "p" * 36
-    project_id = hoopit_auth.FIREBASE_PROJECT_ID
-    fields = {
-        "id_token": _made_up_firebase_token(project_id, now),
-        "refresh_token": "prove-hoopit-fornyelse-" + secrets.token_urlsafe(12),
-    }
-    record_key = f"firebase:authUser:{api_key}:[DEFAULT]"
-    page = _hoopit_page(
-        record_key,
-        {
-            "uid": "prove-bruker-1",
-            "apiKey": api_key,
-            "stsTokenManager": {
-                "accessToken": fields["id_token"],
-                "refreshToken": fields["refresh_token"],
-                "expirationTime": int(now.timestamp() * 1000) + 3_600_000,
-            },
-        },
-    )
-    factory, wait_for_user = trial.page_factory(page)
-    before = len(trial.run_paths)
-    received: dict[str, Any] = {}
-
-    def importer(_root: Any, import_file: Path, *, replace_existing: bool) -> dict[str, Any]:
-        received["private"] = _private_session_file(Path(import_file))
-        received["matches"] = read_private_json(Path(import_file)) == fields
-        return {
-            "configured": True,
-            "authenticated": True,
-            "expires_at": (now + timedelta(hours=1)).isoformat(),
-            "attachment_hosts": 0,
-            "firebase_verified": False,
-        }
-
-    def browser_step() -> dict[str, Any]:
-        # Hoopit takes a client file only from the private folder.
-        client_file = root / ".private" / "bootstrap" / "hoopit-client.json"
-        atomic_write_private_json(
-            client_file,
-            {
-                "api_root": hoopit_auth.API_ROOT,
-                "firebase_api_key": api_key,
-                "firebase_project_id": project_id,
-                "app_version": "Web 1.0-prove",
-                "attachment_hosts": [],
-            },
-        )
-        hoopit_auth.configure_client(root, client_file)
-        with (
-            patch.object(browser_bootstrap, "HOOPIT_ORIGIN", TRIAL_ORIGIN),
-            patch.object(browser_bootstrap, "HOOPIT_LOGIN_URL", f"{TRIAL_ORIGIN}/login"),
-        ):
-            browser_bootstrap.bootstrap_source(
-                root,
-                "hoopit",
-                browser_factory=factory,
-                wait_for_user=wait_for_user,
-                importer=importer,
-                login_browser=trial.browser,
-            )
-        served = factory.state.get("served", 0)  # type: ignore[attr-defined]
-        return {
-            "page_served": served,
-            "fields_match_page": received.get("matches"),
-            "import_file_private": (received.get("private") or {}).get("ok"),
-            "profile_removed": _profiles_removed(trial, before, root),
-            "ok": served == 1
-            and received.get("matches") is True
-            and (received.get("private") or {}).get("ok") is True,
-        }
-
-    steps.run("hoopit_browser_session_read", browser_step)
-
-
 # ----------------------------------------------------------------------------
 
 
@@ -1060,7 +938,6 @@ def main() -> int:
             ist_trial(trial, root, work, steps)
             if not args.only_ist:
                 spond_trial(trial, root, steps)
-                hoopit_trial(trial, root, steps)
     except Exception as error:  # noqa: BLE001 - the report shows the failure
         report["error"] = f"{type(error).__name__}: {error}"
     finally:

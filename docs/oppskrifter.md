@@ -79,12 +79,12 @@ Vedlegg leses med `*_read_attachment`, også PDF-er over flere sider.
 
 ## Chat i idrettslaget
 
-Spond og Hoopit har chatter i tillegg til innlegg og aktiviteter. De leses med
-`spond_list_chats`, `spond_get_chat`, `hoopit_list_chats` og
-`hoopit_get_chat`.
+Spond har chatter i tillegg til innlegg og aktiviteter. De leses med
+`spond_list_chats` og `spond_get_chat`. Hoopits API har ikke chatter; der leses
+innlegg, kommentarer og aktiviteter.
 
-> Oppsummer det som er skrevet i chattene i Spond og Hoopit den siste uka. Hva er
-> avtalt, og er det noe vi bør svare på?
+> Oppsummer det som er skrevet i chattene i Spond den siste uka. Hva er avtalt,
+> og er det noe vi bør svare på?
 
 ## Fravær
 

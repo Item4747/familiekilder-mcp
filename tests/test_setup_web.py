@@ -101,7 +101,7 @@ class SetupHttpTests(SetupServerCase):
         # A source whose default is withdrawn is shown as unavailable.
         expected = {source: "unavailable" for source in services}
         expected.update({source: "automatic" for source in AUTOMATIC_SOURCES})
-        expected.update({"flyt": "municipality", "gmail": "file"})
+        expected.update({"flyt": "municipality", "gmail": "file", "hoopit": "token"})
         self.assertEqual({source: row["setup"] for source, row in services.items()}, expected)
         self.assertIn("spond", AUTOMATIC_SOURCES)
         for row in services.values():

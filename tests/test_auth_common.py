@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import unittest
 
-from familiekilder import hoopit_auth, vigilo_auth
+from familiekilder import vigilo_auth
 from familiekilder.auth_common import (
     base64url,
     canonical_sha256,
@@ -41,27 +41,6 @@ class StoredFingerprintTests(unittest.TestCase):
         self.assertEqual(
             vigilo_auth._legacy_config_fingerprint(config),
             "19fa71b846ab5ac5a0437f663c9ad6778ee109e84a99aac245f4a5456ac1ffe8",
-        )
-
-    def test_hoopit_fingerprints_are_unchanged(self):
-        config = hoopit_auth._parse_client_config({
-            "api_root": hoopit_auth.API_ROOT,
-            "firebase_api_key": "AIza" + "x" * 35,
-            "firebase_project_id": hoopit_auth.FIREBASE_PROJECT_ID,
-            "app_version": "Hoopit 1.2 «ø»",
-            "attachment_hosts": ["cdn.example.test", "Bücher.Example."],
-        })
-        self.assertEqual(
-            hoopit_auth._config_fingerprint(config),
-            "c2a5dd80d23363afbdb491f698cab1a6eac273af4957d062cd4f0924762ac10d",
-        )
-        self.assertEqual(
-            hoopit_auth._legacy_config_fingerprint(config),
-            "c8b3282c0b5591c0144b41ce6fedfaeeea6d1a563b26d4065616c8235f0d7f4f",
-        )
-        self.assertEqual(
-            hoopit_auth._session_identity_fingerprint("sübject", "a" * 64),
-            "0e71433c575c3ee2c790e647510de82779b50ba39ba82ab4052ec4e29c2f56f1",
         )
 
     def test_ensure_ascii_changes_the_digest_only_for_non_ascii(self):

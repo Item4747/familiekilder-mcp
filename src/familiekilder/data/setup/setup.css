@@ -476,6 +476,23 @@ dialog .field-warning {
   color: var(--danger);
   font-weight: 550;
 }
+.token-page {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  margin: 14px 0 4px;
+  padding: 0 18px;
+  text-decoration: none;
+}
+.token-steps {
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.6;
+  padding-left: 22px;
+}
+.token-steps code {
+  color: var(--ink);
+}
 .checkbox {
   display: flex;
   align-items: flex-start;

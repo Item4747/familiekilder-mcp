@@ -81,6 +81,47 @@ def _read_bounded_session_stdin() -> str:
     return payload
 
 
+MAX_TOKEN_INPUT = 4096
+
+
+def _read_hoopit_token(from_stdin: bool) -> str:
+    """Read the token hidden from the terminal, or from stdin; never from argv."""
+
+    if from_stdin or not sys.stdin.isatty():
+        value = sys.stdin.read(MAX_TOKEN_INPUT + 1)
+        if len(value) > MAX_TOKEN_INPUT:
+            raise FamiliekilderError("Det kom mer enn ett token på stdin")
+        return value
+    from .hoopit_auth import TOKEN_STEPS
+
+    print("Slik lager du et Hoopit-token:")
+    for number, step in enumerate(TOKEN_STEPS, 1):
+        print(f"{number}. {step}")
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", getpass.GetPassWarning)
+        try:
+            return getpass.getpass("Lim inn tokenet (det vises ikke): ")
+        except (EOFError, OSError, getpass.GetPassWarning):
+            raise FamiliekilderError(
+                "Tokenet kunne ikke leses uten at det vises. Send det på stdin i stedet, "
+                "for eksempel fra en fil: auth hoopit token --stdin < fil"
+            ) from None
+
+
+def _run_hoopit_token(args: argparse.Namespace, root: Path | None) -> int:
+    from . import hoopit_auth
+
+    status = hoopit_auth.auth_status(root)
+    replace = bool(getattr(args, "replace_existing", False))
+    if status.get("session_present") and not replace:
+        raise FamiliekilderError(
+            "Hoopit er allerede koblet til med et token; bruk --replace-existing for å bytte det"
+        )
+    token = _read_hoopit_token(bool(getattr(args, "stdin", False)))
+    _json(hoopit_auth.connect_token(root, token, replace_existing=replace))
+    return 0
+
+
 def _browser_option(args: argparse.Namespace) -> dict[str, str]:
     """``--browser`` when given; without it the saved choice applies."""
 
@@ -91,7 +132,12 @@ def _browser_option(args: argparse.Namespace) -> dict[str, str]:
 def _run_generic_auth(args: argparse.Namespace, root: Path | None) -> int:
     label = _SOURCE_LABELS[args.source]
     if args.auth_command not in _AUTH_CAPABILITIES[args.source]:
-        if (args.auth_command == "login"
+        if "token" in _AUTH_CAPABILITIES[args.source]:
+            detail = (
+                "koble til med et personlig tilgangstoken: "
+                f"«{args.program.name} auth {args.source} token»"
+            )
+        elif (args.auth_command == "login"
                 and "browser-bootstrap" in _AUTH_CAPABILITIES[args.source]):
             detail = "bruk browser-bootstrap med en isolert, midlertidig nettleserprofil"
         else:
@@ -99,6 +145,9 @@ def _run_generic_auth(args: argparse.Namespace, root: Path | None) -> int:
         raise FamiliekilderError(f"{label}: {detail}")
 
     auth_module = _auth_module(args.source)
+
+    if args.auth_command == "token":
+        return _run_hoopit_token(args, root)
 
     if args.auth_command == "browser-bootstrap":
         existing = _has_local_session(auth_module, root)
@@ -131,13 +180,8 @@ def _run_generic_auth(args: argparse.Namespace, root: Path | None) -> int:
     if args.auth_command == "import-session":
         if _has_local_session(auth_module, root):
             if not args.replace_existing:
-                replacement = (
-                    "en ny eksport av den eksisterende Firebase-økten"
-                    if args.source == "hoopit"
-                    else "en ny separat økt"
-                )
                 raise FamiliekilderError(
-                    f"En lokal {label}-økt finnes allerede; bruk --replace-existing bare med {replacement}"
+                    f"En lokal {label}-økt finnes allerede; bruk --replace-existing bare med en ny separat økt"
                 )
             accepted = input(f"Skriv ERSTATT for å erstatte den lokale {label}-økten: ")
             if accepted != "ERSTATT":
@@ -171,11 +215,6 @@ def _run_generic_auth(args: argparse.Namespace, root: Path | None) -> int:
             _json(maintenance(root, args.source, auth_module, access_needed=True))
         else:
             _json(auth_module.refresh_session(root))
-        return 0
-    if args.auth_command == "verify-direct":
-        from .hoopit import verify_direct_access
-
-        _json(verify_direct_access(root))
         return 0
     if args.auth_command == "logout":
         if not REGISTRY[args.source].logout_revokes:

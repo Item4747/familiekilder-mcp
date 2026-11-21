@@ -588,9 +588,7 @@ def report(root, source, *, at=None):
             if refresh_expiry is not None:
                 expiry_evidence = 'provider_response_field'
                 break
-    marker = _read(
-        _path(root, source, 'refresh-state' if source == 'hoopit' else 'refresh-blocked')
-    )
+    marker = _read(_path(root, source, 'refresh-blocked'))
     reason = marker.get('reason')
     tx = marker.get('transaction_id')
     if (

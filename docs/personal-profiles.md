@@ -66,7 +66,6 @@ passordargument eller en kommando som skriver passordet til stdout.
 | Skolemelding | `auth skolemelding browser-login` | `bankid` |
 | IST Home | `auth ist-home browser-login` | `bankid` |
 | Spond | `auth spond browser-bootstrap` | `spond` |
-| Hoopit | `auth hoopit browser-bootstrap` | `hoopit` |
 
 Telefonbekreftelse og engangskoder er manuelle. Hjelperen venter på et synlig,
 tomt passordfelt på en tillatt HTTPS-origin, fyller fra gjeldende profil og
@@ -74,7 +73,8 @@ trykker en entydig Fortsett/Neste/Logg inn-knapp dersom den finnes. BankID-origi
 er eksplisitte: `csfe.bankid.no`, `auth.bankid.no` og `login.bankid.no`.
 BankID beskriver sine produksjonsendepunkter i
 [tjenestedokumentasjonen](https://developer.bankid.no/bankid-esign-provider/service-endpoints/).
-Ingen wildcard-domener brukes. Spond/Hoopit mottar aldri BankID-passordet.
+Ingen wildcard-domener brukes. Spond mottar aldri BankID-passordet. Hoopit
+bruker et personlig tilgangstoken og har ingen passordoppføring.
 
 Hjelperen gjør maksimalt ett utfyllingsforsøk per innlogging, også ved ukjent
 resultat. Felt for passordendring, flere passordfelt og gjenkjent signering

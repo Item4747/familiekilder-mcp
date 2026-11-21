@@ -13,7 +13,7 @@ refresh-tokenet varer.
 | IST Home | Lokal økt har `issued_at` og access `expires_in`; ingen bevart separat refresh-utløp. | Ingen dokumentert maksimum eller sikkert replayvindu for denne klienten. |
 | Spond | Faktiske API-svar og lokal økt har separate access-/refresh-utløp. | Bruk konkret `refresh_expires_at`. Ett slikt tidspunkt beviser ikke en absolutt grense for hele økten eller en rullerende garanti. |
 | Flyt | Målt 13. november 2026 (Oslo): access-token er JWT med `expires_in: 3600` (`exp − iat` = 3600), id-token 300 sekunder, opakt refresh-token på 64 tegn uten utløpsfelt. Én fornyelse ga nytt access-token og nytt refresh-token (rotasjon); `auth_time` var uendret. | Refresh-tokenets levetid og om et brukt refresh-token avvises, er ikke målt. Integrasjonen lagrer alltid det nye refresh-tokenet. |
-| Hoopit | Firebase ID-token + separat refresh-token. Firebase dokumenterer langvarige økter uten en generell fast månedsfrist; kontosletting, deaktivering, vesentlige kontoendringer og tilbakekalling kan avslutte dem. | Ingen oppdiktet refresh-utløpsdato eller keepalive-trafikk. |
+| Hoopit | Personlig tilgangstoken som brukeren lager selv. Det fornyes ikke; det virker til det utløper eller trekkes tilbake. Hoopit svarer da 401, og statusen sier at et nytt token trengs. | Utløpstiden velges hos Hoopit og vises ikke i API-et. |
 
 Kilder (kontrollert september 2026):
 [Firebase](https://firebase.google.com/docs/auth/admin/manage-sessions),
@@ -76,7 +76,7 @@ Lærdommer fra to lokale feil som så ut som utlogging:
 
 - Tidskontroller trenger toleranse. Macens klokke lå noen millisekunder bak
   utsteder, og `nbf`-kontroll uten slingringsmonn ga `refresh_failed` som ikke
-  løste seg selv. Vigilo, IST og Hoopit tillater nå
+  løste seg selv. Vigilo og IST tillater nå
   `NOT_BEFORE_LEEWAY_SECONDS` (60 s), både for `nbf` og for `iat` i PyJWT.
 - Eierbinding kan ikke bygge på vertsnavn på Mac, fordi `socket.gethostname()`
   følger nettverket. På macOS bindes eierfilen til `IOPlatformUUID`; eldre
@@ -92,7 +92,7 @@ Lærdommer fra to lokale feil som så ut som utlogging:
 - Hver kilde har én prosesslås rundt fornyelsen og en eierfil bundet til maskin og
   kanonisk prosjektrot. En kopiert installasjon får ikke fornye samme tokenrekke.
   Bruk én autoritativ installasjon; ikke gjenopprett gamle tokenfiler fra backup.
-- Vigilo, IST, Spond og Hoopit lagrer mottatt tokensvar som privat credential
+- Vigilo, IST og Spond lagrer mottatt tokensvar som privat credential
   (journal) før videre validering, bundet til forrige økt og refresh-transaksjon.
   Skolemelding gjør det samme i refresh-markøren. Bindingen bruker credential- og
   identitetsfelter, så ny appversjon eller nye vedleggsverter bryter den ikke.
@@ -189,7 +189,7 @@ Lærdom:
 
 ## Automatisk fornyelse ved vanlig lesing
 
-Vigilo, Skolemelding, Hoopit og IST Home fornyer automatisk ved vanlig
+Vigilo, Skolemelding og IST Home fornyer automatisk ved vanlig
 MCP-lesing etter access-utløp, uten ny innlogging. I samme kontroll (oktober 2026)
 leste Spond med et fortsatt gyldig access-token, så Sponds fornyelse ved vanlig
 lesing ble ikke vist der. Ingen av kontrollene viser maksimal levetid for

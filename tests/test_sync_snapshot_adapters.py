@@ -6,7 +6,7 @@ from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
 from familiekilder import gmail, hoopit, ist_home, skolemelding, spond
-from familiekilder import live_hoopit_chat, live_spond_chat, live_vigilo_reader
+from familiekilder import live_spond_chat, live_vigilo_reader
 from familiekilder.api_transport import ApiHTTPError
 from familiekilder.private_state import atomic_write_private_json
 from familiekilder.sync_snapshot import SyncSnapshot, snapshot_scope, suspend_snapshot, suspended
@@ -52,15 +52,15 @@ class SyncSnapshotAdapterTests(unittest.TestCase):
         self.assertEqual(client.transport.get_json.call_count, 1)
         self.assertEqual(client.transport.post_json.call_count, 2)
 
-    def test_hoopit_cached_read_skips_live_loader_but_token_route_never_does(self):
-        client = object.__new__(hoopit.AuthorizedClient)
-        client.root, client.access = self.root, SimpleNamespace(app_version='fixture')
-        client._get = Mock(return_value={'results': []})
+    def test_hoopit_cached_read_skips_live_loader_per_exact_url(self):
+        client = object.__new__(hoopit.Client)
+        client.root = self.root
+        client._get = Mock(return_value={'results': [], 'has_next': False})
         with snapshot_scope(self.snapshot, self.root):
             for _ in range(2):
-                client.get('/app/users/current/posts/', page=1)
-                client.get('/app/users/current/tokens/')
-        self.assertEqual(client._get.call_count, 3)
+                client.get('posts', {'page': 1})
+            client.get('posts', {'page': 2})
+        self.assertEqual(client._get.call_count, 2)
 
     def test_gmail_exact_path_and_params_reuse_before_live_loader(self):
         client = object.__new__(gmail.Client)
@@ -95,7 +95,7 @@ class SyncSnapshotAdapterTests(unittest.TestCase):
         self.assertEqual(live.call_count, 4)
 
     def test_chat_reads_reuse_across_instances_without_bootstrap_or_pacing(self):
-        for module, source in ((live_spond_chat, 'spond'), (live_hoopit_chat, 'hoopit')):
+        for module, source in ((live_spond_chat, 'spond'),):
             with self.subTest(source=source):
                 clients = [object.__new__(module.Client) for _ in range(2)]
                 for client in clients:

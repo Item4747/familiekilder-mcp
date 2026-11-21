@@ -55,23 +55,6 @@ class AuthStatusReadonlyTests(unittest.TestCase):
                 "cooldown_until",
                 "cooldown_reason",
             },
-            hoopit_auth: {
-                "configured",
-                "authenticated",
-                "firebase_verified",
-                "session_present",
-                "expires_at",
-                "access_expires_at",
-                "access_expired",
-                "refresh_blocked",
-                "refresh_block_reason",
-                "direct_access_proof_present",
-                "direct_access_verified",
-                "direct_access_verified_at",
-                "direct_access_proof_state",
-                "cooldown_until",
-                "status_unavailable",
-            },
             ist_oauth: {
                 "configured",
                 "consent_recorded",
@@ -93,6 +76,18 @@ class AuthStatusReadonlyTests(unittest.TestCase):
                 self.assertEqual(set(status), expected_fields)
                 self.assertFalse(status["configured"])
                 self.assertFalse(status["authenticated"])
+
+    def test_hoopit_status_needs_no_setup_and_writes_nothing(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            status = hoopit_auth.auth_status(root)
+            self.assertEqual(list(root.iterdir()), [])
+            self.assertTrue(status["configured"])
+            self.assertFalse(status["authenticated"])
+            self.assertFalse(status["session_present"])
+            self.assertEqual(
+                status["required_scopes"], ["posts:read", "events:read", "events:respond"]
+            )
 
 
 if __name__ == "__main__":

@@ -1,7 +1,7 @@
 """Helpers shared by the provider auth modules, and the contract they follow.
 
 Provider auth modules (``vigilo_auth``, ``skolemelding_auth``, ``ist_oauth``,
-``spond_auth``, ``hoopit_auth``) are named by the ``auth`` field of their
+``spond_auth``, ``flyt_auth``) are named by the ``auth`` field of their
 entry in ``sources.REGISTRY``, loaded on first use and called duck-typed.
 A new module provides:
 
@@ -9,7 +9,7 @@ A new module provides:
     Paths from ``private_state.credential_path(root, "<source>-....json")``.
     ``auth_cli`` treats an existing session file as "logged in";
     ``auth_lifecycle`` reads ``<source>-session.json`` and the refresh marker
-    ``<source>-refresh-blocked.json`` (Hoopit: ``-refresh-state``) directly.
+    ``<source>-refresh-blocked.json`` directly.
 ``configure_client(root, client_file) -> dict``
     Validate provider metadata read through the private-file boundary (owner,
     0600, no symlink), write it with ``atomic_write_private_json`` under
@@ -27,8 +27,8 @@ or ``import_session(root, source, *, replace_existing)``
 ``local_session_for_use(root) -> dict``
     Offline: read and validate the stored session, raise a
     ``SourceLoginRequired`` subclass when login is needed and a
-    ``SourceUnavailable`` subclass while a refresh outcome is uncertain. Hoopit
-    exposes ``session_for_use`` instead; Vigilo and Spond add
+    ``SourceUnavailable`` subclass while a refresh outcome is uncertain. Vigilo
+    and Spond add
     ``access_token_for_use(root) -> (token, refreshed)``.
 ``refresh_session(root, *, at=None) -> dict``
     Rotate under the source lock. Write the refresh marker before a rotating
@@ -41,6 +41,9 @@ or ``import_session(root, source, *, replace_existing)``
     Remove the local session and refresh marker under the source lock, keep
     consent and client config, and return a secret-free summary. The keys
     differ per provider; callers only print them.
+
+``hoopit_auth`` is different: the user pastes a personal access token, so it
+has ``connect_token`` and ``token_for_use`` instead of a login and a refresh.
 
 All user-facing errors are Norwegian and come from the module's own error
 class. Exceptions from injected transports or validators must not be chained

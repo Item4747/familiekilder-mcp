@@ -327,9 +327,15 @@ def _add_auth_arguments(
     auth_commands.add_parser(
         "maintain", help="Gjenopprett lagret svar eller forny nær kjent refresh-utløp"
     )
-    auth_commands.add_parser(
-        "verify-direct",
-        help="Kjør én Hoopit Firebase-refresh og ett lesende API-kall uten retry",
+    token = auth_commands.add_parser(
+        "token",
+        help="Koble til med et personlig tilgangstoken (Hoopit); leses skjult eller fra stdin",
+    )
+    token.add_argument(
+        "--stdin", action="store_true", help="Les tokenet fra stdin, for eksempel fra en fil"
+    )
+    token.add_argument(
+        "--replace-existing", action="store_true", help="Bytt et token som allerede er lagret"
     )
     auth_commands.add_parser("status", help="Vis lokal auth-status uten nettverkskall")
     auth_commands.add_parser(

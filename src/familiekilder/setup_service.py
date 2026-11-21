@@ -42,6 +42,8 @@ MAX_MUNICIPALITY_LENGTH = 200
 
 
 def setup_kind(source: str) -> str:
+    if REGISTRY[source].login == "token":
+        return "token"
     if default_client_config(source) is not None:
         return "automatic"
     return _SETUP_WITHOUT_DEFAULT.get(source, "unavailable")
@@ -88,6 +90,7 @@ class SetupService:
             config = Config.load(self.root)
             moved = moved_sources(self.root)
             for source in REGISTRY.values():
+                status = {}
                 try:
                     status = auth_module(source.name).auth_status(self.root)
                     state = connection_state(status)
@@ -107,6 +110,10 @@ class SetupService:
                 }
                 if source.name == "flyt":
                     row["municipality"] = self._stored_municipality()
+                if status.get("detail") and existing and state != "connected":
+                    # Fixed source text when a stored login needs attention,
+                    # for example that a token was withdrawn.
+                    row["detail"] = status["detail"]
                 rows.append(row)
             job = None if self.job is None else {
                 "id": self.job.id, "source": self.job.source, "phase": self.job.phase,
@@ -231,9 +238,54 @@ class SetupService:
         Config(self.root, services).save()
         self.tested = False
 
+    def connect_token(self, source: str, token, *, replace=False) -> None:
+        """Check and store a pasted personal access token in a job (Hoopit).
+
+        The token goes straight to the source module; no state or message
+        here ever contains it.
+        """
+
+        if not isinstance(source, str) or source not in REGISTRY or REGISTRY[source].login != "token":
+            raise SetupError("Velg en tjeneste som kobles til med token.")
+        if not isinstance(token, str) or len(token) > 4096:
+            raise SetupError("Lim inn tokenet fra tjenesten.")
+        with self.lock:
+            self._idle()
+            module = auth_module(source)
+            if module.auth_status(self.root).get("session_present") and replace is not True:
+                raise SetupError("Bekreft at tokenet som er lagret, kan erstattes.")
+            job = Job(secrets.token_hex(12), source, message="Kontrollerer tokenet …")
+            self.job = job
+            self.tested = False
+            self.worker = threading.Thread(
+                target=self._run_token, args=(job, token, replace is True), daemon=True
+            )
+            self.worker.start()
+
+    def _run_token(self, job: Job, token: str, replace: bool) -> None:
+        from .core import FamiliekilderError
+
+        try:
+            auth_module(job.source).connect_token(self.root, token, replace_existing=replace)
+            with self.lock:
+                self._enable(job.source)
+                job.phase = "done"
+                job.message = "Tokenet virker og er lagret på denne maskinen."
+        except FamiliekilderError as error:
+            # The source's own texts say what to do and never contain the token.
+            with self.lock:
+                job.phase = "error"
+                job.message = self._sentence(error)
+        except Exception:
+            with self.lock:
+                job.phase = "error"
+                job.message = "Tokenet kunne ikke kontrolleres. Prøv igjen om litt."
+
     def start(self, action: str, source: str = "", *, consent=False, replace=False, municipality=None) -> None:
         if action not in {"login", "check"} or (action == "login" and source not in REGISTRY):
             raise SetupError("Ukjent oppsettshandling.")
+        if action == "login" and REGISTRY[source].login == "token":
+            raise SetupError("Denne tjenesten kobles til med et token. Lim inn tokenet i veiviseren.")
         if municipality is not None and (
                 action != "login" or source != "flyt" or not isinstance(municipality, str)
                 or len(municipality) > MAX_MUNICIPALITY_LENGTH):

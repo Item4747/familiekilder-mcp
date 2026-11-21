@@ -38,23 +38,7 @@ _PACKAGE_IDS = {
     "vigilo": "parent.vigilo.no.parentapplication",
     "skolemelding": "com.cgi.oslomelding.foresatte",
     "spond": "com.spond.spond",
-    "hoopit": "io.hoopit.app.android.v2",
     "ist-home": "com.ist.home.miniforumschool",
-}
-# Hoopit's first-party browser client is a separate, explicitly pinned source.
-# It is never represented as a Play-installed or APK-signed application.
-HOOPIT_WEB_URL = 'https://app.hoopit.io/main.dart.js'
-HOOPIT_WEB_EXTRACTOR = {
-    'api_root': 'unique https://api.hoopit.io literal',
-    'firebase': r'new A\.aAV\("(AIza[A-Za-z0-9_-]{35})","1:921476735762:web:[a-f0-9]+","921476735762","(hoopit-30d5c)",',
-}
-HOOPIT_WEB_EXTRACTOR_DIGEST = hashlib.sha256(json.dumps(HOOPIT_WEB_EXTRACTOR, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
-HOOPIT_WEB_RELEASES = {
-    '1104dffce00b48938849ab5f1e64ea03c0dd6894b7575c3790a7e0746a1d2fe0': {
-        'url': HOOPIT_WEB_URL,
-        'version_name': 'Web 1104dffce00b',
-        'extractor_digest': HOOPIT_WEB_EXTRACTOR_DIGEST,
-    },
 }
 _IMMUTABLE_FIELDS = {
     "vigilo": (
@@ -75,7 +59,6 @@ _IMMUTABLE_FIELDS = {
         "oidc_token_endpoint",
     ),
     "spond": ("api_root",),
-    "hoopit": ("api_root", "firebase_api_key", "firebase_project_id"),
     "ist-home": ("authority", "client_id", "client_secret", "redirect_uri", "scope"),
 }
 
@@ -201,14 +184,6 @@ def _required_text(value: Any, label: str, *, maximum: int = 512) -> str:
 
 
 def _validate_provenance(source: str, value: Any) -> dict[str, Any]:
-    if isinstance(value, Mapping) and value.get('kind') == 'official-web':
-        if source != 'hoopit' or set(value) != {'kind', 'url', 'asset_sha256', 'extractor_digest', 'version_name'}:
-            raise ProviderBundleError(f'{source}: web-proveniensen har ukjente eller manglende felt')
-        asset_hash = value.get('asset_sha256')
-        release = HOOPIT_WEB_RELEASES.get(asset_hash) if isinstance(asset_hash, str) else None
-        if release is None or any(value.get(name) != release[name] for name in ('url', 'version_name', 'extractor_digest')):
-            raise ProviderBundleError('hoopit: web-proveniensen matcher ikke en pinnet offisiell release')
-        return dict(value)
     if not isinstance(value, Mapping) or set(value) != {
         "package_id",
         "version_code",
@@ -348,10 +323,6 @@ def _validate_source_config(source: str, value: Any) -> dict[str, Any]:
             if not required.issubset(value) or not set(value).issubset(allowed):
                 raise ValueError
             from .skolemelding_auth import _parse_client_config
-
-            return _parse_client_config(value).as_private_json()
-        if source == "hoopit":
-            from .hoopit_auth import _parse_client_config
 
             return _parse_client_config(value).as_private_json()
         if source == "ist-home":

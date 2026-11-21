@@ -67,8 +67,9 @@ også én måte å lage den første økten på:
 | Vei | Funksjoner i auth-modulen | `auth_commands` | Brukes av |
 |---|---|---|---|
 | OAuth med callback | `consent_status`, `record_consent`, `begin_login`, `login_with_callback` | `login`, `browser-login` | Vigilo, Skolemelding, IST Home, Flyt |
-| Økt hentet fra nettleser | egen gren i `browser_bootstrap.bootstrap_source`, og `import_session` | `browser-bootstrap`, `import-session` | Spond, Hoopit |
-| Import av øktfil | `import_session(root, path, *, replace_existing)` | `import-session` | Spond, Hoopit |
+| Økt hentet fra nettleser | egen gren i `browser_bootstrap.bootstrap_source`, og `import_session` | `browser-bootstrap`, `import-session` | Spond |
+| Import av øktfil | `import_session(root, path, *, replace_existing)` | `import-session` | Spond |
+| Personlig tilgangstoken | `connect_token(root, token, *, replace_existing)` og `token_for_use(root)`; `login="token"` i `Source` | `token` | Hoopit |
 
 For et første bidrag holder import av øktfil. `auth_status(root)` virker uten
 nettverk og uten å opprette filer, og gir minst `configured`, `authenticated`,
@@ -182,7 +183,7 @@ om et kall er trygt:
    `expected_content_hash` og kaller leserens `download`. Den bruker
    `fetch_attachment(item, attachment_id, directory, fetch)`, der
    `fetch(spec, target)` laster ned, holder en bytegrense (som
-   `hoopit.MAX_ATTACHMENT_BYTES`) og gir `(path, mime)`.
+   `spond.MAX_ATTACHMENT_BYTES`) og gir `(path, mime)`.
 3. Visning, PDF-vinduer og cache er felles (`live_attachments.render`,
    `pdf_windows.py`).
 
@@ -365,11 +366,12 @@ Registrering som er inkonsekvent eller lett å overse.
 - **`kind: "notification"` er reservert.** Bare kilder med `notifications=True`
   leser slike referanser fra listen (`live_readers._require_detail_reference`,
   `Runtime.read_notification`).
-- **`chat_discovery._discover` kjenner bare Spond og Hoopit.** Den velger
-  sidefelt med `source == 'spond'` og bruker Hoopit-formen for alt annet.
+- **`chat_discovery._discover` kjenner bare Spond.** En ny kilde med
+  `streams=("feed", "chat")` trenger egen kode der.
 - **To HTML-til-tekst-funksjoner.** `core.html_to_text` brukes av Spond,
   Skolemelding og nye kilder. Vigilo og IST Home bruker
   `core.html_to_text_unescaped`, som avkoder entiteter én gang til og gir `""`
   for tom tekst. Lagrede innholdshasher bygger på dette; slå dem ikke sammen.
-- **Hoopit har et eget navn på fornyelsesmerket.** `auth_lifecycle.report`
-  leser `hoopit-refresh-state.json`, ellers `<source>-refresh-blocked.json`.
+- **Hoopit har ikke fornyelse.** Tokenet fornyes ikke, så `refresh_session`
+  gjør ingen nettverkskall, og `auth_lifecycle.report` finner ingen
+  fornyelseshistorikk.

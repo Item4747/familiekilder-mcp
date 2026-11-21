@@ -42,7 +42,10 @@ class ReadOnlyContractTests(unittest.TestCase):
             prefix = source.name.replace("-", "_")
             with self.subTest(source=source.name):
                 self.assertIn(f"{prefix}_get_item", names)
-                self.assertIn(f"{prefix}_read_attachment", names)
+                if source.attachments:
+                    self.assertIn(f"{prefix}_read_attachment", names)
+                else:
+                    self.assertNotIn(f"{prefix}_read_attachment", names)
                 self.assertIn("gmail_search" if source.kind == "mail" else f"{prefix}_list_items", names)
         for tool in tools:
             with self.subTest(tool=tool.name):

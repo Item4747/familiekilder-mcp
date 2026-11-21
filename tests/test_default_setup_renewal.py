@@ -21,7 +21,7 @@ from unittest.mock import MagicMock, patch
 
 from familiekilder_testing.private import private_again, readable_by_others
 
-from familiekilder import client_defaults, hoopit_auth, skolemelding_auth, spond_auth, vigilo_auth
+from familiekilder import client_defaults, skolemelding_auth, spond_auth, vigilo_auth
 from familiekilder.client_defaults import (
     MARK_SCHEMA,
     RenewalRefused,
@@ -55,13 +55,6 @@ def old_defaults() -> dict[str, dict]:
         "spond": {
             "api_root": spond_auth.API_ROOT,
             "app_version": "fictional-spond-1.0",
-            "attachment_hosts": ["files.example.test"],
-        },
-        "hoopit": {
-            "api_root": hoopit_auth.API_ROOT,
-            "firebase_api_key": "AIza" + "x" * 36,
-            "firebase_project_id": hoopit_auth.FIREBASE_PROJECT_ID,
-            "app_version": "Web fictional-hoopit-1.0",
             "attachment_hosts": ["files.example.test"],
         },
         "skolemelding": {
@@ -199,8 +192,8 @@ class RenewalTests(RenewalCase):
         self.assertEqual(self.stored("spond")["app_version"], "fictional-own-9.9")
 
     def test_a_setup_edited_by_hand_stays(self):
-        self.store_from_wizard("hoopit")
-        path = self.setup_path("hoopit")
+        self.store_from_wizard("skolemelding")
+        path = self.setup_path("skolemelding")
         edited = path.read_bytes().rstrip(b"\n") + b" \n"
         atomic_write_private_bytes(path, edited)
         with shipping(new_defaults()):

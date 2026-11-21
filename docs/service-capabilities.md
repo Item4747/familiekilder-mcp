@@ -19,7 +19,7 @@ Koblingene er uoffisielle, unntatt Gmail, som bruker Googles offisielle API.
 | [Vigilo](#vigilo) | Barn og enheter, meldinger, nyheter, henteavtaler, fravær, møteinvitasjoner, påmeldingsskjemaer og vedlegg |
 | [Skolemelding](#skolemelding) | Barn og skoler, innboks og sendtmappe, tråder, lærermottakere og vedlegg |
 | [Spond](#spond) | Profil og grupper, innlegg, aktiviteter, kommentarer, varsler, chatter og vedlegg |
-| [Hoopit](#hoopit) | Profil og barn, innlegg, aktiviteter, kommentarer, varsler, chatter, kontaktgrupper og vedlegg |
+| [Hoopit](#hoopit) | Innlegg, kommentarer, aktiviteter og familiens svar |
 | [IST Home](#ist-home) | Barn og plasseringer, innlegg, samtaler, mottakere, fravær, samtaleinvitasjoner og vedlegg |
 | [Flyt](#flyt) | Barnehage: barn og plasser, beskjeder, dagbok med bilder, meldingstråd, kalender, registrert fravær, inn-/utsjekk og vedlegg |
 | [Gmail](#gmail) | Målrettede e-postsøk, meldinger og vedlegg |
@@ -70,14 +70,17 @@ Når en utilgjengelig ressurs hindrer full lesing, vises `complete=false`.
 
 ## Hoopit
 
-Innlegg, aktiviteter og kommentarer leses med avgrenset sideinndeling;
-[Hoopit](hoopit-ingestion.md) beskriver grensene. Chatter leses gjennom Stream.
-Mottakeroppslag gir bare nødvendige identiteter og viser utilgjengelige
-mottakere med årsak. Mottakerlisten er ikke en generell personkatalog.
+Hoopit kobles til med et personlig tilgangstoken og leses gjennom Hoopits
+offisielle API; [Hoopit](hoopit-ingestion.md) beskriver tokenet, kallene og
+grensene. `hoopit_list_items` og `hoopit_get_item` gir innlegg med kommentarer og
+aktiviteter med familiens svar. `hoopit_thread_context` gir kommentartråden til
+ett innlegg med ID-er. `hoopit_participation_context` gir familiens svar på én
+aktivitet. Ingen av leseverktøyene sender noe eller endrer svar.
 
-Chatdetaljer og vedlegg bruker egne leseverktøy. Leseoppslag har bekreftet en
-chatmelding uten vedlegg; nedlasting av chatvedlegg er ikke live-verifisert.
-Ingen av leseverktøyene sender melding eller endrer deltakelse.
+API-et har ikke chatter, vedlegg, varsler, kontaktgrupper, profil eller
+skriving av kommentarer, så det har ikke programmet heller. Aktiviteter har
+tittel, type, tid, oppmøte, sted, avlysning og svar, men ikke beskrivelse,
+svarfrist eller betaling.
 
 ## IST Home
 
@@ -134,7 +137,7 @@ Python-modulene er interne, se [veien til 1.0](release.md).
 | Vigilo | Nye meldinger og svar, heldagsfravær, møter og påmeldingsskjemaer | — |
 | Skolemelding | Ny melding til én lærer og fraværsmelding | Svar og deltakelse; fraværsmeldingen fører ikke fravær i skolens register |
 | Spond | Nye chatter, chatsvar, kommentarsvar og deltakelsessvar | Fravær |
-| Hoopit | Nye chatter, chatsvar, kommentarsvar og deltakelsessvar | Fravær |
+| Hoopit | Svar på aktiviteter (påmelding og avmelding med grunn) | Fravær, meldinger |
 | IST Home | Nye samtaler og svar, fravær, booking og avbestilling av samtaletid | Andre deltakelsesformer; bookingdetaljer med aktiv invitasjon |
 | Flyt | Ingen skrivekode | — |
 | Gmail | Ingen skrivekode | — |
@@ -162,9 +165,13 @@ Kontroller verktøyets tilgang, avsender, mål og oppfølging i koden før endri
 - Skolemeldings svar er ikke verifisert med en stabil avsender-ID; en
   fraværsmelding er ikke det samme som føring av fravær. Oppfølging av sending
   krever én ny, entydig melding i sendtmappen, ikke bare et POST-svar.
-- Spond- og Hoopit-kommentarer er synlige i tråden og er ikke private
-  chatmeldinger. Ny Hoopit-chat kan opprette en tom samtale før sendingen
-  eventuelt stoppes; den slettes ikke automatisk.
+- Spond-kommentarer er synlige i tråden og er ikke private chatmeldinger.
+- Hoopits svar på en aktivitet bruker `PATCH …/responses/{person}/` og krever
+  at tokenet har «Svare på invitasjoner for deg selv og barna dine»
+  (`events:respond`). Hoopit kontrollerer frist, fulle aktiviteter og
+  venteliste selv. En grunn (`illness`, `injury`, `other_training` eller
+  `other_reason`) kan bare oppgis ved avmelding. Svaret leses tilbake fra
+  aktivitetslisten; et avslag fra Hoopit gir `unknown` med HTTP-status.
 - ISTs booking gjelder bare inviterte samtaletider. Avbestilling bruker den
   kombinerte booking-/invitasjons-ID-en, ikke kalender- eller slot-ID, og krever
   en gyldig avbestillingsfrist og en fersk bekreftelse.
